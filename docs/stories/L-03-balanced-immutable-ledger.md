@@ -1,6 +1,6 @@
 # L-03 Balanced, immutable ledger
 
-**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** QE passed (round 3), awaiting owner approval  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 3 · **Branch:** `L-03-balanced-immutable-ledger` · **Round:** 2 / 3
 
 ## Story

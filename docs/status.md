@@ -13,7 +13,7 @@ Step 0.3 is the owner's. QE phase A for L-01 starts once the owner approves L-01
 | --- | --- | --- | --- | --- | --- |
 | L-01 | Import an activity CSV | QE passed, awaiting owner | 2 | main | 36 tests, 240 generated cases; 2 bugs fixed (B-001, B-002); share scale is a placeholder (C3) |
 | L-02 | Duplicate-safe ingestion | Draft | – | – | payload-hash fields, duplicate response code |
-| L-03 | Balanced, immutable ledger | In QE | 2 | l-03 | **sequence tie-breaker vs invariant 6 needs ADR**; immutability enforcement |
+| L-03 | Balanced, immutable ledger | QE passed, awaiting owner | 3 | main | 83 tests (29 integration); 5 bugs, 4 fixed, B-006 open pending C15; app runs as least-privilege role |
 | L-04 | Corrections by reversal | Draft | – | – | reversal-of-reversal policy |
 | L-05 | Reliable event publication | Draft | – | – | outbox "sent" marker vs immutability |
 | L-06 | Pooled ACB: buy, sell, ROC, fees | Draft (tax) | – | – | sourced (adjustedcostbase.ca); rounding, ROC timing, negative-ACB gain timing |
