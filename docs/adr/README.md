@@ -10,6 +10,7 @@ alternative when explaining a decision; that's the part that shows judgment.
 | [0002](0002-integer-money-and-fixed-point-shares.md) | Money and shares as integers | Draft |
 | [0003](0003-corrections-by-reversal.md) | Corrections by reversal plus a new activity | Draft |
 | [0004](0004-pluggable-tax-rule-set.md) | Tax rules as a versioned, pluggable rule set | Draft |
+| [0005](0005-ledger-chart-of-accounts-and-append-only-store.md) | Ledger line layout, chart of accounts and append-only store | Draft |
 
 Planned (from `docs/build-plan.md`): transactional outbox, at-least-once plus idempotent consumer, partition key =
 taxpayer id, effective-date ordering, recompute-from-date for late corrections, rounding only at reporting, plain

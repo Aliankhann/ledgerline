@@ -2,6 +2,7 @@ package dev.ledgerline.app
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
+import dev.ledgerline.ledger.LedgerMigrations
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -12,7 +13,6 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import kotlinx.serialization.Serializable
-import org.flywaydb.core.Flyway
 import org.slf4j.LoggerFactory
 
 private val log = LoggerFactory.getLogger("dev.ledgerline.app")
@@ -33,13 +33,7 @@ fun main() {
             },
         )
 
-    val migrations =
-        Flyway.configure()
-            .dataSource(dataSource)
-            .locations("classpath:db/migration")
-            .load()
-            .migrate()
-    log.info("Flyway applied {} migration(s)", migrations.migrationsExecuted)
+    log.info("Flyway applied {} migration(s)", LedgerMigrations.migrate(dataSource))
 
     embeddedServer(Netty, port = config.httpPort, module = Application::module).start(wait = true)
 }

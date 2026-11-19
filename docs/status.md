@@ -64,8 +64,13 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
   (source row order, then idempotency key). Needs an ADR before L-03.
 - **Outbox "sent" marker (L-05).** Marking an outbox row as sent is an `UPDATE` in the `ledger` schema; decide whether
   immutability covers the outbox or the marker lives elsewhere.
+- **Docker API pin in `tests/build.gradle.kts` (dev, L-03, for QE).** Testcontainers is now 1.21.3, which negotiates
+  the Docker API version. The `api.version`/`DOCKER_API_VERSION` 1.44 pin says to remove it then; it is QE-owned, so
+  dev left it. L-03 integration tests pass with it in place.
 
 ## Log
+
+- 2026-11-19 · dev · L-03 implemented on placeholders C3/C4; draft ADR 0005 (chart of accounts, sequence, trigger). In QE.
 
 - 2026-11-19 · ba · L-06/L-07/L-08 sourced from local copies; 32 real BoC rates verified against the API.
 - 2026-11-19 · ba · Evidence second pass: A-01..A-07 promoted to E-16..E-33; 'book value resets on transfer' cut.

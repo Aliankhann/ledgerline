@@ -1,6 +1,6 @@
 # L-03 Balanced, immutable ledger
 
-**Status:** Tests written  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 3 · **Branch:** `L-03-balanced-immutable-ledger` · **Round:** 0 / 3
 
 ## Story
@@ -145,4 +145,10 @@ which gives the same equality check.
 
 ## Change notes (Dev fills)
 
-- …
+- 2026-11-19 · dev · Round 0 implementation, built provisionally on placeholders C3 and C4 (`// OWNER-INPUT` markers).
+  `core`: `Activity.sourceSeq` (last parameter, default 0), `Validation`, `DomainPlugin` (no I/O). `ledger`: pure
+  `Posting.linesFor` and `Posting.requireBalanced` (exact arithmetic), `LedgerRepository` (one transaction per append,
+  advisory lock so sequence follows commit order), `LedgerMigrations`. Flyway `V2__ledger_entries_and_lines.sql`:
+  `ledger.entry`, `ledger.line` (bigint amounts), role `ledgerline_app` (SELECT/INSERT only), append-only statement
+  trigger on UPDATE, DELETE and TRUNCATE. App now migrates through `LedgerMigrations`. Testcontainers 1.20.4 to 1.21.3.
+  Chart of accounts, sequence and trigger choices in draft ADR 0005.

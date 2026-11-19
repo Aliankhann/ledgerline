@@ -35,4 +35,8 @@ data class Activity(
     val counterCurrency: Currency?,
     val counterAmountMinor: Long?,
     val description: String?,
+    // OWNER-INPUT: C4 ordering. Placeholder: calculation orders by (effectiveDate, sourceSeq, idempotencyKey).
+    // sourceSeq is the activity's position in its source (row order), never arrival order. Defaulted so
+    // existing callers keep compiling.
+    val sourceSeq: Long = 0L,
 )
