@@ -165,25 +165,34 @@ class L03ImmutabilityEdgeSpec : FunSpec({
                 }
             container.start()
             try {
-                // As Main.kt does: migrate, then serve, with the same credentials.
+                // As Main.kt does (ADR 0005): migrate and enable the app login as the admin, then serve as the app.
+                val admin =
+                    login(
+                        container.jdbcUrl,
+                        ComposeFile.env("DATABASE_MIGRATION_USER"),
+                        ComposeFile.env("DATABASE_MIGRATION_PASSWORD"),
+                    )
+                LedgerMigrations.migrate(admin)
+                LedgerMigrations.enableAppLogin(admin, ComposeFile.env("DATABASE_PASSWORD"))
                 val app =
                     login(container.jdbcUrl, ComposeFile.env("DATABASE_USER"), ComposeFile.env("DATABASE_PASSWORD"))
-                LedgerMigrations.migrate(app)
                 LedgerRepository(app).post(ac1)
-                val isSuper =
+
+                fun scalar(sql: String): String =
                     app.connection.use { c ->
                         c.createStatement().use { st ->
-                            st.executeQuery("SELECT rolsuper FROM pg_roles WHERE rolname = current_user").use {
+                            st.executeQuery(sql).use {
                                 it.next()
-                                it.getBoolean(1)
+                                it.getString(1)
                             }
                         }
                     }
-                val disable =
+
+                fun failure(sql: String): java.sql.SQLException? =
                     app.connection.use { c ->
                         c.autoCommit = false
                         try {
-                            c.createStatement().use { it.execute("ALTER TABLE ledger.line DISABLE TRIGGER ALL") }
+                            c.createStatement().use { it.execute(sql) }
                             null
                         } catch (e: java.sql.SQLException) {
                             e
@@ -192,9 +201,19 @@ class L03ImmutabilityEdgeSpec : FunSpec({
                         }
                     }
                 assertSoftly {
-                    withClue("app role ${ComposeFile.env("DATABASE_USER")} is superuser") { isSuper shouldBe false }
-                    withClue("app connection could run ALTER TABLE ledger.line DISABLE TRIGGER ALL") {
-                        disable.shouldNotBeNull()
+                    withClue("current_user") { scalar("SELECT current_user") shouldBe ComposeFile.env("DATABASE_USER") }
+                    withClue("app role is superuser") {
+                        scalar("SELECT rolsuper::text FROM pg_roles WHERE rolname = current_user") shouldBe "false"
+                    }
+                    listOf(
+                        "UPDATE ledger.line SET amount = 1",
+                        "DELETE FROM ledger.line",
+                        "ALTER TABLE ledger.line DISABLE TRIGGER ALL",
+                    ).forEach { sql ->
+                        withClue("app connection could run: $sql") { failure(sql).shouldNotBeNull() }
+                    }
+                    withClue("entries posted through the app login") {
+                        scalar("SELECT count(*)::text FROM ledger.entry") shouldBe "1"
                     }
                 }
             } finally {

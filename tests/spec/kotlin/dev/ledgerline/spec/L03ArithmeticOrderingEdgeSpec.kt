@@ -10,6 +10,7 @@ import dev.ledgerline.ledger.LedgerLine
 import dev.ledgerline.ledger.LedgerRepository
 import dev.ledgerline.ledger.Posting
 import dev.ledgerline.ledger.Side
+import dev.ledgerline.ledger.ZeroAmountException
 import dev.ledgerline.testsupport.Activities.SHARE
 import dev.ledgerline.testsupport.Activities.activity
 import dev.ledgerline.testsupport.CsvRows
@@ -18,6 +19,7 @@ import dev.ledgerline.testsupport.LineMath
 import dev.ledgerline.testsupport.PostgresLedger
 import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldNotThrowAny
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FunSpec
@@ -152,8 +154,10 @@ class L03ArithmeticOrderingEdgeSpec : FunSpec({
 
     // ---------- L-01 hand-off ----------
 
+    // DISABLED pending owner decision C15 (docs/owner-inputs.md), bug B-006 (Open). This encodes the "posting
+    // succeeds" option; the placeholder refuses with ZERO_AMOUNT (next test). Re-enable or delete once C15 is decided.
     test("L-03 edge (B-006): every zero-amount cash activity that L-01 accepts can be posted to the ledger")
-        .config(tags = setOf(Integration)) {
+        .config(enabled = false, tags = setOf(Integration)) {
             val db = pg.freshDatabase()
             val repo = LedgerRepository(db.app)
             val types = listOf("DEPOSIT", "WITHDRAWAL", "FEE", "DIVIDEND", "RETURN_OF_CAPITAL")
@@ -174,6 +178,34 @@ class L03ArithmeticOrderingEdgeSpec : FunSpec({
                 accepted.forEach { a ->
                     withClue("${a.activityType} amount 0 accepted by L-01") { shouldNotThrowAny { repo.post(a) } }
                 }
+            }
+        }
+
+    // Placeholder behaviour (owner decision C15 pending, B-006): refused at posting with ZERO_AMOUNT, nothing written.
+    test("L-03 edge (B-006, C15 placeholder): a zero-amount cash activity is refused with ZERO_AMOUNT and not stored")
+        .config(tags = setOf(Integration)) {
+            val db = pg.freshDatabase()
+            val repo = LedgerRepository(db.app)
+            val types = listOf("DEPOSIT", "WITHDRAWAL", "FEE", "DIVIDEND", "RETURN_OF_CAPITAL")
+            val rows =
+                types.mapIndexed { i, t ->
+                    CsvRows.row(
+                        "idempotency_key" to "EDGE-ZERO-P-$i",
+                        "activity_type" to t,
+                        "security_id" to if (t in setOf("DIVIDEND", "RETURN_OF_CAPITAL")) "SYN-AAA" else "",
+                        "quantity" to "",
+                        "amount" to "0.00",
+                    )
+                }
+            val accepted: List<Activity> = CanonicalCsv.parse(CsvRows.file(*rows.toTypedArray())).activities
+            assertSoftly {
+                accepted.size shouldBe types.size
+                accepted.forEach { a ->
+                    withClue("${a.activityType} amount 0") {
+                        shouldThrow<ZeroAmountException> { repo.post(a) }.code shouldBe "ZERO_AMOUNT"
+                    }
+                }
+                repo.entries().size shouldBe 0
             }
         }
 
