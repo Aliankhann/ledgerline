@@ -136,3 +136,12 @@ reusable), reversals that would go negative are refused `NEGATIVE_SHARES`, `UNKN
   `Set` (needs `collections.shouldContainAll`). Dev did not edit `tests/`. With only those imports changed in a scratch
   copy, `./gradlew build` and `:tests:test -PincludeIntegration` pass (106 tests, 1 skipped (B-006), 0 failed). See
   `docs/status.md` Open questions.
+- 2026-11-19 · qe · Phase B round 1. Fixed the import errors in `L04ReversalSpec` and `ReversalSymmetryPropertyTest`.
+  Attack specs added: `L04ReversalConcurrencyEdgeSpec` (8 threads, 5 rounds each: one reversal per entry, same-key
+  retries share one result, correct() the same), `L04ReversalDependencyEdgeSpec` (sell depends on buy; per-account;
+  huge holdings), `L04ReversalDatabaseEdgeSpec` (app role cannot UPDATE/DELETE/TRUNCATE `ledger.reversal`; raw inserts
+  through the app role never leave a link to a missing or unmirrored entry; replay after reversals is
+  arrival-order independent). Defects: B-008 (minor), B-009 (major, owner decision likely), B-010 (minor), tests left
+  failing. **Owner decision, not a bug:** `correct()` counts the replacement in the NEGATIVE_SHARES check, so
+  correcting a buy that a later sell depends on is allowed when the replacement keeps enough shares, while `reverse()`
+  of the same buy is refused. Pinned both ways in `L04ReversalDependencyEdgeSpec`.

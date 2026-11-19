@@ -9,8 +9,8 @@ import dev.ledgerline.testsupport.Integration
 import dev.ledgerline.testsupport.LineMath
 import dev.ledgerline.testsupport.PostgresLedger
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.ints.shouldBeGreaterThanOrEqual
+import io.kotest.matchers.maps.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.property.checkAll
