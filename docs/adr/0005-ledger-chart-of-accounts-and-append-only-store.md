@@ -69,4 +69,9 @@ _Owner, in your own words._
 - **Lines lose some activity detail.** A transfer-in's book value (`amountMinor`) is not a cash movement and posts no
   line; dividend and return-of-capital lines do not name the security. Calculation must read these from the activity
   (L-05 outbox payload), not from the lines.
+- **L-02 tables (V4).** `ledger.activity` (key, payload hash, canonical fields, `recorded_at`) and `ledger.outbox`
+  (one row per new entry, no sent marker) are written in the entry's transaction, append-only like the others. They
+  carry no foreign keys to `ledger.entry`: Postgres reports an FK before the append-only trigger fires, which would
+  break "TRUNCATE ledger.entry, ledger.line" failing with "append-only". Pairing is by UNIQUE `entry_id` and
+  `idempotency_key`. Concurrent duplicates are serialised by the append lock; the unique keys are the backstop.
 - Verified by `L03LedgerSpec`, `BalanceInvariantPropertyTest` and `ImmutabilityInvariantPropertyTest`.

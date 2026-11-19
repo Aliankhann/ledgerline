@@ -20,6 +20,8 @@ subprojects {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_21)
             allWarningsAsErrors.set(true)
+            // The :tests project (QE-owned) uses Kotest's experimental property-test API (PropTestConfig.iterations).
+            if (project.name == "tests") optIn.add("io.kotest.common.ExperimentalKotest")
         }
     }
 

@@ -37,6 +37,11 @@ Until an item is filled, the code uses a clearly marked **placeholder** that is 
 | C9 | **Quality thresholds** | Proposed: mutation 70%, max 400 lines per file, perf ≤10% slower | CI gates |
 | C10 | **Benchmark targets** (set before the first run) | Ingest/s, p99 latency, burst drain time | L-13 |
 | C19 | **Replaying reversed pairs (L-04, B-011)** | Proposed: replay skips a reversed entry and its reversal together (they net to zero); alternative: order a reversal by its own sequence (breaks C17) | L-04, L-09, L-10 |
+| C20 | **Which fields are in the payload hash** (ADR 0001, L-02) | Placeholder: SHA-256 over a canonical, length-prefixed serialization of every `Activity` field EXCEPT `recorded_at`, `description` and `source_seq`. A changed description is a duplicate (the first one stays); `source_seq` is ordering metadata from row position, not payload, so including it would make identical rows (C24) and re-uploaded files into mismatches. Search `OWNER-INPUT: C20` | L-02, L-04 |
+| C21 | **Does an invalid submission consume its key?** | Placeholder: no. A refused submission writes nothing, so the same key can be submitted again with a valid payload. Search `OWNER-INPUT: C21` | L-02 |
+| C22 | **Response for a duplicate and for a key mismatch** | Placeholder: new = `201`; duplicate (same key, same hash) = `200` with the original ids and `alreadyExisted: true`; mismatch = `409` with code `IDEMPOTENCY_KEY_MISMATCH` (the story says `IDEMPOTENCY_KEY_REUSED`). Search `OWNER-INPUT: C22` | L-02 |
+| C23 | **Partial CSV import** | Placeholder: partial. Good rows post; bad rows and key mismatches are reported by physical line. Alternative: all-or-nothing, which changes AC9 and AC10. Search `OWNER-INPUT: C23` | L-01, L-02 |
+| C24 | **Repeated key inside one file** | Placeholder: same key and same payload = one post plus one duplicate; same key and a different payload = a mismatch on the later line. Search `OWNER-INPUT: C24` | L-02 |
 | C11 | **Second plugin** | Proposed: cash-balance tracker | L-14 |
 | C12 | **License** | MIT is common for portfolio projects | README |
 | C13 | **ADRs 0001–0004 in your own words** | Edit the Decision section of each | Interview readiness |
