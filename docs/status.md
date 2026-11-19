@@ -11,7 +11,7 @@ Step 0.3 is the owner's. QE phase A for L-01 starts once the owner approves L-01
 
 | ID | Title | Status | Round | Branch | Notes |
 | --- | --- | --- | --- | --- | --- |
-| L-01 | Import an activity CSV | Draft | – | – | split L-01a/b?; share scale; import policy |
+| L-01 | Import an activity CSV | QE passed, awaiting owner | 2 | main | 36 tests, 240 generated cases; 2 bugs fixed (B-001, B-002); share scale is a placeholder (C3) |
 | L-02 | Duplicate-safe ingestion | Draft | – | – | payload-hash fields, duplicate response code |
 | L-03 | Balanced, immutable ledger | Draft | – | – | **sequence tie-breaker vs invariant 6 needs ADR**; immutability enforcement |
 | L-04 | Corrections by reversal | Draft | – | – | reversal-of-reversal policy |
