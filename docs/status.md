@@ -14,7 +14,7 @@ Step 0.3 is the owner's. QE phase A for L-01 starts once the owner approves L-01
 | L-01 | Import an activity CSV | QE passed, awaiting owner | 2 | main | 36 tests, 240 generated cases; 2 bugs fixed (B-001, B-002); share scale is a placeholder (C3) |
 | L-02 | Duplicate-safe ingestion | Draft | – | – | payload-hash fields, duplicate response code |
 | L-03 | Balanced, immutable ledger | QE passed, awaiting owner | 3 | main | 83 tests (29 integration); 5 bugs, 4 fixed, B-006 open pending C15; app runs as least-privilege role |
-| L-04 | Corrections by reversal | In QE | 0 | l-04 | provisional C16/C17/C18; V4 `ledger.reversal`; tests need import fixes |
+| L-04 | Corrections by reversal | In QE | 1 | l-04 | provisional C16/C17/C18; V4 `ledger.reversal`; B-008 minor, B-009 major, B-010 minor open; correct() vs NEGATIVE_SHARES is an owner decision |
 | L-05 | Reliable event publication | Draft | – | – | outbox "sent" marker vs immutability |
 | L-06 | Pooled ACB: buy, sell, ROC, fees | Draft (tax) | – | – | sourced (adjustedcostbase.ca); rounding, ROC timing, negative-ACB gain timing |
 | L-07 | Superficial-loss detection | Draft (tax) | – | – | sourced except AC2; adopt partial-repurchase formula? |
@@ -59,12 +59,6 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
 
 ## Open questions
 
-- **L-04 tests do not compile (dev, for QE and owner).** `L04ReversalSpec` lines 151, 152, 174 and
-  `ReversalSymmetryPropertyTest` lines 45, 46, 107 call `shouldBeEmpty()` on a `Map` but import
-  `io.kotest.matchers.collections.shouldBeEmpty` (needs `io.kotest.matchers.maps.shouldBeEmpty`); `L04ReversalSpec`
-  line 210 imports `io.kotest.matchers.maps.shouldContainAll` for `Set`s (needs `collections.shouldContainAll`). So
-  `./gradlew build` fails in `:tests:compileTestKotlin` on `l-04`. With those two imports changed in a scratch copy
-  (not in the repo), `build` and `:tests:test -PincludeIntegration` pass. Dev did not edit `tests/`.
 - **Sequence vs invariant 6 (from BA, L-03).** If "sequence" is assigned on arrival, two same-date activities order
   differently by arrival and break order independence. Proposed tie-breaker: a field from the activity itself
   (source row order, then idempotency key). Needs an ADR before L-03.
@@ -82,6 +76,8 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
   dev left it. L-03 integration tests pass with it in place.
 
 ## Log
+
+- 2026-11-19 · qe · L-04 phase B round 1: import fixes done; 3 failing attack tests = B-008, B-009 (major), B-010. No sign-off.
 
 - 2026-11-19 · dev · L-03 round 2: B-003, B-004, B-005, B-007 fixed; B-006 on placeholder C15 (open). Two tests
   conflict with the requested design (see Open questions). In QE.
