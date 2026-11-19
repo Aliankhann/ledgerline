@@ -62,7 +62,7 @@ QE writes it under `tests/`.
 
 ## Commits and branches
 
-- One branch per story, named after its ID: `L-01-import-csv`.
+- Work on `main` (owner rule). Story IDs go in commit subjects, e.g. `L-01: parser spec tests`.
 - Every commit ends with an `Agent:` trailer: `Agent: ba`, `Agent: dev`, `Agent: qe` or `Agent: owner`.
   `scripts/check-test-ownership.sh` fails CI if a dev commit touches `tests/`, a qe commit touches production code,
   a ba commit touches anything outside `docs/`, or the trailer is missing. Run `make hooks` to check locally.
@@ -70,8 +70,8 @@ QE writes it under `tests/`.
   trailers (`Co-Authored-By:` etc.), with no blank line between them.
 - Small commits: one logical change each (one story's tests, one story's implementation, one fix, one doc update).
   Each commit compiles and passes `./gradlew build`. No "WIP" commits that bundle unrelated work.
-- Owner rule (2026-11-19): after each completed change or story, commit it and push it to `main` on GitHub as well
-  as the working branch. Code reaches `main` only after its story's gates pass.
+- Owner rule (2026-11-19): after each completed change or story, commit it and push it to `main` on GitHub. Work happens
+  directly on `main`; no other branches are pushed. Story code is pushed only after its story's gates pass.
 
 ## The eight invariants (each becomes a property test under `tests/property/`)
 
