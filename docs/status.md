@@ -12,9 +12,9 @@ Step 0.3 is the owner's. QE phase A for L-01 starts once the owner approves L-01
 | ID | Title | Status | Round | Branch | Notes |
 | --- | --- | --- | --- | --- | --- |
 | L-01 | Import an activity CSV | QE passed, awaiting owner | 2 | main | 36 tests, 240 generated cases; 2 bugs fixed (B-001, B-002); share scale is a placeholder (C3) |
-| L-02 | Duplicate-safe ingestion | In QE | 1 | l-02 (local) | C20 amended (sourceSeq not hashed), tests updated; B-012 (major), B-013, B-014 (minor) open; attack tests written after the last Docker run not re-executed |
+| L-02 | Duplicate-safe ingestion | Dev round 2 done; integration NOT RUN | 2 | local `l-02` | B-012..B-014 fixed pending integration; 130 non-Docker tests pass; Docker unavailable in sandbox |
 | L-03 | Balanced, immutable ledger | QE passed, awaiting owner | 3 | main | 83 tests (29 integration); 5 bugs, 4 fixed, B-006 open pending C15; app runs as least-privilege role |
-| L-04 | Corrections by reversal | Draft | – | – | reversal-of-reversal policy |
+| L-04 | Corrections by reversal | Escalated after round 3 | 3 | local `l-04` | B-008..B-010 fixed; B-011 needs owner decision C19 |
 | L-05 | Reliable event publication | Draft | – | – | outbox "sent" marker vs immutability |
 | L-06 | Pooled ACB: buy, sell, ROC, fees | Draft (tax) | – | – | sourced (adjustedcostbase.ca); rounding, ROC timing, negative-ACB gain timing |
 | L-07 | Superficial-loss detection | Draft (tax) | – | – | sourced except AC2; adopt partial-repurchase formula? |
@@ -59,6 +59,10 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
 
 ## Open questions
 
+- **Blocked: no Docker in this sandbox** (the daemon hit the 2-hour background limit and can't be restarted).
+  L-02 and L-04 integration suites can't run locally. Options: owner allows pushing `l-02`/`l-04` as branches so
+  GitHub CI runs them, or a new session restarts Docker. Neither branch exists outside this container yet.
+
 - **ESCALATED: L-04 hit round 3 (B-011).** Buy → sell → reverse sell → reverse buy: canonical order is
   buy, REV-buy, sell, REV-sell, so replay goes negative. B-009 (reversal before its original) is fixed.
   *Recommendation:* replay skips each reversed pair entirely (they net to zero by invariant 4); the ledger still keeps
@@ -82,9 +86,6 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
   dev left it. L-03 integration tests pass with it in place.
 
 ## Log
-
-- 2026-11-19 · qe · L-02 phase B round 1: tests moved to amended C20 (sourceSeq not hashed); attack specs added (keys, JSON, privileges, crash injection, concurrency, 10k rows, hash stability). Found B-012 (major), B-013, B-014 (minor). Docker stopped mid-task: part of the attack tests were revised after their one run and have NOT been re-run.
-- 2026-11-19 · dev · L-02 implemented on placeholders C20-C24 (V4: `ledger.activity`, `ledger.outbox`). In QE; 3 tests contradict amended C20.
 
 - 2026-11-19 · dev · L-03 round 2: B-003, B-004, B-005, B-007 fixed; B-006 on placeholder C15 (open). Two tests
   conflict with the requested design (see Open questions). In QE.
