@@ -162,3 +162,9 @@ locale, time zone and JVM. Bugs: B-012, B-013, B-014 in `docs/bugs/`.
 - **Results.** `./gradlew ktlintFormat build --rerun-tasks`: compiles and lints clean; `:tests:test` 106 tests, 1 failed
   (the non-Docker PayloadHash test), 49 skipped. `:tests:test -PincludeIntegration`: 106 tests, 3 failed (the three above),
   1 skipped, 102 passed.
+
+- 2026-11-19, Dev, round 2 (B-012, B-013, B-014; Fixed, pending integration verification, Docker not available).
+  `CanonicalCsv` refuses NUL and lone surrogates in `taxpayer_id`, `account_id`, `security_id` and `description` with
+  `INVALID_CHARACTER` (422 over HTTP, a per-row rejection in CSV import, nothing reaches the DB). `GET
+  /v1/activities/{key}` answers 404 for a key that breaks the key pattern without querying. `POST` bodies are capped
+  (4 MB activity, 32 MB import, 413 `PAYLOAD_TOO_LARGE`) and JSON nesting beyond 32 levels is `MALFORMED_JSON` (400).
