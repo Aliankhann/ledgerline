@@ -74,7 +74,7 @@ class L01ImportCsvSpec : FunSpec({
             .joinToString("") { "%02x".format(it) }
 
     val ac1 = fixture("ac1_valid.csv")
-    val bom = ""
+    val bom = "\uFEFF"
 
     fun expectedAc1(description: String? = "Initial deposit") =
         listOf(
