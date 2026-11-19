@@ -12,8 +12,11 @@ enum class SubmissionKind {
     /** Same payload but a different `description`: ignored by the hash (placeholder C20), so a duplicate. */
     DESCRIPTION_CHANGED,
 
-    /** A hashed field changed (amount, effective date or sourceSeq): must be refused, and always arrives after an ORIGINAL. */
+    /** A hashed field changed (amount or effective date): must be refused, and always arrives after an ORIGINAL. */
     MUTATED,
+
+    /** Only `sourceSeq` changed: not hashed (amended C20), so a duplicate; the first stored value stays. */
+    SEQ_CHANGED,
 }
 
 data class Submission(val activity: Activity, val kind: SubmissionKind)
@@ -35,12 +38,15 @@ object IdempotencyPlans {
             distinct.forEach { a ->
                 if (random.nextInt(10) < 4) {
                     val mutated =
-                        when (random.nextInt(3)) {
+                        when (random.nextInt(2)) {
                             0 -> a.copy(amountMinor = a.amountMinor + 1)
-                            1 -> a.copy(effectiveDate = a.effectiveDate.plusDays(1))
-                            else -> a.copy(sourceSeq = a.sourceSeq + 1000)
+                            else -> a.copy(effectiveDate = a.effectiveDate.plusDays(1))
                         }
                     list.addAfterFirstOriginal(a, Submission(mutated, SubmissionKind.MUTATED), random)
+                }
+                if (random.nextInt(10) < 3) {
+                    val moved = a.copy(sourceSeq = a.sourceSeq + 1000)
+                    list.addAfterFirstOriginal(a, Submission(moved, SubmissionKind.SEQ_CHANGED), random)
                 }
                 if (random.nextInt(10) < 3) {
                     val noted = a.copy(description = "edited ${random.nextInt(1000)}")

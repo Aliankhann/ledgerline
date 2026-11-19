@@ -127,6 +127,11 @@ S = `tests/spec/kotlin/dev/ledgerline/spec/`.
 | AC10 | `S/L02ImportSpec.kt` "L-02 AC10: after AC9, line 3 with amount 3021.50 ..." (HTTP) and the service test above |
 | AC11 | `tests/property/kotlin/dev/ledgerline/property/IdempotencyInvariantPropertyTest.kt` "Invariant 2 (L-02 AC11) ..." (500 cases; prints the case count) |
 
+Phase B attack tests (round 1), `S/L02AttackHttpSpec.kt`, `S/L02AttackLedgerSpec.kt`, `S/L02AttackHashSpec.kt`: lookalike
+and over-long keys, malformed JSON, hostile text, number edges, crash injection at the activity and outbox inserts,
+app-role privileges, concurrent imports, mismatch after a duplicate in one file, 10 000 rows, hash stability across
+locale, time zone and JVM. Bugs: B-012, B-013, B-014 in `docs/bugs/`.
+
 ## Change notes (Dev fills)
 
 - 2026-11-19, Dev (provisional build on placeholders C20 to C24 in `docs/owner-inputs.md`; marked `OWNER-INPUT: Cn`).

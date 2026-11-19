@@ -22,7 +22,7 @@ import kotlin.time.Duration.Companion.minutes
  * Invariant 2 (Idempotency), story L-02 AC11. The API contract is in the KDoc of `dev.ledgerline.spec.L02IngestionSpec`.
  *
  * Each case generates 1 to 8 valid activities, submits each 1 to 5 times (plus, for some, a mutated copy that arrives
- * after the original, and a copy with only the description changed, placeholder C20) in random order to ledger A, and
+ * after the original, and a copy with only the description or only sourceSeq changed, amended C20: neither is hashed) in random order to ledger A, and
  * the distinct activities once each to ledger B. Checked online: the first submission of a key posts, repeats return
  * the original ids, a mutated payload is a `KeyMismatch`. Checked on the ledgers: A equals B (same entries, lines and
  * per-account balances per unit, and the same row count in every table), after every 100 cases and at the end.

@@ -134,11 +134,16 @@ class L02ImportSpec : FunSpec({
 
     // ---------- C20: the payload hash (no database) ----------
 
-    test("L-02 AC4 (C20): PayloadHash is 64 lowercase hex, ignores description, and changes with every other field") {
+    test(
+        "L-02 AC4 (C20): PayloadHash is 64 lowercase hex, ignores description and sourceSeq, changes with all else",
+    ) {
         val h = PayloadHash.of(a1)
         h shouldMatch Regex("[0-9a-f]{64}")
         PayloadHash.of(a1.copy()) shouldBe h
         PayloadHash.of(a1.copy(description = "anything")) shouldBe h
+        // C20 (amended): source_seq is row-position ordering metadata, not payload.
+        PayloadHash.of(a1.copy(sourceSeq = 7L)) shouldBe h
+        PayloadHash.of(a1.copy(sourceSeq = Long.MAX_VALUE, description = "x")) shouldBe h
         val fx = a1.copy(counterCurrency = Currency.USD, counterAmountMinor = 5L)
         val changed =
             listOf(
@@ -146,7 +151,7 @@ class L02ImportSpec : FunSpec({
                 a1.copy(accountType = AccountType.RRSP), a1.copy(activityType = ActivityType.SELL),
                 a1.copy(effectiveDate = a1.effectiveDate.plusDays(1)), a1.copy(settlementDate = null),
                 a1.copy(securityId = "SYN-BBB"), a1.copy(quantity = null), a1.copy(currency = Currency.USD),
-                a1.copy(amountMinor = a1.amountMinor + 1), a1.copy(commissionMinor = 0L), a1.copy(sourceSeq = 7L),
+                a1.copy(amountMinor = a1.amountMinor + 1), a1.copy(commissionMinor = 0L),
                 fx, fx.copy(counterAmountMinor = 6L), fx.copy(counterCurrency = Currency.CAD),
             )
         changed.map { PayloadHash.of(it) }.toSet().let { it + h } shouldHaveSize changed.size + 1
