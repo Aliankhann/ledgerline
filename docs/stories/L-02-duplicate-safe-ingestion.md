@@ -1,6 +1,6 @@
 # L-02 Duplicate-safe ingestion
 
-**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** QE passed (round 2; CI integration green), awaiting owner approval  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 4 · **Branch:** `L-02-duplicate-safe-ingestion` · **Round:** 0 / 3
 
 ## Story
