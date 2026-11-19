@@ -1,6 +1,6 @@
 # L-02 Duplicate-safe ingestion
 
-**Status:** Draft  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** Tests written  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 4 · **Branch:** `L-02-duplicate-safe-ingestion` · **Round:** 0 / 3
 
 ## Story
@@ -107,9 +107,25 @@ flag). Not sourced: that duplicate imports corrupt users' records in practice (n
 
 ## Test map (QE fills)
 
+Tests are provisional (story still Draft); placeholders C20 to C24 are in the KDoc of `L02IngestionSpec`. The API
+contract (`IngestionService`, `SubmitResult`, `ImportReport`, `PayloadHash`, `ingestionModule`, `ledger.outbox`) is there
+too. Differences from the story's interface proposal: error code `IDEMPOTENCY_KEY_MISMATCH` (not `..._REUSED`) and an
+`alreadyExisted` flag instead of `status`. All database tests are tagged Integration (Docker).
+S = `tests/spec/kotlin/dev/ledgerline/spec/`.
+
 | AC | Test |
 | --- | --- |
-| AC1 | `tests/spec/.../L02Spec.kt` › "L-02 AC1: …" |
+| AC1 | `S/L02IngestionSpec.kt` "L-02 AC1: first submission posts one entry and one outbox row"; HTTP "L-02 AC1: POST /v1/activities with A1 on an empty ledger is 201 ..." |
+| AC2 | `S/L02IngestionSpec.kt` "L-02 AC2: identical resubmission is a no-op ..." (service) and "L-02 AC2: the same body again is 200 ..." (HTTP) |
+| AC3 | `S/L02IngestionSpec.kt` "L-02 AC3: same key with amount 3021.50 ..." (service), "L-02 AC3: amount 3021.50 under the used key is 409 ..." (HTTP), "L-02 AC3 (C20): any hashed field changed is a mismatch; description alone is a duplicate" |
+| AC4 | `S/L02IngestionSpec.kt` "L-02 AC4: reversed field order, extra whitespace, amount 3012.5 and quantity 100.000000 are all duplicates"; `S/L02ImportSpec.kt` "L-02 AC4 (C20): PayloadHash is 64 lowercase hex ..." |
+| AC5 | `S/L02IngestionSpec.kt` "L-02 AC5: A1 resubmitted a day later ..." (service) and "L-02 AC5: A1 at 2025-01-07T15:00:00Z ..." (HTTP) |
+| AC6 | `S/L02IngestionSpec.kt` "L-02 AC6: 32 threads ..." (service) and "L-02 AC6: 20 concurrent POSTs of A1 ..." (HTTP) |
+| AC7 | `S/L02IngestionSpec.kt` "L-02 AC7: 16 threads ..." (service) and "L-02 AC7: 10 concurrent POSTs ..." (HTTP) |
+| AC8 | `S/L02IngestionSpec.kt` "L-02 AC8: currency EUR is 422 UNSUPPORTED_CURRENCY ..." (HTTP) and "L-02 AC8 (C21): a refused zero-amount deposit ..." (service) |
+| AC9 | `S/L02ImportSpec.kt` "L-02 AC9: the L-01 AC1 file twice ..." (HTTP), "L-02 AC9 and AC10: importCsv reports the same numbers through the service", "L-02 AC9 (C23) ...", "L-02 AC9 (C24) ..." |
+| AC10 | `S/L02ImportSpec.kt` "L-02 AC10: after AC9, line 3 with amount 3021.50 ..." (HTTP) and the service test above |
+| AC11 | `tests/property/kotlin/dev/ledgerline/property/IdempotencyInvariantPropertyTest.kt` "Invariant 2 (L-02 AC11) ..." (500 cases; prints the case count) |
 
 ## Change notes (Dev fills)
 
