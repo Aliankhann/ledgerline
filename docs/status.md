@@ -26,7 +26,17 @@ Step 0.3 is the owner's. QE phase A for L-01 starts once the owner approves L-01
 | L-13 | Burst benchmark and report | Draft | – | – | owner sets targets before first run |
 | L-14 | Second domain plugin | Draft | – | – | which plugin |
 
+## Owner instruction (2026-11-19)
+
+> "Work on the stuff that doesn't need my support … where you can be ambiguous then I can fill it in properly with the
+> correct info."
+
+So stories are being **built provisionally while still in Draft**. Every open decision is a placeholder marked
+`OWNER-INPUT` in code and listed in [`owner-inputs.md`](owner-inputs.md). No story is marked Approved by an agent.
+
 ## Owner decisions pending
+
+The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items:
 
 - [ ] Set the quality thresholds in `CLAUDE.md` (mutation score, max file length, performance tolerance).
 - [ ] Rewrite ADRs 0001–0003 in your own words and set them to Accepted.
