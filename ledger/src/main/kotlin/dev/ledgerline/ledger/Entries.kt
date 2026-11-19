@@ -1,6 +1,8 @@
 package dev.ledgerline.ledger
 
+import dev.ledgerline.core.Activity
 import dev.ledgerline.core.ActivityType
+import java.time.Instant
 import java.time.LocalDate
 
 enum class Side { DEBIT, CREDIT }
@@ -55,3 +57,18 @@ class ZeroAmountException(val idempotencyKey: String, val activityType: Activity
         const val CODE = "ZERO_AMOUNT"
     }
 }
+
+/** What [LedgerRepository.submit] did with one activity. Only [Posted] wrote anything. */
+sealed interface SubmitOutcome {
+    /** A new key: the entry, activity and outbox rows were appended. */
+    data class Posted(val activityId: String, val entryId: Long) : SubmitOutcome
+
+    /** The key exists with the same payload hash: a no-op that returns the original ids. */
+    data class Duplicate(val activityId: String, val entryId: Long) : SubmitOutcome
+
+    /** The key exists with a different payload hash: refused, nothing written. */
+    data object Mismatch : SubmitOutcome
+}
+
+/** An accepted activity as first stored; [recordedAt] is the time of the first accepted submission. */
+data class ActivityRecord(val activityId: String, val entryId: Long, val activity: Activity, val recordedAt: Instant)

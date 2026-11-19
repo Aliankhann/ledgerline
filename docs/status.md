@@ -12,7 +12,7 @@ Step 0.3 is the owner's. QE phase A for L-01 starts once the owner approves L-01
 | ID | Title | Status | Round | Branch | Notes |
 | --- | --- | --- | --- | --- | --- |
 | L-01 | Import an activity CSV | QE passed, awaiting owner | 2 | main | 36 tests, 240 generated cases; 2 bugs fixed (B-001, B-002); share scale is a placeholder (C3) |
-| L-02 | Duplicate-safe ingestion | Draft | – | – | payload-hash fields, duplicate response code |
+| L-02 | Duplicate-safe ingestion | In QE | 0 | l-02 (local) | built on placeholders C20-C24; 3 tests contradict amended C20 (sourceSeq), see Open questions |
 | L-03 | Balanced, immutable ledger | QE passed, awaiting owner | 3 | main | 83 tests (29 integration); 5 bugs, 4 fixed, B-006 open pending C15; app runs as least-privilege role |
 | L-04 | Corrections by reversal | Draft | – | – | reversal-of-reversal policy |
 | L-05 | Reliable event publication | Draft | – | – | outbox "sent" marker vs immutability |
@@ -59,6 +59,15 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
 
 ## Open questions
 
+- **L-02: tests contradict amended C20 (for QE and owner).** The orchestrator amended C20: `source_seq` is NOT in the
+  payload hash (row position is ordering metadata; hashing it would make identical rows in one file, C24, and
+  re-uploaded files into mismatches). Three tests still expect `sourceSeq` to be hashed and fail on that alone:
+  `L02ImportSpec` "AC4 (C20): PayloadHash ..." (`a1.copy(sourceSeq = 7L)` must differ), `L02IngestionSpec` "AC3 (C20)"
+  (`"sourceSeq" to a1.copy(sourceSeq = a1.sourceSeq + 1)` must be a KeyMismatch), and the property test
+  `IdempotencyInvariantPropertyTest` via `IdempotencyPlans` (`sourceSeq + 1000` mutant must be refused). Dev did not
+  touch them. QE: drop `sourceSeq` from those three lists (and the KDoc in `L02IngestionSpec`). Also: the
+  `L03ImmutabilityEdgeSpec` TRUNCATE test means no table may hold a foreign key to `ledger.entry` or `ledger.line`
+  (Postgres reports the FK before the trigger's "append-only"); V4 has none.
 - **ESCALATED: L-04 hit round 3 (B-011).** Buy → sell → reverse sell → reverse buy: canonical order is
   buy, REV-buy, sell, REV-sell, so replay goes negative. B-009 (reversal before its original) is fixed.
   *Recommendation:* replay skips each reversed pair entirely (they net to zero by invariant 4); the ledger still keeps
@@ -82,6 +91,8 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
   dev left it. L-03 integration tests pass with it in place.
 
 ## Log
+
+- 2026-11-19 · dev · L-02 implemented on placeholders C20-C24 (V4: `ledger.activity`, `ledger.outbox`). In QE; 3 tests contradict amended C20.
 
 - 2026-11-19 · dev · L-03 round 2: B-003, B-004, B-005, B-007 fixed; B-006 on placeholder C15 (open). Two tests
   conflict with the requested design (see Open questions). In QE.

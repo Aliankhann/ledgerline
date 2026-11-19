@@ -1,6 +1,6 @@
 # L-02 Duplicate-safe ingestion
 
-**Status:** Tests written  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 4 · **Branch:** `L-02-duplicate-safe-ingestion` · **Round:** 0 / 3
 
 ## Story
@@ -129,4 +129,31 @@ S = `tests/spec/kotlin/dev/ledgerline/spec/`.
 
 ## Change notes (Dev fills)
 
-- …
+- 2026-11-19, Dev (provisional build on placeholders C20 to C24 in `docs/owner-inputs.md`; marked `OWNER-INPUT: Cn`).
+
+- **Funnel.** `LedgerRepository.submit` (ledger/) takes the append lock, looks up `ledger.activity` by key, and either
+  returns the original ids (same hash), `Mismatch` (other hash), or inserts entry, lines, activity and outbox in one
+  transaction. A 23505 is retried once and answered from the winner's row. `IngestionService` (app/) maps this to
+  `SubmitResult`; `ZeroAmountException` becomes `Invalid(ZERO_AMOUNT)` and writes nothing (C21).
+- **Hash (C20, amended).** `PayloadHash`: SHA-256 over a length-prefixed serialization of every Activity field except
+  `description` and `sourceSeq` (`recorded_at` is not an activity field). `importCsv` sets `sourceSeq` to the row's
+  physical line (C4 ordering) and it is not hashed, so C24 and re-uploads work.
+- **Contradictions with amended C20 (for QE, tests untouched).** Three tests expect `sourceSeq` to be hashed and fail on
+  that alone: `L02ImportSpec` "AC4 (C20) PayloadHash ..." (`sourceSeq = 7L`), `L02IngestionSpec` "AC3 (C20)" (the
+  `sourceSeq` entry), and `IdempotencyInvariantPropertyTest` (the `sourceSeq + 1000` mutant from `IdempotencyPlans`).
+  Everything else passes. Recorded in `docs/status.md`.
+- **Outbox.** AC1, AC2 and AC6 assert one outbox row per new entry, so the table is required by the ACs (the story's
+  note that outbox rows are L-05 conflicts with them; the ACs win). Minimal and append-only: `outbox_id`, `entry_id`,
+  `activity_id`, no sent marker (delivery state is L-05, C5).
+- **Migration V4** (`V4__activity_and_outbox.sql`): `ledger.activity`, `ledger.outbox`, append-only triggers, SELECT and
+  INSERT only for `ledgerline_app`, sequence USAGE re-granted. No foreign keys, because the L-03 superuser TRUNCATE
+  test needs "append-only" to fire before an FK error. **V-number clash:** L-04 is not on this branch; if it also adds
+  a V4, one must be renumbered at merge.
+- **HTTP.** `POST /v1/activities`, `GET /v1/activities/{key}`, `POST /v1/imports` in `IngestionRoutes.kt`, wired in
+  `Main.kt`. JSON values are read as text and parsed with the L-01 rules (`CanonicalCsv.parseFields`), so no number
+  becomes a double. The import response also carries `fileErrors`. `ParseResult` gained `activityLines`.
+- **Build file.** Root `build.gradle.kts` opts the `:tests` project into `io.kotest.common.ExperimentalKotest`;
+  without it `IdempotencyInvariantPropertyTest` fails to compile under warnings-as-errors.
+- **Results.** `./gradlew ktlintFormat build --rerun-tasks`: compiles and lints clean; `:tests:test` 106 tests, 1 failed
+  (the non-Docker PayloadHash test), 49 skipped. `:tests:test -PincludeIntegration`: 106 tests, 3 failed (the three above),
+  1 skipped, 102 passed.
