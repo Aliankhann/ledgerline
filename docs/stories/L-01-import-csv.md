@@ -1,6 +1,6 @@
 # L-01 Import an activity CSV into canonical activities
 
-**Status:** Tests written  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 2 · **Branch:** `L-01-import-csv` · **Round:** 0 / 3
 
 ## Story
@@ -188,4 +188,13 @@ NOT tested; AC7-AC10 test the function `SyntheticGenerator.generate(seed, taxpay
 
 ## Change notes (Dev fills)
 
-- …
+- Provisional build while the story is Draft. Domain types and fixed-point helper in `core/` (`Activity`, `FixedPoint`,
+  `Scale`); `CanonicalCsv` and `SyntheticGenerator` in `ingest/`. No Double/Float/BigDecimal; decimals parse by string.
+- `OWNER-INPUT: C3` share scale (10^-6) is the single constant `Scale.SHARE_DECIMALS`. The "good rows plus rejections"
+  parser policy is also an OWNER-INPUT placeholder.
+- Extra reason codes beyond the story: WRONG_COLUMN_COUNT, INVALID_NUMBER, NEGATIVE_AMOUNT, NON_POSITIVE_AMOUNT,
+  UNKNOWN_ACCOUNT_TYPE, INVALID_IDEMPOTENCY_KEY, INVALID_COUNTER_CURRENCY, COMMISSION_/COUNTER_AMOUNT_TOO_PRECISE.
+  One rejection per row (the first failing check).
+- Generator: `SplittableRandom(seed)`, no clock/locale; each taxpayer gets a scripted prefix covering all 9 types, then
+  random events, simulating holdings so sells never exceed shares held.
+- Not done: the `:ingest:run --args="generate ..."` command (optional; untested).
