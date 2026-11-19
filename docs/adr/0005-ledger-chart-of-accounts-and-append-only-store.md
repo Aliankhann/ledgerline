@@ -83,7 +83,15 @@ _Owner, in your own words._
   entry it cancels (a key such as `REV-...` sorts before `TP-...`), and a replay would see shares sold that it does not
   hold. The canonical order is therefore: a reversal takes its original's `(date, source_seq, key)` and sorts right
   after it (original depth 0, reversal depth 1). Implemented by `CanonicalOrder` and
-  `LedgerRepository.entriesInCanonicalOrder()`; the L-06 engine must use it. Alternative: calculation skips reversed pairs.
+  `LedgerRepository.entriesInCanonicalOrder()`; this order keeps every row and is what audit and entry listings use. It cannot also keep holdings non-negative (B-011); see the next item.
+- **Replay skips reversed pairs (B-011, placeholder C19, provisionally accepted by owner 2026-11-19).** When a later
+  sell and an earlier buy are both reversed, the adjacent-pair order above (buy, REV-buy, sell, REV-sell) takes the
+  holding negative, though each reversal was valid when made. Replay and calculation therefore skip every reversed
+  entry together with its reversal (they net to zero, invariant 4). The ledger still stores both rows; audit and
+  `entriesInCanonicalOrder()` still list them. Implemented by `CanonicalOrder.forReplay` and
+  `LedgerRepository.entriesForReplay()`; the L-06 engine must use these, not the full listing. The `NEGATIVE_SHARES`
+  check already left reversed pairs out of its walk. Alternative not taken: order a reversal by its own sequence
+  (breaks C17).
 - **Reversal chains at the database (B-008, migration V5).** `reversal_checks` refuses a link when the original is
   already a reversal and also when the reversal entry is already someone's original, so no chain A <- R <- R2 can
   commit whichever order the links are written in.

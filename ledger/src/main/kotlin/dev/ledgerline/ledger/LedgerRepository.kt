@@ -36,6 +36,12 @@ class LedgerRepository(private val dataSource: DataSource) {
     fun entriesInCanonicalOrder(): List<PostedEntry> = CanonicalOrder.sort(entries())
 
     /**
+     * OWNER-INPUT: C19. The entries replay and calculation apply: canonical order without any reversed entry or its
+     * reversal (they net to zero, invariant 4). The ledger still stores and lists both rows; see [CanonicalOrder.forReplay].
+     */
+    fun entriesForReplay(): List<PostedEntry> = CanonicalOrder.forReplay(entries())
+
+    /**
      * Reverses entry [entrySequence] with one appended entry keyed [reversalKey]: the original's lines with the sides
      * swapped, carrying the original's effective date and source sequence (OWNER-INPUT: C17). The same key and entry
      * again returns the existing reversal. Refusals throw [ReversalRefusedException]; nothing is written.
