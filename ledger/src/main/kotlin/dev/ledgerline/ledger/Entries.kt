@@ -32,7 +32,37 @@ data class PostedEntry(
     val effectiveDate: LocalDate,
     val sourceSeq: Long,
     val lines: List<LedgerLine>,
+    /** The sequence of the entry this one reverses, or null if it is not a reversal. */
+    val reversesSequence: Long? = null,
 )
+
+/** [REVERSED] is derived from a reversal's link row; the original entry is never updated. */
+enum class EntryState { POSTED, REVERSED }
+
+data class EntryStatus(val state: EntryState, val reversalSequence: Long?)
+
+data class CorrectionResult(val reversal: PostedEntry, val replacement: PostedEntry)
+
+/**
+ * A reversal or correction was refused and nothing was written. [code] is one of [UNKNOWN_ENTRY], [ALREADY_REVERSED]
+ * (then [existingReversalSequence] names the first reversal), [REVERSAL_OF_REVERSAL] or [NEGATIVE_SHARES].
+ */
+class ReversalRefusedException(
+    val code: String,
+    val entrySequence: Long,
+    val existingReversalSequence: Long? = null,
+) : RuntimeException("$code: entry $entrySequence" + (existingReversalSequence?.let { " (reversed by $it)" } ?: "")) {
+    companion object {
+        const val UNKNOWN_ENTRY = "UNKNOWN_ENTRY"
+        const val ALREADY_REVERSED = "ALREADY_REVERSED"
+
+        // OWNER-INPUT: C16 reversing a reversal is refused (docs/owner-inputs.md).
+        const val REVERSAL_OF_REVERSAL = "REVERSAL_OF_REVERSAL"
+
+        // Invariant 7: a reversal may not leave any account with fewer than 0 units of a security.
+        const val NEGATIVE_SHARES = "NEGATIVE_SHARES"
+    }
+}
 
 /** The lines of an entry do not balance in [unit]; [difference] is debits minus credits. Nothing was written. */
 class UnbalancedEntryException(val unit: String, val difference: Long) :

@@ -1,6 +1,6 @@
 # L-04 Corrections by reversal
 
-**Status:** Tests written  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 3 · **Branch:** `L-04-corrections-by-reversal` · **Round:** 0 / 3
 
 ## Story
@@ -116,4 +116,23 @@ reusable), reversals that would go negative are refused `NEGATIVE_SHARES`, `UNKN
 
 ## Change notes (Dev fills)
 
-- …
+- 2026-11-19 · dev · Round 0 implementation, provisional on placeholders C16 (`REVERSAL_OF_REVERSAL`), C17 (reversal
+  carries the original's effective date and source sequence), C18 (keys never reused), all marked `// OWNER-INPUT`
+  and listed in `docs/owner-inputs.md`; `NEGATIVE_SHARES` follows invariant 7. Flyway `V4__reversals.sql` adds the
+  append-only table `ledger.reversal` (reversal entry id, original entry id UNIQUE, reason); the original's rows are
+  never touched and `REVERSED` is derived from the link. Triggers: the link must be written in the reversal entry's
+  own transaction, the original cannot itself be a reversal, and at commit the reversal's lines must mirror the
+  original's. No foreign keys on `reversal` (a FK would make Postgres refuse `TRUNCATE ledger.entry, ledger.line`
+  before the append-only trigger, which L-03's edge spec asserts); a trigger checks existence instead. Grants:
+  `ledgerline_app` has SELECT and INSERT only on the new table (no new sequences). `ledger`: `Posting.reversalOf`,
+  `LedgerRepository.reverse/statusOf/correct` (one transaction each, under the existing append lock),
+  `ReversalRefusedException`, `ShareHoldings` (walks the investor account's share movements in calculation order,
+  leaving out reversed pairs). `correct()` also counts the replacement in that walk, so correcting a buy that a later
+  sell depends on works when the replacement keeps enough shares (a judgment call beyond the spec). Not done: HTTP
+  endpoints (names not approved; tests are repository-level).
+- **Test problem, for QE.** `L04ReversalSpec` and `ReversalSymmetryPropertyTest` do not compile as committed:
+  `LineMath.imbalances` and `Balances.of` return maps but the files import `io.kotest.matchers.collections.shouldBeEmpty`
+  (needs `io.kotest.matchers.maps.shouldBeEmpty`), and `L04ReversalSpec` line 210 imports `maps.shouldContainAll` for a
+  `Set` (needs `collections.shouldContainAll`). Dev did not edit `tests/`. With only those imports changed in a scratch
+  copy, `./gradlew build` and `:tests:test -PincludeIntegration` pass (106 tests, 1 skipped (B-006), 0 failed). See
+  `docs/status.md` Open questions.

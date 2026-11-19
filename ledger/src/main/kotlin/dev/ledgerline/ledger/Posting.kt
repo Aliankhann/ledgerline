@@ -86,6 +86,10 @@ object Posting {
         return m.lines()
     }
 
+    /** Pure. The lines that cancel [lines]: same order, account, unit and amount, opposite side. */
+    fun reversalOf(lines: List<LedgerLine>): List<LedgerLine> =
+        lines.map { it.copy(side = if (it.side == Side.DEBIT) Side.CREDIT else Side.DEBIT) }
+
     /**
      * Throws [UnbalancedEntryException] for the first unit, in line order, whose debits differ from its credits.
      * Every line must have a non-blank account and unit and a positive amount.
