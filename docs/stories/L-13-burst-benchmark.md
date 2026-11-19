@@ -11,7 +11,7 @@ a results table with the hardware, versions and seed, so that I can rerun it and
 ## Why it matters
 
 Correct positions under bursty load are the hard part of a retail brokerage, and published numbers are only credible
-if they can be reproduced. See [`docs/problem/evidence.md`](../problem/evidence.md) (evidence ID TBD): "Brokerage
+if they can be reproduced. See [`docs/problem/evidence.md`](../problem/evidence.md) (no sourced evidence yet; see A-08): "Brokerage
 engineering roles and posts emphasise throughput and correctness under load; reviewers expect reproducible
 benchmarks".
 

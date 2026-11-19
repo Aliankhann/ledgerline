@@ -15,7 +15,7 @@ can reproduce every demo and benchmark without anyone's real data.
 
 Ledgerline's input is a Wealthsimple-style activity CSV plus synthetic data; broker exports are the usual starting
 point for ACB tools, and the published export is capped and web-only, so the parser must fit that shape. See
-[`docs/problem/evidence.md`](../problem/evidence.md) (evidence ID TBD): "ACB tools are fed from broker activity
+[`docs/problem/evidence.md`](../problem/evidence.md) (partly E-05; Wealthsimple CSV shape: no sourced evidence yet; see A-10): "ACB tools are fed from broker activity
 exports; Wealthsimple's activity CSV is the input shape".
 
 ## Background: the Ledgerline canonical CSV (v1)

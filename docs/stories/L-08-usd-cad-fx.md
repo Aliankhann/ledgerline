@@ -16,6 +16,13 @@ is not written yet:** [`docs/problem/evidence.md`](../problem/evidence.md) is st
 
 ## Background: the rate source (unverified, re-check before approval)
 
+**Second sourcing attempt (2026-11-19): nothing fetched, nothing changed.** `https://www.bankofcanada.ca/valet/docs`
+failed twice with `getaddrinfo ENOTFOUND` (DNS), and `www.canada.ca` failed the same way. The fetch tool said the
+hosts are outside the session's allowed network domains. So the Valet series, endpoint, JSON shape, the real
+`FXUSDCAD` observations for the four requested ranges, the missing-date list and the 2017 single-rate change are all
+still unconfirmed, and the fixture below is still **synthetic**. No raw JSON was saved (`tests/` is QE-owned anyway).
+Rerun this task once `www.bankofcanada.ca` resolves from the session.
+
 `www.bankofcanada.ca` was **not opened** in the BA session: two other hosts failed DNS and the session rules say to
 stop trying new hosts. Everything below comes from search results and must be confirmed against the official pages
 before this story is approved:

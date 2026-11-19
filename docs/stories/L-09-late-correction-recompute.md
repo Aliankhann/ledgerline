@@ -12,7 +12,7 @@ typo gives me the right number without a full rebuild or silent drift.
 ## Why it matters
 
 Broker data is corrected after the fact, and ACB depends on order, so a back-dated change has to ripple forward. See
-[`docs/problem/evidence.md`](../problem/evidence.md) (evidence ID TBD): "Return-of-capital and other adjustments are
+[`docs/problem/evidence.md`](../problem/evidence.md) (no sourced evidence yet; see A-04): "Return-of-capital and other adjustments are
 often reported after the year they apply to, so cost basis must be recomputed".
 
 ## Notes for QE and Dev

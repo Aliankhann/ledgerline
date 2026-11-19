@@ -2,7 +2,14 @@
 
 _BA-owned. Every claim has a URL; anything unsourced is labeled **Assumption**. Step 0.2 fills this file._
 
-Last updated: 2026-11-19 (step 0.2, first pass).
+Last updated: 2026-11-19 (step 0.2, second pass).
+
+**Second pass result (2026-11-19): no new source could be opened.** Every host retried (help.wealthsimple.com,
+activeacb.ca, mycostbase.ca, engineering.wealthsimple.com, www.adjustedcostbase.ca, www.canada.ca, www.taxtips.ca)
+failed DNS resolution again (`getaddrinfo ENOTFOUND`), even though the task said they were allowed. The session's
+network settings apparently were not updated. As a result, no assumption below was promoted to evidence, nothing was
+cut as contradicted, and no Wealthsimple export column names were found. The second Wealthsimple engineering post
+and laws-lois.justice.gc.ca / bankofcanada.ca were not tried after the pattern was clear.
 
 ## Read this first: the evidence is thin
 

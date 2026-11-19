@@ -11,7 +11,7 @@ without changing the core, so that I can see the core is domain-neutral and reus
 ## Why it matters
 
 The pitch is the engineering, and a reusable core is what makes the pattern relevant beyond Canadian ACB. See
-[`docs/problem/evidence.md`](../problem/evidence.md) (evidence ID TBD): "The same ledger-and-stream pattern underlies
+[`docs/problem/evidence.md`](../problem/evidence.md) (no sourced evidence yet; see A-09): "The same ledger-and-stream pattern underlies
 payments and brokerage systems".
 
 ## Notes for QE and Dev

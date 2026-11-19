@@ -24,6 +24,15 @@ and `adjustedcostbase.ca` could not be reached from the BA session (DNS blocked 
 them. Each NEEDS SOURCED EXAMPLE marker stays until someone opens the source, quotes the example exactly, and restates
 it in integer cents.
 
+**Second sourcing attempt (2026-11-19): still no source opened, no value changed.** Fetches of `www.canada.ca`,
+`www.adjustedcostbase.ca`, `adjustedcostbase.ca`, `www.taxtips.ca`, `laws-lois.justice.gc.ca`, `activeacb.ca`,
+`mycostbase.ca` and `help.wealthsimple.com` all failed with `getaddrinfo ENOTFOUND` (DNS); the fetch tool said they are
+outside the session's allowed network domains. Only `raw.githubusercontent.com` resolved. CIBC, Knowledge Bureau and
+Manulife (candidates for AC4 and AC6) were not on the allow-list and were not tried. All ACs stay NEEDS SOURCED
+EXAMPLE. The "permanently lost" versus "added to the ACB" conflict for registered repurchases (see owner decisions)
+remains unchecked against the original pages. `tsiemens/acb` is reachable on GitHub and its test cases could later be
+differential-test candidates only, never golden values; none were opened.
+
 Model (from `docs/build-plan.md`; simplified, not tax advice): window = 30 days before through 30 days after the
 sale; the rule applies only if identical property is acquired in the window **and** some is still held at the end of
 the window; it applies only to sales at a loss in a non-registered account.

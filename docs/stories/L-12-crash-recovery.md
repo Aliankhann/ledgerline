@@ -12,7 +12,7 @@ equal to a full replay.
 ## Why it matters
 
 Crash-safe, exactly-once effects are what separates a ledger demo from a toy, and they are central to the demo's
-"kill it, restart, zero drift" moment. See [`docs/problem/evidence.md`](../problem/evidence.md) (evidence ID TBD):
+"kill it, restart, zero drift" moment. See [`docs/problem/evidence.md`](../problem/evidence.md) (no sourced evidence yet; see A-09):
 "Streaming financial systems must survive consumer crashes and redelivery without double-applying events".
 
 ## Notes for QE and Dev
