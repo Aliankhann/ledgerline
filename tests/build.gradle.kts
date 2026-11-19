@@ -24,6 +24,8 @@ dependencies {
 
     testImplementation(libs.bundles.kotest)
     testImplementation(libs.ktor.server.test.host)
+    testImplementation(libs.ktor.server.core)
+    testImplementation(libs.kotlinx.serialization.json)
     testImplementation(libs.testcontainers.postgres)
     testImplementation(libs.testcontainers.redpanda)
     testImplementation(libs.testcontainers.toxiproxy)

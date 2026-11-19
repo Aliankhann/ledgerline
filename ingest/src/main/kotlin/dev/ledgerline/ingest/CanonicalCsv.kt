@@ -14,11 +14,20 @@ data class Rejection(val line: Int, val code: String, val field: String, val mes
 
 data class FileError(val code: String, val message: String, val column: String?)
 
+/** [activityLines] has the physical line of each entry of [activities] (L-02 reports key mismatches by line). */
 data class ParseResult(
     val activities: List<Activity>,
     val rejections: List<Rejection>,
     val fileErrors: List<FileError>,
+    val activityLines: List<Int> = emptyList(),
 )
+
+/** One field map checked by [CanonicalCsv.parseFields]. */
+sealed interface FieldsResult {
+    data class Valid(val activity: Activity) : FieldsResult
+
+    data class Invalid(val code: String, val field: String, val message: String) : FieldsResult
+}
 
 /** The Ledgerline canonical CSV (v1): parser and serializer. */
 object CanonicalCsv {
@@ -30,6 +39,25 @@ object CanonicalCsv {
         )
 
     private val keyPattern = Regex("^[A-Za-z0-9._:-]{1,64}$")
+    private val TEXT_COLUMNS = listOf("taxpayer_id", "account_id", "security_id", "description")
+
+    /** True if [key] is a well-formed idempotency key (letters, digits and `._:-`, 1 to 64 characters). */
+    fun isValidKey(key: String): Boolean = keyPattern.matches(key)
+
+    private fun hasLoneSurrogate(v: String): Boolean {
+        var i = 0
+        while (i < v.length) {
+            val c = v[i]
+            if (c.isHighSurrogate() && i + 1 < v.length && v[i + 1].isLowSurrogate()) {
+                i++
+            } else if (c.isSurrogate()) {
+                return true
+            }
+            i++
+        }
+        return false
+    }
+
     private val datePattern = Regex("^(\\d{4})-(\\d{2})-(\\d{2})$")
     private val securityTypes =
         setOf(
@@ -64,15 +92,17 @@ object CanonicalCsv {
             return fileError("Header does not match the canonical columns; problem at '$badColumn'", badColumn)
         }
         val activities = mutableListOf<Activity>()
+        val lines = mutableListOf<Int>()
         val rejections = mutableListOf<Rejection>()
         for (rec in records.drop(1)) {
             try {
                 activities += toActivity(rec)
+                lines += rec.line
             } catch (e: RowError) {
                 rejections += Rejection(rec.line, e.code, e.field, e.message ?: e.code)
             }
         }
-        return ParseResult(activities, rejections, emptyList())
+        return ParseResult(activities, rejections, emptyList(), lines)
     }
 
     private fun fileError(
@@ -84,18 +114,37 @@ object CanonicalCsv {
         fields.zip(COLUMNS).firstOrNull { (a, b) -> a != b }?.first
             ?: fields.drop(COLUMNS.size).firstOrNull()
 
+    /**
+     * Validates one activity given as text per canonical column name (all of [COLUMNS], empty string for absent), with
+     * the same rules and codes as a CSV row. Used by the HTTP route, which never parses a JSON number.
+     */
+    fun parseFields(fields: Map<String, String>): FieldsResult =
+        try {
+            FieldsResult.Valid(toActivity(fields))
+        } catch (e: RowError) {
+            FieldsResult.Invalid(e.code, e.field, e.message ?: e.code)
+        }
+
     private fun toActivity(rec: Record): Activity {
         if (rec.fields.size != COLUMNS.size) {
             throw RowError("WRONG_COLUMN_COUNT", "", "Expected ${COLUMNS.size} fields but found ${rec.fields.size}")
         }
-        val f = COLUMNS.zip(rec.fields).toMap()
+        return toActivity(COLUMNS.zip(rec.fields).toMap())
+    }
 
+    private fun toActivity(f: Map<String, String>): Activity {
         fun opt(name: String): String? = f.getValue(name).trim().ifEmpty { null }
 
         fun req(name: String): String = opt(name) ?: throw RowError("MISSING_FIELD", name, "$name is required")
 
         val key = req("idempotency_key")
         if (!keyPattern.matches(key)) throw RowError("INVALID_IDEMPOTENCY_KEY", "idempotency_key", "Invalid key '$key'")
+        // Postgres text cannot hold NUL or a lone surrogate; refuse them here so they never reach the database.
+        for (name in TEXT_COLUMNS) {
+            if (f.getValue(name).any { it == '\u0000' } || hasLoneSurrogate(f.getValue(name))) {
+                throw RowError("INVALID_CHARACTER", name, "$name contains a character that cannot be stored")
+            }
+        }
         val taxpayer = req("taxpayer_id")
         val account = req("account_id")
         val accountType =

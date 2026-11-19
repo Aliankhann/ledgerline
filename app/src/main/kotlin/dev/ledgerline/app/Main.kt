@@ -3,6 +3,7 @@ package dev.ledgerline.app
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import dev.ledgerline.ledger.LedgerMigrations
+import dev.ledgerline.ledger.LedgerRepository
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -32,12 +33,15 @@ fun main() {
         }
     }
 
-    // The ledger repository arrives on this pool with L-02's ingestion API.
     val dataSource = pool(config.databaseUrl, config.databaseUser, config.databasePassword, size = 10)
     log.info("Serving as database role {}", config.databaseUser)
     Runtime.getRuntime().addShutdownHook(Thread { dataSource.close() })
 
-    embeddedServer(Netty, port = config.httpPort, module = Application::module).start(wait = true)
+    val ingestion = IngestionService(LedgerRepository(dataSource))
+    embeddedServer(Netty, port = config.httpPort) {
+        module()
+        ingestionModule(ingestion)
+    }.start(wait = true)
 }
 
 private fun pool(
