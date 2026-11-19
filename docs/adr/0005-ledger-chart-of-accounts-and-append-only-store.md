@@ -69,4 +69,13 @@ _Owner, in your own words._
 - **Lines lose some activity detail.** A transfer-in's book value (`amountMinor`) is not a cash movement and posts no
   line; dividend and return-of-capital lines do not name the security. Calculation must read these from the activity
   (L-05 outbox payload), not from the lines.
+- **Reversals (L-04, migration V4).** A reversal is an ordinary entry (same V3 sealing and balance checks) plus one
+  row in the append-only `ledger.reversal(reversal_entry_id, original_entry_id UNIQUE, reason)`. "Reversed" is derived
+  from that row, so the original entry is never updated. The database also checks that the link is written in the
+  reversal entry's own transaction, that the original is not itself a reversal (placeholder C16) and that the lines
+  mirror the original's at commit. No foreign keys: with one, Postgres refuses `TRUNCATE ledger.entry, ledger.line`
+  before the append-only trigger fires, so a trigger checks existence instead. The reversal copies the original's
+  effective date and source sequence (C17), keys are never reused (C18), and a reversal (or correction) that would
+  leave an investor account below 0 units of a security at any point in calculation order is refused
+  `NEGATIVE_SHARES` (invariant 7). A correction counts its replacement in that check; the owner may prefer to ignore it.
 - Verified by `L03LedgerSpec`, `BalanceInvariantPropertyTest` and `ImmutabilityInvariantPropertyTest`.

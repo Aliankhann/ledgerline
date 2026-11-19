@@ -41,6 +41,9 @@ Until an item is filled, the code uses a clearly marked **placeholder** that is 
 | C13 | **ADRs 0001–0004 in your own words** | Edit the Decision section of each | Interview readiness |
 | C14 | **Pitch wording** | "Inspired by" rather than "mirrors"; lead with verifiability, since ActiveACB/myCostBase already compare book value with ACB | README, posts |
 | C15 | **Zero-amount cash activity** (B-006): L-01 accepts amount `0.00` for `DEPOSIT`, `WITHDRAWAL`, `FEE`, `DIVIDEND`, `RETURN_OF_CAPITAL`, but it moves nothing | Placeholder: the ledger refuses it at posting with code `ZERO_AMOUNT` (search `OWNER-INPUT: C15`). Alternatives: L-01 rejects it with `NON_POSITIVE_AMOUNT`; or the ledger stores an entry with no lines (then V3's "every entry has a line" check must change) | L-01, L-03, L-04 |
+| C16 | **Reversing a reversal** (L-04 AC7): story proposes refusing it | Placeholder: refused with `REVERSAL_OF_REVERSAL` (the story text says `CANNOT_REVERSE_REVERSAL`); to undo a reversal, post the activity again under a new key. Search `OWNER-INPUT: C16`. Alternative: allow it | L-04 |
+| C17 | **Effective date of a reversal** (L-04) | Placeholder: the reversal carries the original's effective date and source sequence (it cancels the activity as of when it happened); its own time is the entry sequence. Search `OWNER-INPUT: C17`. Alternative: the reversal's own date | L-04, L-09, replay |
+| C18 | **Reusing an idempotency key after its activity is reversed** (L-04) | Placeholder: never; the key stays bound to its first payload forever and the replacement uses a new key. Search `OWNER-INPUT: C18`. Alternative: allow reuse after reversal | L-02, L-04 |
 
 ## D. Things only you can do
 
