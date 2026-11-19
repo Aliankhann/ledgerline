@@ -1,0 +1,22 @@
+# Gradle / JVM
+.gradle/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
+*.class
+hs_err_pid*
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Local env
+.env
+
+# Generated reports (benchmark raw data that should be kept goes in docs/benchmarks/)
+bench/out/
+chaos/out/
+
+# Claude Code: local settings are per-machine; shared agent files in .claude/agents/ are committed
+.claude/settings.local.json
