@@ -45,3 +45,9 @@ crash-safety, ordering, and money math that compounds. Use sonnet everywhere els
 | Round 2–3 fixes after a QE bug | same as the story's Dev row; do not escalate unless round 3 |
 
 If a story hits round 3 on sonnet, the final round runs on opus before it goes to the owner.
+
+## Orchestrator check-ins (owner rule, 2026-11-19)
+
+Whenever tests or CI are started and the result isn't back in the same turn, the orchestrator schedules a
+**10-minute check-in** that resumes the work automatically: read the result, then merge, start the next round, or
+escalate. CI results on branches don't wake the session by themselves.
