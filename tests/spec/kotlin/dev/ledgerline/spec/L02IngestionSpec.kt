@@ -45,9 +45,9 @@ import java.util.concurrent.TimeUnit
  *
  * PLACEHOLDERS (OWNER-INPUT, Dev adds them to docs/owner-inputs.md). Where they differ from the story's interface
  * proposal, the placeholder wins:
- * - C20: the payload hash is SHA-256 over a canonical serialization of every Activity field except `recorded_at` and
- *   `description`. `sourceSeq` IS therefore in the hash, so `importCsv` must not derive `sourceSeq` from row position
- *   in a way that makes two identical rows in one file differ (C24).
+ * - C20 (amended): the payload hash is SHA-256 over a canonical serialization of every Activity field except
+ *   `recorded_at`, `description` and `sourceSeq`. `sourceSeq` is row-position ordering metadata, so a different one
+ *   is a duplicate, not a mismatch (identical rows in one file, C24, and re-uploaded files stay duplicates).
  * - C21: an invalid submission does not consume its key.
  * - C22: a duplicate (same key, same hash) returns the original ids with `alreadyExisted=true`. HTTP: 201 new, 200
  *   duplicate, 409 mismatch with code `IDEMPOTENCY_KEY_MISMATCH` (the story says `IDEMPOTENCY_KEY_REUSED`; the story's
@@ -158,7 +158,7 @@ class L02IngestionSpec : FunSpec({
         }
 
     test(
-        "L-02 AC3 (C20): any hashed field changed is a mismatch; description alone is a duplicate",
+        "L-02 AC3 (C20): any hashed field changed is a mismatch; description or sourceSeq alone is a duplicate",
     )
         .config(tags = setOf(Integration)) {
             val e = env()
@@ -176,7 +176,6 @@ class L02IngestionSpec : FunSpec({
                     "currency" to a1.copy(currency = Currency.USD),
                     "amount (1 cent)" to a1.copy(amountMinor = a1.amountMinor + 1),
                     "commission (1 cent)" to a1.copy(commissionMinor = a1.commissionMinor + 1),
-                    "sourceSeq" to a1.copy(sourceSeq = a1.sourceSeq + 1),
                 )
             changed.forEach { (field, a) ->
                 withClue("changed $field") { e.service.submit(a) shouldBe SubmitResult.KeyMismatch(key) }
@@ -184,6 +183,11 @@ class L02IngestionSpec : FunSpec({
             e.db.snapshot() shouldBe before
             accepted(e.service.submit(a1.copy(description = "typo fixed"))) shouldBe first.copy(alreadyExisted = true)
             e.db.snapshot() shouldBe before
+            // C20 (amended): source_seq is row-position metadata, so a different one is a duplicate, never a mismatch,
+            // and the first stored value stays.
+            accepted(e.service.submit(a1.copy(sourceSeq = a1.sourceSeq + 1))) shouldBe first.copy(alreadyExisted = true)
+            e.db.snapshot() shouldBe before
+            e.service.find(key)!!.activity.sourceSeq shouldBe a1.sourceSeq
         }
 
     test("L-02 AC5: the second submission at a later time is a duplicate and recorded_at stays the first call's time")
