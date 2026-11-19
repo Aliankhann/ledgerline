@@ -1,7 +1,7 @@
 # L-03 Balanced, immutable ledger
 
 **Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
-**Day:** 3 · **Branch:** `L-03-balanced-immutable-ledger` · **Round:** 0 / 3
+**Day:** 3 · **Branch:** `L-03-balanced-immutable-ledger` · **Round:** 2 / 3
 
 ## Story
 
@@ -152,3 +152,10 @@ which gives the same equality check.
   `ledger.entry`, `ledger.line` (bigint amounts), role `ledgerline_app` (SELECT/INSERT only), append-only statement
   trigger on UPDATE, DELETE and TRUNCATE. App now migrates through `LedgerMigrations`. Testcontainers 1.20.4 to 1.21.3.
   Chart of accounts, sequence and trigger choices in draft ADR 0005.
+- 2026-11-19 · dev · Round 2, bugs B-003 to B-007. B-003: two logins; Flyway runs on a startup-only admin login
+  (`DATABASE_MIGRATION_USER`), which gives `ledgerline_app` LOGIN; the service serves as `ledgerline_app`
+  (`AppConfig`, `Main.kt`, `docker-compose.yml`, `LedgerMigrations.enableAppLogin`). B-004: Flyway
+  `V3__seal_entries.sql` (lines only for an entry from the same transaction, appended in `line_id` order; deferred
+  checks that every entry has a line and balances per unit). B-005: debits and credits summed separately with
+  `addExact`. B-006: placeholder C15, `ZERO_AMOUNT` at posting (test still expects posting; owner decision). B-007:
+  `FixedPoint.format` uses `absExact`/`multiplyExact`. Draft ADR 0005 updated. Two tests conflict, see `docs/status.md`.

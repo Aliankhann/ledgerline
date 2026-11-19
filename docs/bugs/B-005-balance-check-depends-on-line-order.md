@@ -1,6 +1,6 @@
 # B-005 Whether an entry is accepted near Long.MAX depends on the order of its lines
 
-**Story:** L-03 (AC5; invariants 1, 5 and 8) · **Severity:** minor · **Status:** Open · **Round:** 1
+**Story:** L-03 (AC5; invariants 1, 5 and 8) · **Severity:** minor · **Status:** Fixed · **Round:** 1
 
 ## Reproduction
 
@@ -36,3 +36,8 @@ silent corruption.
 Impact: an entry accepted once could be refused on replay if anything reorders its lines (invariant 5), and an
 accepted entry can have total debits above Long.MAX, which any Long-based total (reports, reconciliation) cannot
 hold. Summing debits and credits separately with `addExact` would refuse both orders consistently.
+
+## Fix note
+
+Round 2: `requireBalanced` sums debits and credits per unit separately with `addExact`, so any line order gives the
+same result; a total above Long.MAX refuses the whole entry with `ArithmeticException` naming the unit.

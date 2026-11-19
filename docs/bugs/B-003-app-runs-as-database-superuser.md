@@ -1,6 +1,6 @@
 # B-003 The app connects as the database superuser, so it can switch off the append-only trigger
 
-**Story:** L-03 (AC6, invariant 3) · **Severity:** major · **Status:** Open · **Round:** 1
+**Story:** L-03 (AC6, invariant 3) · **Severity:** major · **Status:** Fixed · **Round:** 1
 
 ## Reproduction
 
@@ -54,3 +54,18 @@ defaults to the same. `Main.kt` migrates and serves through one Hikari pool with
   superuser, and can still post (passing tests). So the fix is configuration, not schema.
 - A non-superuser table owner can still `DISABLE TRIGGER` and `DROP TABLE`, so the runtime role must not be the role
   that runs migrations. One option: Flyway with a separate owner login, the service as `ledgerline_app`.
+
+## Fix note
+
+Round 2: the service logs in as `ledgerline_app` (compose `DATABASE_USER`), Flyway runs on a separate startup-only
+login (`DATABASE_MIGRATION_USER` = the Postgres admin), which also gives `ledgerline_app` LOGIN; recorded in draft ADR 0005.
+
+Test conflict (for QE, also in `docs/status.md` Open questions): the Docker test "with docker-compose credentials, the
+app's role is not superuser and cannot disable it" still fails, by construction. It starts a bare container and calls
+`LedgerMigrations.migrate` with the `DATABASE_USER` login, "as Main.kt does". Main no longer does that: the app role
+cannot exist in a bare container before migrations run, and must not own the tables (this bug's own note). Observed:
+`FATAL: password authentication failed for user "ledgerline_app"` (28P01) on the migrate call. Suggested test change:
+migrate as `DATABASE_MIGRATION_USER`, call `LedgerMigrations.enableAppLogin(owner, DATABASE_PASSWORD)` as Main does,
+then post and attempt the bypass as `DATABASE_USER`. Checked by hand on the real stack: `docker compose up --wait`
+healthy, `/health` ok, the app's 10 pooled connections are `ledgerline_app`, and `ALTER TABLE ledger.line DISABLE
+TRIGGER ALL` as `ledgerline_app` fails with "must be owner of table line".

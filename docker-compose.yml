@@ -70,8 +70,13 @@ services:
     environment:
       HTTP_PORT: "8080"
       DATABASE_URL: jdbc:postgresql://postgres:5432/ledgerline
-      DATABASE_USER: ledgerline
-      DATABASE_PASSWORD: ledgerline
+      # Two logins (draft ADR 0005). The migration login is the Postgres admin above and is used at startup only, to
+      # run Flyway and give ledgerline_app LOGIN with the password below. The service then runs as ledgerline_app,
+      # which has SELECT and INSERT only and cannot disable or drop the append-only triggers. Synthetic local values.
+      DATABASE_MIGRATION_USER: ledgerline
+      DATABASE_MIGRATION_PASSWORD: ledgerline
+      DATABASE_USER: ledgerline_app
+      DATABASE_PASSWORD: ledgerline_app
       KAFKA_BOOTSTRAP: redpanda:9092
     ports:
       - "${APP_PORT:-8080}:8080"

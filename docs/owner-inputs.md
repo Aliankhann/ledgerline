@@ -40,6 +40,7 @@ Until an item is filled, the code uses a clearly marked **placeholder** that is 
 | C12 | **License** | MIT is common for portfolio projects | README |
 | C13 | **ADRs 0001–0004 in your own words** | Edit the Decision section of each | Interview readiness |
 | C14 | **Pitch wording** | "Inspired by" rather than "mirrors"; lead with verifiability, since ActiveACB/myCostBase already compare book value with ACB | README, posts |
+| C15 | **Zero-amount cash activity** (B-006): L-01 accepts amount `0.00` for `DEPOSIT`, `WITHDRAWAL`, `FEE`, `DIVIDEND`, `RETURN_OF_CAPITAL`, but it moves nothing | Placeholder: the ledger refuses it at posting with code `ZERO_AMOUNT` (search `OWNER-INPUT: C15`). Alternatives: L-01 rejects it with `NON_POSITIVE_AMOUNT`; or the ledger stores an entry with no lines (then V3's "every entry has a line" check must change) | L-01, L-03, L-04 |
 
 ## D. Things only you can do
 

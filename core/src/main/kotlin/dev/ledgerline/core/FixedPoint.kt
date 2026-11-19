@@ -14,7 +14,7 @@ object FixedPoint {
 
     private fun pow10(n: Int): Long {
         var r = 1L
-        repeat(n) { r *= 10 }
+        repeat(n) { r = Math.multiplyExact(r, 10L) }
         return r
     }
 
@@ -34,14 +34,18 @@ object FixedPoint {
         return Parsed.Ok(if (negative) -magnitude else magnitude)
     }
 
-    /** Formats units with [decimals] fractional digits; when [minimal], trailing fractional zeros are dropped. */
+    /**
+     * Formats units with [decimals] fractional digits; when [minimal], trailing fractional zeros are dropped.
+     * Throws [ArithmeticException] for [Long.MIN_VALUE] (no positive counterpart) or a [decimals] whose 10^n
+     * does not fit in a Long, instead of returning wrapped text.
+     */
     fun format(
         units: Long,
         decimals: Int,
         minimal: Boolean,
     ): String {
         val sign = if (units < 0) "-" else ""
-        val abs = if (units < 0) -units else units
+        val abs = Math.absExact(units)
         val unit = pow10(decimals)
         val whole = abs / unit
         var frac = (abs % unit).toString().padStart(decimals, '0')

@@ -26,16 +26,31 @@ object Posting {
     /** Clearing account that carries each currency leg of an FX conversion. */
     const val FX_CLEARING = "SYS:FX:CLEARING"
 
+    /** Activity types whose only movement is their cash amount; with amount 0 they post nothing (C15). */
+    val CASH_ONLY_TYPES: Set<ActivityType> =
+        setOf(
+            ActivityType.DEPOSIT,
+            ActivityType.WITHDRAWAL,
+            ActivityType.FEE,
+            ActivityType.DIVIDEND,
+            ActivityType.RETURN_OF_CAPITAL,
+        )
+
     // OWNER-INPUT: C3 share scale. Share lines carry Activity.quantity unchanged, in units of 10^-Scale.SHARE_DECIMALS.
     fun securityUnit(securityId: String): String = SECURITY_UNIT_PREFIX + securityId
 
-    /** The lines for [activity]. Zero movements produce no line; each account and unit nets to at most one line. */
+    /**
+     * The lines for [activity]. Zero movements produce no line; each account and unit nets to at most one line.
+     * A cash-only activity (see [CASH_ONLY_TYPES]) with amount 0 is refused with [ZeroAmountException].
+     */
     fun linesFor(activity: Activity): List<LedgerLine> {
         val a = activity
         val key = a.idempotencyKey
         require(a.accountId.isNotBlank()) { "$key: accountId is blank" }
         require(!a.accountId.startsWith(SYSTEM_ACCOUNT_PREFIX)) { "$key: accountId uses the system prefix" }
         require(a.amountMinor >= 0 && a.commissionMinor >= 0) { "$key: negative amount or commission" }
+        // OWNER-INPUT: C15 zero amounts. A cash-only activity with amount 0 moves nothing and is refused here.
+        if (a.activityType in CASH_ONLY_TYPES && a.amountMinor == 0L) throw ZeroAmountException(key, a.activityType)
         val acct = a.accountId
         val cash = a.currency.name
         val m = Movements()
@@ -73,19 +88,43 @@ object Posting {
 
     /**
      * Throws [UnbalancedEntryException] for the first unit, in line order, whose debits differ from its credits.
-     * Every line must have a non-blank account and unit and a positive amount. Sums use exact arithmetic.
+     * Every line must have a non-blank account and unit and a positive amount.
+     *
+     * Debits and credits are summed separately per unit, with exact arithmetic. All amounts are positive, so each
+     * total only grows and the outcome depends on the set of lines, not their order: if any unit's total debits or
+     * total credits exceeds [Long.MAX_VALUE], the whole entry is refused with an [ArithmeticException] naming it.
      */
     fun requireBalanced(lines: List<LedgerLine>) {
         require(lines.isNotEmpty()) { "an entry needs at least one line" }
-        val net = LinkedHashMap<String, Long>()
         lines.forEach { l ->
             require(l.account.isNotBlank() && l.unit.isNotBlank()) { "blank account or unit in $l" }
             require(l.amount > 0) { "line amount must be positive: $l" }
-            val signed = if (l.side == Side.DEBIT) l.amount else -l.amount
-            net[l.unit] = Math.addExact(net[l.unit] ?: 0L, signed)
         }
-        net.entries.firstOrNull { it.value != 0L }?.let { throw UnbalancedEntryException(it.key, it.value) }
+        val debits = LinkedHashMap<String, Long>()
+        val credits = LinkedHashMap<String, Long>()
+        lines.forEach { l ->
+            val totals = if (l.side == Side.DEBIT) debits else credits
+            totals[l.unit] = addTotal(totals[l.unit] ?: 0L, l)
+        }
+        lines.map { it.unit }.distinct().firstNotNullOfOrNull { unit ->
+            val d = debits[unit] ?: 0L
+            val c = credits[unit] ?: 0L
+            if (d == c) null else UnbalancedEntryException(unit, d - c)
+        }?.let { throw it }
     }
+
+    private fun addTotal(
+        total: Long,
+        line: LedgerLine,
+    ): Long =
+        try {
+            Math.addExact(total, line.amount)
+        } catch (e: ArithmeticException) {
+            throw ArithmeticException(
+                "total ${line.side.name.lowercase()}s in ${line.unit} exceed the representable range",
+            )
+                .also { it.initCause(e) }
+        }
 
     private fun shareUnit(a: Activity): String =
         securityUnit(requireNotNull(a.securityId) { "${a.idempotencyKey}: ${a.activityType} needs securityId" })
