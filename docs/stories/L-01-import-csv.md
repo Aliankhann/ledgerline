@@ -1,6 +1,6 @@
 # L-01 Import an activity CSV into canonical activities
 
-**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** QE passed (round 2), awaiting owner approval  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 2 · **Branch:** `L-01-import-csv` · **Round:** 0 / 3
 
 ## Story
