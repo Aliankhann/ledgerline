@@ -37,23 +37,78 @@ class PostgresLedger : AutoCloseable {
         }
         val ownerDs = owner(name)
         LedgerMigrations.migrate(ownerDs)
-        return LedgerDb(ownerDs, AsRoleDataSource(ownerDs, APP_ROLE))
+        return LedgerDb(ownerDs, AsRoleDataSource(ownerDs, APP_ROLE), urlOf(name))
     }
 
-    private fun owner(database: String): DataSource =
-        PGSimpleDataSource().apply {
-            setURL("jdbc:postgresql://${container.host}:${container.firstMappedPort}/$database")
-            user = container.username
-            password = container.password
-        }
+    private fun urlOf(database: String) = "jdbc:postgresql://${container.host}:${container.firstMappedPort}/$database"
+
+    private fun owner(database: String): DataSource = login(urlOf(database), container.username, container.password)
 
     override fun close() {
         if (started.isInitialized()) container.stop()
     }
 }
 
-/** A migrated ledger database: [owner] is the table owner (superuser), [app] runs as [PostgresLedger.APP_ROLE]. */
-class LedgerDb(val owner: DataSource, val app: DataSource) {
+/** A plain (unpooled) data source that logs in to [url] as [user]. */
+fun login(
+    url: String,
+    user: String,
+    password: String,
+): DataSource =
+    PGSimpleDataSource().apply {
+        setURL(url)
+        this.user = user
+        this.password = password
+    }
+
+/**
+ * A migrated ledger database: [owner] is the table owner (superuser), [app] runs as [PostgresLedger.APP_ROLE] via
+ * `SET ROLE`, and [url] is its JDBC URL (for real logins as other roles, see [loginAs]).
+ */
+class LedgerDb(val owner: DataSource, val app: DataSource, val url: String) {
+    /**
+     * Gives [role] LOGIN with [password] (test only; roles are cluster-wide, so this lasts for the container) and
+     * returns a data source that really logs in as it, not via `SET ROLE`.
+     */
+    fun loginAs(
+        role: String,
+        password: String,
+    ): DataSource {
+        owner.connection.use {
+                c ->
+            c.createStatement().use { it.execute("ALTER ROLE $role LOGIN PASSWORD '$password'") }
+        }
+        return login(url, role, password)
+    }
+
+    /** Runs [block] in one transaction on a connection from [ds] and always rolls back, so nothing persists. */
+    fun <T> rolledBack(
+        ds: DataSource,
+        block: (Connection) -> T,
+    ): T =
+        ds.connection.use { c ->
+            c.autoCommit = false
+            try {
+                block(c)
+            } finally {
+                c.rollback()
+            }
+        }
+
+    /** Runs [sql] in order in one rolled-back transaction as [ds]. Returns the first failure, or null if all ran. */
+    fun failureInRolledBackTx(
+        ds: DataSource,
+        vararg sql: String,
+    ): SQLException? =
+        rolledBack(ds) { c ->
+            try {
+                sql.forEach { s -> c.createStatement().use { it.execute(s) } }
+                null
+            } catch (e: SQLException) {
+                e
+            }
+        }
+
     /** Base tables in schema `ledger`, sorted by name. */
     fun tables(): List<String> =
         query(
