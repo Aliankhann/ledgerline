@@ -11,7 +11,7 @@ edited or deleted, so that the ledger is a trustworthy source of truth that ever
 ## Why it matters
 
 Ledgerline mirrors the published Book of Record pattern: one funnel into an append-only double-entry ledger. See
-[`docs/problem/evidence.md`](../problem/evidence.md) (evidence ID TBD): "Brokerage Book of Record designs use an
+[`docs/problem/evidence.md`](../problem/evidence.md) (no sourced evidence yet; see A-07): "Brokerage Book of Record designs use an
 append-only double-entry ledger as the source of truth".
 
 ## Notes for QE and Dev

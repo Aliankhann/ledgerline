@@ -11,7 +11,7 @@ between the database write and the publish, so that the calculation side never m
 ## Why it matters
 
 Writing to a database and then to Kafka separately loses or duplicates events on a crash; the transactional outbox is
-the standard fix. See [`docs/problem/evidence.md`](../problem/evidence.md) (evidence ID TBD): "Dual writes to a
+the standard fix. See [`docs/problem/evidence.md`](../problem/evidence.md) (no sourced evidence yet; see A-09): "Dual writes to a
 database and a message broker are unsafe under crashes; the outbox pattern is the published remedy".
 
 ## Notes for QE and Dev

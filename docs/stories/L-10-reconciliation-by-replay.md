@@ -12,7 +12,7 @@ something I am told.
 ## Why it matters
 
 The differentiator is a cost-basis number that is replay-verified, not just computed. See
-[`docs/problem/evidence.md`](../problem/evidence.md) (evidence ID TBD): "Existing ACB calculators give a number with
+[`docs/problem/evidence.md`](../problem/evidence.md) (E-11 for the "verify it yourself" part; reviewer expectations: see A-09): "Existing ACB calculators give a number with
 no way to verify it; reviewers of ledger systems look for reconciliation".
 
 ## Notes for QE and Dev

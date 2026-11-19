@@ -12,7 +12,7 @@ numbers differ and check them myself.
 ## Why it matters
 
 Broker book value is not guaranteed to equal ACB, and investors are told to track ACB themselves. See
-[`docs/problem/evidence.md`](../problem/evidence.md) (evidence ID TBD): "Brokers' book value can differ from ACB
+[`docs/problem/evidence.md`](../problem/evidence.md) (no sourced evidence yet; see A-01): "Brokers' book value can differ from ACB
 (return of capital, superficial losses, pooling across accounts, FX), and the broker says so".
 
 ## Notes for QE and Dev

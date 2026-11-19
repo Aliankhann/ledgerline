@@ -25,6 +25,14 @@ those hosts are allowed) must open each candidate, quote the example's inputs an
 in integer cents. That replaces each NEEDS SOURCED EXAMPLE marker. ACs marked "non-tax" test system behaviour and
 need no tax source.
 
+**Second sourcing attempt (2026-11-19): still no source opened, no value changed.** Every fetch of the allowed hosts
+failed with `getaddrinfo ENOTFOUND` (DNS), twice for `www.bankofcanada.ca` and once each for `www.canada.ca`,
+`www.adjustedcostbase.ca`, `adjustedcostbase.ca`, `www.taxtips.ca`, `laws-lois.justice.gc.ca`, `activeacb.ca`,
+`mycostbase.ca` and `help.wealthsimple.com`. Only `raw.githubusercontent.com` resolved. The fetch tool reported these
+hosts as outside the session's allowed network domains, so the allow-list change has not reached this session. The
+only page opened was the `tsiemens/acb` README, which is another tool's documentation and not a source for any value.
+Every AC below therefore stays NEEDS SOURCED EXAMPLE. Retry once the session's network settings are confirmed.
+
 Units for every restated value: cash in integer cents (CAD); shares as the fixed-point integer from ADR 0002; pool
 ACB in the finer internal unit, compared after the reporting rounding rule (owner decision below).
 
