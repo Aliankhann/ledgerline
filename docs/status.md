@@ -59,6 +59,13 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
 
 ## Open questions
 
+- **B-009 test sorts by the raw tuple (dev, L-04 round 2).** `L04ReversalDatabaseEdgeSpec` "in canonical order a reversal
+  never comes before its original" sorts `PostedEntry` by `(effectiveDate, sourceSeq, idempotencyKey)` only. With C17 (a
+  reversal carries the original's date and source sequence) and the story's keys (`REV-...` < `TP-...`) no ledger
+  implementation can pass it unless a reversal's stored date or source sequence differs from the original's, which
+  contradicts C17 and the lead's agreed design. Dev implemented the amended order instead (`CanonicalOrder`,
+  `LedgerRepository.entriesInCanonicalOrder()`, C4 amendment in `docs/owner-inputs.md`, ADR 0005). Owner and QE: either
+  change the test to use the amended order, or decide a reversal gets its own `source_seq` (amends C17).
 - **Sequence vs invariant 6 (from BA, L-03).** If "sequence" is assigned on arrival, two same-date activities order
   differently by arrival and break order independence. Proposed tie-breaker: a field from the activity itself
   (source row order, then idempotency key). Needs an ADR before L-03.

@@ -29,7 +29,7 @@ Until an item is filled, the code uses a clearly marked **placeholder** that is 
 | C1 | **Approve stories** | Start with L-01, L-03, L-04, L-02, L-05 | Story merges to `main` |
 | C2 | Split L-01 into L-01a/L-01b? Split L-12 into L-12a/L-12b? | Proposed: keep L-01 whole, split L-12 | Story count |
 | C3 | **Share scale** | Proposed 10⁻⁶ share | L-01, L-03 |
-| C4 | **Same-date ordering tie-breaker** (invariant 6) | Proposed: source row order, then idempotency key | L-03, L-10 |
+| C4 | **Same-date ordering tie-breaker** (invariant 6) | Proposed: source row order, then idempotency key. **Amendment (L-04, B-009):** a reversal carries its original's date and source sequence (C17), so by key alone it could sort before the entry it cancels. A reversal therefore takes its original's `(date, source_seq, key)` and sorts immediately after it (depth 0 original, depth 1 reversal); see `CanonicalOrder` and ADR 0005 | L-03, L-04, L-10 |
 | C5 | **Outbox "sent" marker** vs append-only | Proposed: separate `outbox_delivery` table (append-only) instead of `UPDATE` | L-05 |
 | C6 | **Accept the tax rule set** `CA-ITA-2026.1` | Read the 17 rules marked [OD] in `docs/tax-model.md`; reply "accept", or name the rules to change | L-06, L-07, L-08 |
 | C7 | **Tax date: settlement or trade date** | Proposed: settlement (rule `DATE-BASIS`) | L-06, L-07, L-08; invariant 6 wording in CLAUDE.md |

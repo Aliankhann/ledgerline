@@ -78,4 +78,15 @@ _Owner, in your own words._
   effective date and source sequence (C17), keys are never reused (C18), and a reversal (or correction) that would
   leave an investor account below 0 units of a security at any point in calculation order is refused
   `NEGATIVE_SHARES` (invariant 7). A correction counts its replacement in that check; the owner may prefer to ignore it.
+- **Canonical order with reversals (B-009, amends placeholder C4).** Because a reversal carries its original's date and
+  source sequence, ordering by `(effective_date, source_seq, idempotency_key)` alone can place a reversal before the
+  entry it cancels (a key such as `REV-...` sorts before `TP-...`), and a replay would see shares sold that it does not
+  hold. The canonical order is therefore: a reversal takes its original's `(date, source_seq, key)` and sorts right
+  after it (original depth 0, reversal depth 1). Implemented by `CanonicalOrder` and
+  `LedgerRepository.entriesInCanonicalOrder()`; the L-06 engine must use it. Alternative: calculation skips reversed pairs.
+- **Reversal chains at the database (B-008, migration V5).** `reversal_checks` refuses a link when the original is
+  already a reversal and also when the reversal entry is already someone's original, so no chain A <- R <- R2 can
+  commit whichever order the links are written in.
+- **Share check arithmetic (B-010).** The `NEGATIVE_SHARES` walk covers only the affected account and security and uses
+  exact (`BigInteger`) running totals, so holdings above `Long.MAX_VALUE` units cannot make it throw.
 - Verified by `L03LedgerSpec`, `BalanceInvariantPropertyTest` and `ImmutabilityInvariantPropertyTest`.

@@ -32,6 +32,9 @@ class LedgerRepository(private val dataSource: DataSource) {
     /** Every entry with its lines, in ascending sequence. */
     fun entries(): List<PostedEntry> = dataSource.connection.use { c -> loadEntries(c, "", 0L) }
 
+    /** Every entry in the order calculation and replay use: see [CanonicalOrder]. */
+    fun entriesInCanonicalOrder(): List<PostedEntry> = CanonicalOrder.sort(entries())
+
     /**
      * Reverses entry [entrySequence] with one appended entry keyed [reversalKey]: the original's lines with the sides
      * swapped, carrying the original's effective date and source sequence (OWNER-INPUT: C17). The same key and entry
