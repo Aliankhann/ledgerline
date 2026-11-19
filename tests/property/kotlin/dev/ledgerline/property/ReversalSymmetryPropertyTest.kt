@@ -1,5 +1,6 @@
 package dev.ledgerline.property
 
+import dev.ledgerline.ledger.CanonicalOrder
 import dev.ledgerline.ledger.LedgerRepository
 import dev.ledgerline.ledger.Posting
 import dev.ledgerline.ledger.ReversalRefusedException
@@ -60,6 +61,7 @@ class ReversalSymmetryPropertyTest : FunSpec({
             val repo = LedgerRepository(db.app)
             var expectedAll = mapOf<Pair<String, String>, Long>()
             var reversedTotal = 0
+            var survivorFloor = 0L
             var refusedTotal = 0
             var activitiesTotal = 0
             val ctx =
@@ -97,6 +99,9 @@ class ReversalSymmetryPropertyTest : FunSpec({
                         ).associate { (it[0]!! to it[1]!!) to it[2]!!.toLong() }.filterValues { it != 0L }
                     stored shouldBe expected.filterKeys { it.first.endsWith("-$tag") }
                     expectedAll = merge(expectedAll, expected)
+                    val liveKeys = live.map { it.idempotencyKey }.toSet()
+                    val survivors = CanonicalOrder.sort(entries.filterKeys { it in liveKeys }.values.toList())
+                    survivorFloor = minOf(survivorFloor, CanonicalReplay.lowestHolding(survivors))
                 }
             println(
                 "L-04 AC9 / invariant 4: ran ${ctx.attempts()} generated cases, $activitiesTotal activities, " +
@@ -107,19 +112,33 @@ class ReversalSymmetryPropertyTest : FunSpec({
             Balances.ofEntries(repo.entries()) shouldBe expectedAll
             repo.entries().forEach { LineMath.imbalances(it.lines).shouldBeEmpty() }
             (reversedTotal > 0) shouldBe true
-            // B-009 / invariants 5 and 7: the public canonical order puts every reversal after its original, and
-            // replaying it (reversals included) never takes any holding below zero.
+            // B-009 / C19: the audit listing keeps every row, each reversal right after its original.
+            val all = repo.entries()
             val ordered = repo.entriesInCanonicalOrder()
-            ordered.size shouldBe repo.entries().size
+            ordered.size shouldBe all.size
+            ordered.map { it.sequence }.toSet() shouldBe all.map { it.sequence }.toSet()
             CanonicalReplay.reversalsBeforeOriginal(ordered) shouldBe emptyList()
-            // The generator may itself produce a sell above holdings (posting does not check it), so the floor is
-            // the lowest holding of the originals alone: reversals, which the oracle allows only when no holding
-            // goes negative, must never push it lower.
-            val floor = CanonicalReplay.lowestHolding(ordered.filter { it.reversesSequence == null })
+            ordered.forEachIndexed { i, e ->
+                e.reversesSequence?.let { orig ->
+                    ordered[i - 1].sequence shouldBe orig
+                }
+            }
+            // B-011 / C19: replay excludes exactly the reversed pairs (computed here from the reversal rows).
+            val reversedPairs = all.mapNotNull { it.reversesSequence }.toSet()
+            reversedPairs.size shouldBe reversedTotal
+            val replay = repo.entriesForReplay()
+            replay.map { it.sequence } shouldBe
+                ordered.filter { it.reversesSequence == null && it.sequence !in reversedPairs }.map { it.sequence }
+            replay.size shouldBe all.size - 2 * reversedTotal
+            replay.none { it.reversesSequence != null || it.sequence in reversedPairs } shouldBe true
+            // Replay state equals a ledger that never had the reversed activities (already shown per account above).
+            Balances.ofEntries(replay) shouldBe expectedAll
+            // Holdings replayed never go below the floor of the surviving activities alone (the generator may itself
+            // sell above holdings, so that floor can be below 0); reversals add nothing, REV-B before S is gone.
             println(
-                "L-04 B-009 property: replay floor $floor, with reversals ${CanonicalReplay.lowestHolding(ordered)}",
+                "L-04 B-011 property: replay floor ${CanonicalReplay.lowestHolding(replay)}, expected $survivorFloor",
             )
-            CanonicalReplay.lowestHolding(ordered) shouldBe floor
+            CanonicalReplay.lowestHolding(replay) shouldBe survivorFloor
         }
 })
 
