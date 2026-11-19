@@ -36,6 +36,7 @@ Until an item is filled, the code uses a clearly marked **placeholder** that is 
 | C8 | **Golden-source policy**: are adjustedcostbase.ca and TaxTips acceptable until A1 arrives? | Proposed: yes, provisionally; replace them with CRA examples when A1 arrives | L-06, L-07 tests |
 | C9 | **Quality thresholds** | Proposed: mutation 70%, max 400 lines per file, perf ≤10% slower | CI gates |
 | C10 | **Benchmark targets** (set before the first run) | Ingest/s, p99 latency, burst drain time | L-13 |
+| C19 | **Replaying reversed pairs (L-04, B-011)** | Proposed: replay skips a reversed entry and its reversal together (they net to zero); alternative: order a reversal by its own sequence (breaks C17) | L-04, L-09, L-10 |
 | C11 | **Second plugin** | Proposed: cash-balance tracker | L-14 |
 | C12 | **License** | MIT is common for portfolio projects | README |
 | C13 | **ADRs 0001–0004 in your own words** | Edit the Decision section of each | Interview readiness |

@@ -59,6 +59,12 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
 
 ## Open questions
 
+- **ESCALATED: L-04 hit round 3 (B-011).** Buy → sell → reverse sell → reverse buy: canonical order is
+  buy, REV-buy, sell, REV-sell, so replay goes negative. B-009 (reversal before its original) is fixed.
+  *Recommendation:* replay skips each reversed pair entirely (they net to zero by invariant 4); the ledger still keeps
+  both rows for audit. *Alternative:* order a reversal by its own sequence, which breaks C17. Owner decides
+  (owner-inputs C19). L-04's code is on a **local** branch `l-04` (not pushed, gates not green).
+
 - **Sequence vs invariant 6 (from BA, L-03).** If "sequence" is assigned on arrival, two same-date activities order
   differently by arrival and break order independence. Proposed tie-breaker: a field from the activity itself
   (source row order, then idempotency key). Needs an ADR before L-03.
