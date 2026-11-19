@@ -65,6 +65,8 @@ QE writes it under `tests/`.
 - Every commit ends with an `Agent:` trailer: `Agent: ba`, `Agent: dev`, `Agent: qe` or `Agent: owner`.
   `scripts/check-test-ownership.sh` fails CI if a dev commit touches `tests/`, a qe commit touches production code,
   a ba commit touches anything outside `docs/`, or the trailer is missing. Run `make hooks` to check locally.
+  Git only reads trailers from the **last paragraph** of the message, so put `Agent:` in the same block as any other
+  trailers (`Co-Authored-By:` etc.), with no blank line between them.
 - Small commits. Each commit compiles and passes `./gradlew build`.
 
 ## The eight invariants (each becomes a property test under `tests/property/`)
