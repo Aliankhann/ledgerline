@@ -1,6 +1,6 @@
 # B-011 Canonical replay goes negative when a sell and an earlier buy are both reversed
 
-**Story:** L-04 (invariants 5 and 7 on replay; follow-up to B-009) · **Severity:** major · **Status:** Open · **Round:** 3
+**Story:** L-04 (invariants 5 and 7 on replay; follow-up to B-009) · **Severity:** major · **Status:** Fixed (pending CI) · **Round:** 3
 **Owner decision likely needed:** the amended C4 order (reversal immediately after its original) cannot also keep
 replay non-negative; either calculation skips reversed pairs (ADR) or the order changes.
 
@@ -36,3 +36,14 @@ original" and "no negative holdings" when a later sell is also reversed. Options
 original/reversal pairs before replay (needs an ADR; pairs net to zero by invariant 4); or order a reversal by its
 own entry sequence (then a reversal can follow later entries, but is always after its original). The test stays
 failing until Dev or the owner picks one.
+
+## Dev fix (owner decision C19, provisionally accepted 2026-11-19)
+
+Replay skips each reversed entry together with its reversal. New `CanonicalOrder.forReplay` and
+`LedgerRepository.entriesForReplay()` return the canonical order without those rows; `entriesInCanonicalOrder()` still
+returns every row (audit, listings). The share-holdings check already left reversed pairs out of its walk.
+
+**Test note for QE:** the property test and the spec test "in canonical order a reversal never comes before its original"
+call `entriesInCanonicalOrder()`, which by C19 still lists reversed rows, so the final `lowestHolding` check in
+`ReversalSymmetryPropertyTest` still sees B, REV-B, S, REV-S and can still fail. It should check
+`repo.entriesForReplay()` for the holdings floor (and may keep the order checks on the full listing). Dev cannot edit `tests/`.

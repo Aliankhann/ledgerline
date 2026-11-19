@@ -8,8 +8,8 @@ import java.time.LocalDate
  * Invariant 7 applied to reversals: reversing an entry must not leave any investor account with fewer than 0 units of
  * a security at any point in calculation order (effective date, source sequence, idempotency key).
  *
- * Only the account's holdings of each affected security are walked. Reversed entries and their reversals cancel
- * exactly, so both are left out of the walk (a reversal sorts right after its original, see [CanonicalOrder]); the entry being reversed is
+ * Only the account's holdings of each affected security are walked. OWNER-INPUT: C19: reversed entries and their
+ * reversals cancel exactly, so both are left out of the walk, as in [CanonicalOrder.forReplay]; the entry being reversed is
  * left out too, and an optional [Replacement] (a correction's new activity) is added. Runs inside the append
  * transaction, after the append lock is held, so the ledger cannot change under it.
  */
