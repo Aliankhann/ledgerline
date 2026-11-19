@@ -12,13 +12,18 @@ concurrency:
 jobs:
   roles:
     name: Role check (test ownership)
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - run: scripts/check-test-ownership.sh "origin/${{ github.base_ref }}" HEAD
+      - name: Check commits in this PR
+        if: github.event_name == 'pull_request'
+        run: scripts/check-test-ownership.sh "origin/${{ github.base_ref }}" HEAD
+      # Work is pushed straight to main (owner rule), so also check every commit in each push.
+      - name: Check commits in this push
+        if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
+        run: scripts/check-test-ownership.sh "${{ github.event.before }}" "${{ github.sha }}"
 
   build:
     name: Build, lint, unit/spec/property tests
