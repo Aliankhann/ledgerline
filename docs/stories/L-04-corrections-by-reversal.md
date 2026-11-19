@@ -1,6 +1,6 @@
 # L-04 Corrections by reversal
 
-**Status:** Draft  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** Tests written  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 3 · **Branch:** `L-04-corrections-by-reversal` · **Round:** 0 / 3
 
 ## Story
@@ -93,9 +93,26 @@ entries, never edits") and E-32 (annual tax adjustments and amended slips arrive
 
 ## Test map (QE fills)
 
+Written provisionally while the story is Draft (owner instruction). API contract is in the KDoc of
+`L04ReversalSpec`. HTTP codes are not tested (endpoint names not approved); every AC is tested at repository level.
+Placeholders: C16 (`REVERSAL_OF_REVERSAL`), C17 (reversal carries original's effective date), C18 (keys never
+reusable), reversals that would go negative are refused `NEGATIVE_SHARES`, `UNKNOWN_ENTRY`, `ALREADY_REVERSED`.
+`S` = `tests/spec/kotlin/dev/ledgerline/spec/L04ReversalSpec.kt`;
+`P` = `tests/property/kotlin/dev/ledgerline/property/ReversalSymmetryPropertyTest.kt`.
+
 | AC | Test |
 | --- | --- |
-| AC1 | `tests/spec/.../L04Spec.kt` › "L-04 AC1: …" |
+| AC1 | S "L-04 AC1: apply then reverse returns every balance to its prior value; the reversal is balanced" (Integration); S "L-04 AC1: the reversal lines are balanced per unit and cancel the original exactly" |
+| AC2 | S "L-04 AC2: Posting.reversalOf mirrors every line ..."; S "L-04 AC2: the stored reversal has the original's lines, one for one ..." (Integration) |
+| AC3 | S "L-04 AC3: the original's rows hash the same before and after; the link lives on the reversal" (Integration) |
+| AC4 | S "L-04 AC4: reversing an entry that does not exist is refused UNKNOWN_ENTRY; nothing is written" (Integration). Id is a `Long` sequence, not a UUID |
+| AC5 | S "L-04 AC5: the same reversal request twice is a no-op ..."; S "L-04 AC5 (invariant 2): the reversal key reused for a different entry is rejected ..." (both Integration) |
+| AC6 | S "L-04 AC6: a second, differently keyed reversal ... ALREADY_REVERSED, naming the first" (Integration) |
+| AC7 | S "L-04 AC7 (C16 placeholder): reversing a reversal is refused ..."; S "L-04 AC7 (C16, C18 placeholders): ... post again under a NEW key" (both Integration) |
+| AC8 | S "L-04 AC8: a correction is a reversal plus a new activity ..."; "same correction key twice"; variant "invalid replacement (BUY without a quantity)"; variant "replacement whose key already exists rolls the reversal back too"; variant "unknown or already reversed entry" (all Integration). EUR cannot be built (`Currency` is CAD/USD), see KDoc |
+| AC9 | P "Invariant 4 (L-04 AC9): reverse a random subset ... (1000 cases)" (Integration) and P "... (L-04 AC9, pure) ... (1000 cases)"; both print the case count |
+| C17 | S "L-04 C17 placeholder: the reversal carries the original's effective date ..." (Integration) |
+| NEGATIVE_SHARES | S four tests "NEGATIVE_SHARES: ..." (refused, reverse sell first, per effective date, boundary at 0) (Integration); also exercised in P |
 
 ## Change notes (Dev fills)
 
