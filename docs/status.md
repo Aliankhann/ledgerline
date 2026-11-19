@@ -12,7 +12,7 @@ Step 0.3 is the owner's. QE phase A for L-01 starts once the owner approves L-01
 | ID | Title | Status | Round | Branch | Notes |
 | --- | --- | --- | --- | --- | --- |
 | L-01 | Import an activity CSV | QE passed, awaiting owner | 2 | main | 36 tests, 240 generated cases; 2 bugs fixed (B-001, B-002); share scale is a placeholder (C3) |
-| L-02 | Duplicate-safe ingestion | Dev round 2 done; integration NOT RUN | 2 | local `l-02` | B-012..B-014 fixed pending integration; 130 non-Docker tests pass; Docker unavailable in sandbox |
+| L-02 | Duplicate-safe ingestion | QE passed, awaiting owner | 2 | main | CI green incl. integration (run 44637937633); B-012..B-014 fixed; placeholders C20–C24 |
 | L-03 | Balanced, immutable ledger | QE passed, awaiting owner | 3 | main | 83 tests (29 integration); 5 bugs, 4 fixed, B-006 open pending C15; app runs as least-privilege role |
 | L-04 | Corrections by reversal | Escalated after round 3 | 3 | local `l-04` | B-008..B-010 fixed; B-011 needs owner decision C19 |
 | L-05 | Reliable event publication | Draft | – | – | outbox "sent" marker vs immutability |
@@ -59,7 +59,7 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
 
 ## Open questions
 
-- **Blocked: no Docker in this sandbox** (the daemon hit the 2-hour background limit and can't be restarted).
+- **No Docker in this sandbox:** integration suites run in GitHub CI on story branches (owner allowed pushing `l-*`). Was: **Blocked: no Docker in this sandbox** (the daemon hit the 2-hour background limit and can't be restarted).
   L-02 and L-04 integration suites can't run locally. Options: owner allows pushing `l-02`/`l-04` as branches so
   GitHub CI runs them, or a new session restarts Docker. Neither branch exists outside this container yet.
 
