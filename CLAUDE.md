@@ -68,7 +68,10 @@ QE writes it under `tests/`.
   a ba commit touches anything outside `docs/`, or the trailer is missing. Run `make hooks` to check locally.
   Git only reads trailers from the **last paragraph** of the message, so put `Agent:` in the same block as any other
   trailers (`Co-Authored-By:` etc.), with no blank line between them.
-- Small commits. Each commit compiles and passes `./gradlew build`.
+- Small commits: one logical change each (one story's tests, one story's implementation, one fix, one doc update).
+  Each commit compiles and passes `./gradlew build`. No "WIP" commits that bundle unrelated work.
+- Owner rule (2026-11-19): after each completed change or story, commit it and push it to `main` on GitHub as well
+  as the working branch. Code reaches `main` only after its story's gates pass.
 
 ## The eight invariants (each becomes a property test under `tests/property/`)
 
