@@ -1,9 +1,208 @@
-# Tax model
+# Tax model: rule set `CA-ITA-2026.1` (PROPOSED)
 
-_Owner-owned. Simplified model, not tax advice. Frozen on day 6._
+**Status: PROPOSED. Only the owner accepts it.** Drafted by the BA on 2026-11-19 from the owner's instruction: for every
+open tax question, propose the answer that stays closest to Canadian tax law, and keep it pluggable.
+
+This is a simplified model of Canadian capital-gains rules for identical securities held by one individual. It is
+**not tax advice**. Synthetic data only.
+
+- **Rule set ID and version:** `CA-ITA-2026.1`. The ID names the jurisdiction (CA), the primary law (ITA) and the year
+  of the law as read (2026, the Justice Laws copies read on 2026-11-16 to 2026-11-19). The suffix is the revision of
+  our choices. Any change to a default creates a new version (`.2`), never an edit in place.
+- **Pluggable:** the engine reads every rule below through a `TaxRuleSet` interface (ADR 0004, being drafted). Each rule
+  has a stable Rule ID. A different rule set (for example `CA-ITA-2026.1-conservative`, or another country) swaps one
+  or more rules by supplying a different value for that ID. The "Alternatives" column lists the values a rule set
+  could choose.
+- **Traceability (proposal for ADR 0004):** every calculated line records the rule set ID and the Rule IDs it applied,
+  and the rule set ID goes into the output hash, so that two rule sets can never produce the same hash by accident
+  (invariant 5).
+- **How to read the "Basis" column.** `S` = the primary text read decides the point; the quote is exact. `P` = the
+  primary text decides part of it and a convention or secondary source decides the rest. `C` = no statutory rule in
+  the text read; the default is a project convention and the secondary source (if any) is named. **`[OD]` marks a
+  rule whose default rests on a convention or a secondary source, so the owner must accept it explicitly.**
+- **What "read" means.** Primary law was read from local text copies of ITA sections 38, 39, 40, 47, 53, 54, 248,
+  251.1 and 261. CRA publications (T4037, the foreign-currency folio, technical interpretations) were **not** opened.
+  Where this file says "no statutory rule", it means none in those nine sections. It does not mean none exists in
+  the Act or in CRA guidance.
+- **Sections read are not the whole Act.** For example s. 40(3) is quoted below, but its full set of exceptions
+  (partnerships, subsection 40(3.1) and others) was not analysed.
+
+Units used below: cash in integer cents (CAD); shares at 10^-6 share; USD/CAD rate at 10^-4 (rule `FX-SCALE`);
+pool ACB at the internal scale in `ROUND-SCALE`. Source names: ITA-nn = Income Tax Act section nn,
+`https://laws-lois.justice.gc.ca/eng/acts/i-3.3/section-nn.html`. Secondary sources are the ones named in the stories:
+ACB-HOWTO, ACB-ROC (`?p=258`), ACB-NEG (`?p=4`), ACB-REG (`?p=154`), ACB-INKIND (`?p=438`), ACB-SLR (`?p=589`) on
+adjustedcostbase.ca; TAXTIPS (superficial losses page); ACTIVEACB (`activeacb.ca/book-cost-vs-acb.html`);
+MYCOSTBASE (`mycostbase.ca/blog/broker-book-value-vs-adjusted-cost-base-canada/`).
 
 ## Rules modeled
 
+### A. Dates and ordering
+
+| Rule ID | Proposed default | Legal basis | Alternatives | Affects |
+| --- | --- | --- | --- | --- |
+| `DATE-BASIS` [OD] | Every activity has one **tax date**: its `settlement_date` if present, otherwise its trade date (`effective_date`). The tax date drives calculation order (tax date, then sequence), the superficial-loss window, ROC timing and the FX day. | `C`. No statutory rule in ITA-54 ("disposition", "acquires"), ITA-248 or ITA-261 on trade versus settlement. Secondary only: ACB-HOWTO: "The date used for calculating ACB should be the settlement date, not the purchase date." (not a CRA source). | `TRADE_DATE` always; `SETTLEMENT_DATE` required (reject when absent). | L-06 all ACs (dates given are settlement dates in the source); L-07 AC1, AC2, AC3, AC8; L-08 AC1 to AC9 and AC11; L-01 (`settlement_date` is optional) |
+
+### B. Pooling, cost and proceeds
+
+| Rule ID | Proposed default | Legal basis | Alternatives | Affects |
+| --- | --- | --- | --- | --- |
+| `POOL-IDENTICAL` | One pool per taxpayer per security ID across all non-registered accounts. Each acquisition re-averages: new pool ACB is the old pool ACB plus the new cost; shares add. "Identical" means the same security ID. | `S`. ITA-47(1)(b): "the taxpayer shall be deemed to have acquired the identical property at the particular time at a cost equal to the quotient obtained when (i) the total of the adjusted cost bases ... of the previously-acquired properties, and the cost ... of the newly-acquired properties is divided by (ii) the number of the identical properties owned by the taxpayer immediately after the particular time". What counts as "identical" beyond the same security ID (for example two funds on one index) is not settled in the text read. | A rule set with one pool per account or per broker (not law); a wider "identical" test (a mapping table of equivalent securities). | L-06 AC1, AC2, AC8; L-07 AC3 |
+| `POOL-REGISTERED-EXCL` [OD] | Activity in TFSA, RRSP and other registered accounts never enters the pool and has no capital gain or loss. It is still **kept**, with account type and tax date, because L-07 needs it. | `C`. No section read states it. Secondary: ACB-REG: "Transactions in registered accounts should not be considered when calculating ACB." and ACB-HOWTO: "ACB and capital gains do not need to be calculated for registered accounts such as RRSPs or TFSAs." | None sensible; a rule set could track registered pools for information only. | L-06 AC8; L-07 AC4, AC5 |
+| `ACB-SOLD` | ACB of shares sold = pool total ACB x shares sold / shares held, computed at the internal scale (see `ROUND-SCALE`). Pool total ACB falls by that amount; shares fall by the shares sold. ACB per share is display only and never an input. | `S`. ITA-47(1)(b) gives the average (quote above); ITA-40(1)(a)(i) uses "the adjusted cost base to the taxpayer of the property immediately before the disposition". The "total x fraction sold" form is the worked method in ACB-HOWTO, not statute. | Average computed from a rounded per-share ACB (rejected: ACB-HOWTO's author says total ACB gives the closer figure). | L-06 AC2, AC3, AC7 |
+| `COST-BUY-COMMISSION` [OD] | A buy's commission is added to the cost of the shares bought (pool ACB). | `P`. ITA-54 "adjusted cost base": "the cost to the taxpayer of the property adjusted, as of that time, in accordance with section 53". The text read does not say that a commission is part of "cost". Secondary: ACB-HOWTO: "New Total ACB = [Previous Total ACB] + ([Share Price] x [Number of Shares Purchased]) + [Transaction Costs]". CRA T4037 not opened. | Commission expensed, not added (not a CRA position, as far as the sources say). | L-06 AC1, AC1b, AC2, AC2b, AC8; L-08 (USD commission) |
+| `PROCEEDS-SELL-COMMISSION` | A sell's commission is an outlay of disposing. Gain or loss = proceeds - ACB sold - commission. | `S`. ITA-40(1)(a)(i): "the amount, if any, by which the taxpayer's proceeds of disposition exceed the total of the adjusted cost base to the taxpayer of the property immediately before the disposition and any outlays and expenses to the extent that they were made or incurred by the taxpayer for the purpose of making the disposition". | None needed. (The result is the same whether the commission reduces proceeds or is added to ACB sold.) | L-06 AC3; L-07 (loss before the rule) |
+| `FEE-STANDALONE` [OD] | A standalone `fee` activity (account, custody or advisory fee, not tied to one trade) is recorded in the ledger and has **no effect** on any pool or gain. | `C`. In the text read, ITA-40(1)(a)(i) covers outlays "for the purpose of making the disposition" and ITA-54 covers "cost". Neither covers a fee that is not part of one trade. No source read discusses account fees. Whether such a fee is deductible as an expense is outside this model (not read). | `FEE_TO_ACB`: add to the pool ACB of the security named on the fee. | L-06 (the "standalone fee" decision; no AC covers it); L-01 (activity type `fee`) |
+| `XFER-INTERNAL` [OD] | A transfer in kind between two non-registered accounts of the same taxpayer is a pool **no-op**: no gain or loss, ACB carries over because the pool already spans accounts. | `C`. No section read states it. Secondary: ACB-REG reply (2015-08-24): "you would not need to enter any transaction. There would be no affect on ACB and no capital gain or loss would be triggered." ACTIVEACB: "A transfer changes nothing, and the original cost carries over." | A rule set that treats it as a disposition and reacquisition (not the position of any source read). | L-06 (transfer-in decision; no AC); L-01 |
+| `XFER-IN-EXTERNAL` [OD] | A transfer in from outside the taxpayer's accounts (no known cost) is **rejected** unless the activity carries a user-supplied total ACB in CAD; with one, it is a buy at that cost on the transfer's tax date. | `C`. No source read covers it. | `ZERO_COST` (accept at zero ACB; rejected here because it overstates gains silently); `MARKET_VALUE`. | L-06 (transfer-in decision); L-01 |
+| `XFER-TO-REGISTERED` [OD] | A transfer in kind from a non-registered account to a TFSA or RRSP is modeled as a **sale** in the non-registered account at fair market value on the transfer date plus a **purchase** in the registered account. No new activity type. A loss on it is nil and is recorded as `PERMANENTLY_LOST` (no add-back). | `P`. ITA-40(2)(g)(iv) makes the loss nil: "a loss from the disposition of property to (A) a trust governed by a deferred profit sharing plan, ... a registered retirement income fund or a TFSA, under which the taxpayer is a beneficiary ... or (B) a trust governed by a registered retirement savings plan under which the taxpayer or the taxpayer's spouse or common-law partner is an annuitant ... is nil". That paragraph does not depend on a repurchase, so the superficial-loss window is not needed for an in-kind transfer at a loss. Modeling it as sale plus purchase (rather than a new activity type) is the project's choice. Secondary: ACB-INKIND: "making an in-kind contribution to a registered account is equivalent to: Selling the shares in your non-registered account. Transferring the cash proceeds into your registered account. Repurchasing the shares in your registered account." and TAXTIPS: "Losses will also be disallowed if shares are transferred to a Registered Retirement Savings Plan (RRSP) or to a Tax Free Savings Account (TFSA) at a loss." | A separate `TRANSFER_IN_KIND` activity type (more faithful to the broker CSV; more code). | L-07 AC4 |
+
+### C. Return of capital (ROC)
+
+| Rule ID | Proposed default | Legal basis | Alternatives | Affects |
+| --- | --- | --- | --- | --- |
+| `ROC-REDUCES-ACB` [OD] | A return-of-capital distribution reduces pool total ACB by the ROC amount. Share count and gain are unchanged. Only the ROC portion is posted. Dividend, interest and capital-gain portions never touch ACB. | `P`. ITA-53(2)(h)(i.1), for a capital interest in a trust (trust units): "any amount that has become payable to the taxpayer by the trust after 1987 and before that time in respect of the interest (otherwise than as proceeds of disposition of the interest or part thereof), except to the extent of the portion thereof ..." (the carve-outs, for income, are not modeled). For corporate shares, the text read has only the foreign-affiliate and "qualifying return of capital" wording inside ITA-53(2) (paragraph not identified), not analysed. Secondary for the worked arithmetic: ACB-ROC. | None for the direction of the adjustment. | L-06 AC4, AC5 |
+| `ROC-DATE` [OD] | A ROC takes effect on its **record date**. The input's tax date for a `RETURN_OF_CAPITAL` activity must be the record date. | `C`. ITA-53(2)(h)(i.1) says the amount "has become payable"; the text read does not say on which date an amount becomes payable, and the sources read give the record date only second-hand. Secondary: ACB-ROC, author reply (2019-05-13): "For the purposes of determining the year applicable to a distribution, it is the record date that matters." The wording difference ("payable" in the Act, "record date" in the blog) is a flag for the owner. | `PAYMENT_DATE`; `EX_DATE`. | L-06 AC4, AC5; L-09 (late-published ROC); L-01 |
+| `ROC-INPUT` [OD] | ROC is entered as a **total amount in CAD cents**, not per unit. A per-unit figure is converted by the user or importer, never by the engine. | `C`. No statutory rule. Chosen to avoid a rounding step inside the engine. | `PER_UNIT` x units at the internal scale. | L-06 AC4; L-01 (`RETURN_OF_CAPITAL` columns) |
+| `ROC-NEG-GAIN` | When the ROC would take pool ACB below zero, the **excess** is a deemed capital gain. While pool ACB is 0 a further ROC is entirely a deemed gain. | `S`. ITA-40(3): "(a) the total of all amounts required by subsection 53(2) (except paragraph 53(2)(c)) to be deducted in computing the adjusted cost base to a taxpayer of any property at any time in a taxation year exceeds (b) the total of (i) the cost to the taxpayer of the property ... and (ii) all amounts required by subsection 53(1) to be added ... (c) ... the amount of the excess is deemed to be a gain of the taxpayer for the year from a disposition at that time of the property". | None for the existence of the gain. | L-06 AC5 |
+| `ROC-NEG-RESET` [OD] | After the deemed gain, pool ACB is set to 0, never negative. Share count is unchanged. | `C`. The ITA-40(3) text read deems the gain but contains no sentence resetting ACB to zero (its items (c), (d), (e) are: the gain, the deemed disposition for sections 93 and 116, and the deemed disposition for subsection 2(3) and sections 110.6 and 150). Secondary: ACB-NEG: "your ACB cannot go below zero, according to Canada Revenue Agency rules" and a reader's quote of T4037: "The ACB of the trust units is deemed to be zero." (second-hand; T4037 not opened). | Let ACB go negative (not supported by any source read). | L-06 AC5 |
+| `ROC-NEG-DATE` [OD] | The deemed gain is recorded **event by event** and stamped with the ROC's tax date (`ROC-DATE`). A later purchase in the same year does not undo it. It is reported as its own line type (`DEEMED_GAIN_ROC`), not folded into sale gains. | `P`. ITA-40(3) tests the totals "at any time in a taxation year" and deems the gain "for the year from a disposition at that time", which supports event-by-event testing and the year of the ROC. The text does not choose a calendar date within the year, nor the report layout. Secondary: ACB-NEG: "a capital gain of $90 ($600 less $510) is immediately applicable". | Stamp at year end; fold into the year's total; test once at year end (the T4037 quote in ACB-NEG reads that way). | L-06 AC5 |
+
+### D. Superficial loss
+
+| Rule ID | Proposed default | Legal basis | Alternatives | Affects |
+| --- | --- | --- | --- | --- |
+| `SL-DEFINITION` | Only a **loss** can be superficial; a gain is never flagged. A loss on a sale from a non-registered pool is superficial when identical property is acquired in the window **and** the taxpayer owns it at the window's end. Exceptions in the definition (deemed dispositions, option expiry, loss restriction events and so on) are not modeled. | `S`. ITA-54 "superficial loss": "the taxpayer's loss from the disposition of a particular property where (a) during the period that begins 30 days before and ends 30 days after the disposition, the taxpayer or a person affiliated with the taxpayer acquires a property ... that is, or is identical to, the particular property, and (b) at the end of that period, the taxpayer or a person affiliated with the taxpayer owns or had a right to acquire the substituted property". | None needed. | L-07 AC1 to AC9 |
+| `SL-WINDOW` | The period is **61 calendar days**: the sale's tax date D minus 30 days through D plus 30 days, both ends inclusive. Acquisitions on D itself count. "Held at the end" is tested on D+30. | `S`. ITA-54: "the period that begins 30 days before and ends 30 days after the disposition". The 61-day count and the inclusive ends are the usual reading; secondary: TAXTIPS: "61-day time period (30 days prior + date of disposition + 30 days after)". Which date is "the disposition" is `DATE-BASIS`. | A rule set that excludes the sale day. | L-07 AC1, AC2, AC7, AC8 |
+| `SL-IDENTICAL` [OD] | Property is identical when the security ID is equal (`POOL-IDENTICAL`). A right to acquire (options, warrants) is not modeled. | `P`. ITA-54(i): "a right to acquire a property ... is deemed to be a property that is identical to the property". The text read does not define "identical" for securities. Secondary: ACB-SLR reply says CRA treats funds tracking the same index as identical (CRA not opened). | A mapping table of equivalent security IDs; modeling rights to acquire. | L-07 (out of scope list) |
+| `SL-HELD-END` [OD] | B ("left at the end of the period") = the taxpayer's shares of that security held at the end of the window in the non-registered pool (including shares bought before the window) **plus** shares acquired in the window in each registered account, counted per account as the lesser of the shares acquired in the window and the shares still held at the window end. Registered shares bought **before** the window are not counted. | `P`. ITA-54(b): the taxpayer "owns ... the substituted property" at the end. Registered accounts count as affiliated persons through ITA-251.1(1)(g) (see `SL-REGISTERED`). Whether pre-window shares count is not settled in the text read. Secondary: TAXTIPS' second example counts 20 pre-window shares in B; ACB-REG reply (2022-04-30) on pre-existing registered shares: "it's unclear to me whether the remaining shares in the registered account would trigger the superficial loss rule." | Count all registered holdings (denies more); count only in-window acquisitions everywhere (denies less). | L-07 AC6a, AC6b, AC7 |
+| `SL-PARTIAL` [OD] | Superficial loss SL = least(S, P, B) / S x L, where S = shares disposed in the loss sale, P = identical shares acquired in the 61-day window (before and after the sale, any account), B = per `SL-HELD-END`, L = the loss before the rule. Allowed loss = L - SL. Computed at the internal scale (`ROUND-SCALE`); the rounding falls on SL, and allowed = L - SL so nothing leaks. | `P`. ITA-40(2)(g) denies a loss "to the extent that it is (i) a superficial loss", which supports proration but gives no formula. The formula is CRA administrative policy as quoted by TAXTIPS: "SL (superficial loss) = (least of S, P and B)/S x L", citing T.I. 2004-0073011E5 (not opened; second-hand). | `DENY_ALL`: deny the whole loss when any identical property was acquired (simpler, more conservative, not what the formula says). | L-07 AC1, AC6a, AC6b, AC7 |
+| `SL-MULTI` [OD] | Several loss sales and acquisitions in one window: loss sales are processed in (tax date, sequence) order. Each acquired share can be matched to **one** loss sale only (earliest sale first); matched shares are removed from P for later sales. Each result carries a `CONVENTION` marker. | `C`. No source read settles it. ACB-REG author (reply 2022-05-01): "I'm not sure how the formula should be applied in cases where there are multiple sales and purchases occurring in a superficial loss period." No AC tests it. | Reuse the same acquisition for each sale (can over-deny); flag the case and compute nothing (`UNSUPPORTED`). | L-07 (outside every AC; open item in "Needs owner decision") |
+| `SL-REGISTERED` | The denied amount of a loss whose substituted shares are in a TFSA or RRSP is **permanently lost**: allowed loss is 0 for that part, and **no** add-back goes to any non-registered pool. The outcome code is `PERMANENTLY_LOST`. | `P`: the Act decides the denial and the affiliation; the lost-for-good consequence is the project's reading. ITA-40(2)(g): "a taxpayer's loss, if any, from the disposition of a property ... to the extent that it is (i) a superficial loss ... is nil". ITA-251.1(1)(g): "a person and a trust, if the person (i) is a majority-interest beneficiary of the trust". That the owner's own TFSA or RRSP is such a trust is TAXTIPS' reading ("a trust, including an RRSP, TFSA or RRIF, of which you ... [are] a beneficiary"); the definition of "majority-interest beneficiary" in ITA-251.1 was not analysed. ITA-53(1)(f) adds the denied loss to the ACB of the substituted property of the taxpayer; a registered plan's ACB has no meaning (ACB-INKIND), and ACB-REG reply (2022-05-01): "cannot be added back to your ACB in your non-registered account." | Add the denied amount to the non-registered pool anyway (contradicted by every source read). | L-07 AC4, AC5, AC11 |
+| `SL-MIXED` [OD] | If the counted substituted shares are split between registered and non-registered accounts, the denied amount is split in proportion to the shares acquired in the window in each class. The non-registered share (rounded down at the internal scale) is added to the pool; the rest is `PERMANENTLY_LOST`. | `C`. No source read covers it. | Registered first; non-registered first; treat the whole amount as lost (conservative). | L-07 (open item; no AC) |
+| `SL-ADDBACK-TARGET` | The denied amount, to the extent the substituted shares are in a non-registered account, is **added to the ACB of the single non-registered pool** of that security (`POOL-IDENTICAL`), whichever non-registered account bought the substituted shares. | `S`. ITA-53(1)(f): "where the property is substituted property (within the meaning assigned by paragraph (a) of the definition superficial loss in section 54) of the taxpayer, the amount, if any, by which (i) the amount of the loss that was, because of the acquisition by the taxpayer of the property, a superficial loss of any taxpayer from a disposition of a property exceeds (ii) ..." (item (ii), a reduction tied to the s. 112 dividend deductions on shares, is not modeled). The cross-account point follows from one pool per taxpayer. | None. | L-07 AC1, AC3, AC6a, AC10 |
+| `SL-ADDBACK-TIMING` [OD] | The add-back takes effect on the tax date of the **earliest substituted acquisition on or after the sale's tax date**; if every substituted acquisition is before the sale (purchase-before case), it takes effect on the sale's tax date. Between the sale and a later repurchase the pool shows 0 shares and 0 ACB (nothing is held to attach the amount to). | `P`. ITA-53(1)(f) attaches the amount to the substituted property, which is the repurchased shares. The text read does not give a date. The blog (ACB-SLR) shows the add-back on the sale date while the pool is empty; the final numbers are identical. | `SALE_DATE` (show on the sale date, the blog's display). | L-07 AC1, AC2, AC6a, AC10 |
+| `SL-AFFILIATED` [OD] | **Flag only.** Acquisitions by a spouse, common-law partner, controlled corporation or other affiliated person are not modeled. The explanation output states that only the taxpayer's own accounts were checked. It warns; it never blocks or changes a result. | `S` for the definition, not modeled. ITA-251.1(1)(a): "an individual and a spouse or common-law partner of the individual". What the flag records (a free-text note per taxpayer, or a count of unchecked relationships) is a design choice for the owner. | Model a taxpayer-to-taxpayer link table (a later story). | L-07 AC11; L-07 out of scope |
+
+### E. Foreign exchange (USD to CAD)
+
+| Rule ID | Proposed default | Legal basis | Alternatives | Affects |
+| --- | --- | --- | --- | --- |
+| `FX-CAD-REQUIRED` | All pool values, proceeds, costs, commissions, ROC and gains are held in CAD. A CAD activity looks up no rate. | `S`. ITA-261(2): "In determining the Canadian tax results of a taxpayer for a particular taxation year, (a) subject to this section, other than this subsection, Canadian currency is to be used". | A rule set for a taxpayer with a functional currency election (ITA-261 other subsections; not modeled). | L-08 AC12; L-06, L-07 for USD securities |
+| `FX-SOURCE` | The rate is the Bank of Canada rate. Series: `FXUSDCAD`, Bank of Canada Valet API, daily rate in CAD per USD. | `P`: the Act decides the Bank of Canada as source; the series is a project choice. ITA-261(1) "relevant spot rate": "(a) if the particular currency or the other currency is Canadian currency, the rate quoted by the Bank of Canada on the particular day ... or, in applying paragraphs (2)(b) and (5)(c), another rate of exchange that is acceptable to the Minister". The Act does not name the series. The series and its description come from the observed Valet response in the L-08 story. | "Another rate of exchange that is acceptable to the Minister" (the Act allows it for conversions under ITA-261(2)(b)); secondary: MYCOSTBASE says CRA accepts another independent, market-recognized, verifiable source if used consistently (CRA folio not opened). A broker-supplied rate is not allowed in this rule set. | L-08 all ACs |
+| `FX-DAY` [OD] | Each amount is converted at the rate for its **tax date** (`DATE-BASIS`), the day the amount arose. | `P`. ITA-261(2)(b): "the particular amount is to be converted to an amount expressed in Canadian currency using the relevant spot rate for the day on which the particular amount arose." The text read does not say on which day a purchase or sale "arose" (trade or settlement). That part follows `DATE-BASIS`. | `TRADE_DATE` always (the L-08 story's assumption). | L-08 AC1 to AC9, AC11; L-06 and L-07 with USD |
+| `FX-FALLBACK` | If no rate was quoted for the day, use the rate of the **closest preceding day for which a rate is quoted**. A day is a "rate day" when the cache holds a rate for it; no separate holiday calendar. The selection output is the rate **and the date of the rate used**. | `S`. ITA-261(1) "relevant spot rate": "(or, if the Bank of Canada ordinarily quotes such a rate, but there is no such rate quoted for the particular day, the closest preceding day for which such a rate is quoted)". The story called the prior-business-day fallback an unsourced project rule; this text supports it. The text sets **no limit** on how far back. | Next following day (contradicts the Act); a maximum lookback (see `FX-COVERAGE`). | L-08 AC1 to AC9, AC13 |
+| `FX-COVERAGE` [OD] | The rate cache declares the contiguous date ranges it covers. A lookup is allowed only for a date inside a covered range, and the fallback search never leaves that range. A date before the start of a range, after its end, or in an uncovered gap is **rejected** with a reason naming `FXUSDCAD` and the date. No later rate is ever used. | `C`. The Act has no lookback limit; the guard exists because "closest preceding day for which such a rate is quoted" is only correct when the cache is complete. An incomplete cache would silently use a stale rate. | A fixed maximum age in days (for example 10); no guard (follow the Act literally and trust the cache). | L-08 AC11, AC13 |
+| `FX-AMOUNTS` | Each amount (cost, proceeds, commission, ROC) is converted **separately**. A USD commission uses the same rate as its trade because it arises on the same tax date. | `P`. ITA-261(2)(b) converts "a particular amount" at the rate for the day it arose; so separate amounts on one day get one rate. Secondary: MYCOSTBASE: "Purchase cost and sale proceeds should be converted separately using the relevant rate for each transaction." | Convert only the net amount. | L-08 (commission decision); L-06, L-07 with USD |
+| `FX-ROC-DAY` [OD] | A USD ROC is converted at the rate for its tax date, which is its record date (`ROC-DATE`). | `C`. ITA-261(2)(b) says "the day on which the particular amount arose", which for a distribution may be the day it became payable; the text read does not say. Secondary: ACB-ROC author: "I'm not sure whether it is better to use the exchange rate on the record date or the payment date, but I would suggest being consistent". | Payment-date rate. | L-08 (ROC decision; no AC); L-06 |
+| `FX-SCALE` [OD] | Rates are stored as integers at **10^-4** (`"1.4371"` becomes `14371`; `"1.4000"` becomes `14000`). A value with more than four decimals is **rejected**, not truncated. USD cents x rate gives CAD at 10^-4 cent **exactly**, with no rounding at conversion. | `C`. No law on precision. Chosen because all 32 observed Valet values have exactly four decimals. | 10^-6 or finer scale. | L-08 AC14, AC10 |
+| `FX-PRE2017` [OD] | Trades with a tax date before 2017-03-01 are **rejected** for USD conversion. | `C`. ITA-261(1) says "the rate quoted by the Bank of Canada on the particular day"; the pre-2017 noon and closing rates are different series. The 2017-03-01 start is unconfirmed against Bank of Canada pages (L-08 background). | Legacy noon-rate series. | L-08 (out of scope; generator dates) |
+
+### F. Rounding and precision
+
+| Rule ID | Proposed default | Legal basis | Alternatives | Affects |
+| --- | --- | --- | --- | --- |
+| `ROUND-SCALE` [OD] | Internal values are exact integers: shares at 10^-6 share; pool ACB at **10^-4 cent**. Divisions (ACB sold, partial superficial loss) use integer division on the 128-bit-safe product, **truncating** the amount that leaves the pool; the pool keeps the remainder, so no unit is created or lost. | `C`. No section read states a rounding or precision rule. 10^-4 cent matches `FX-SCALE`, so a USD amount converts exactly. Invariant 8 asks for a "finer unit". | Finer scale (10^-6 cent); a different remainder rule. The width of the intermediate product is a Dev concern, not a tax rule. | L-06 all; L-07 AC6; L-08 AC10 |
+| `ROUND-MODE` [OD] | At the reporting boundary, round to whole cents **half up** (away from zero on exact halves). | `C`. No section read states it. No source example needs it (every worked value is exact; the one rounded per-share figure, 13.6427 to 13.64, is the same under half-up, half-even and truncation). | Half-even; truncate. | L-06, L-07, L-08 (every reported amount) |
+| `ROUND-BOUNDARY` [OD] | Rounding happens **only** when a disposition line, a deemed-gain line or an annual total is produced for reporting. It applies once to each reported amount: proceeds, ACB sold, loss before the rule, denied (superficial) amount; then **allowed = rounded loss - rounded denied**, so the parts always add up. ACB per share is display only. Nothing is rounded inside a pool, an FX conversion or a replay. | `C`. No statutory rule. Secondary: the site author (ACB-HOWTO reply, 2026-04-30): amounts are shown "rounded to the nearest penny, but the underlying calculations are performed with a much higher degree of precision". | Round per trade; round the annual total only. | L-06, L-07, L-08 |
+
 ## Sources
 
+Primary law (text copies read 2026-11-19; the Justice Laws page for ITA-54 carries a currency date of 2026-11-16):
+
+- ITA-38 `https://laws-lois.justice.gc.ca/eng/acts/i-3.3/section-38.html`
+- ITA-39 `https://laws-lois.justice.gc.ca/eng/acts/i-3.3/section-39.html`
+- ITA-40 `https://laws-lois.justice.gc.ca/eng/acts/i-3.3/section-40.html`
+- ITA-47 `https://laws-lois.justice.gc.ca/eng/acts/i-3.3/section-47.html`
+- ITA-53 `https://laws-lois.justice.gc.ca/eng/acts/i-3.3/section-53.html`
+- ITA-54 `https://laws-lois.justice.gc.ca/eng/acts/i-3.3/section-54.html`
+- ITA-248 `https://laws-lois.justice.gc.ca/eng/acts/i-3.3/section-248.html`
+- ITA-251.1 `https://laws-lois.justice.gc.ca/eng/acts/i-3.3/section-251.1.html`
+- ITA-261 `https://laws-lois.justice.gc.ca/eng/acts/i-3.3/section-261.html`
+
+Secondary (not law; one tool's blog, a tax-information site, and two competitor explainers):
+
+- ACB-HOWTO `https://www.adjustedcostbase.ca/blog/how-to-calculate-adjusted-cost-base-acb-and-capital-gains/`
+- ACB-NEG `https://www.adjustedcostbase.ca/blog/?p=4`; ACB-REG `https://www.adjustedcostbase.ca/blog/?p=154`;
+  ACB-ROC `https://www.adjustedcostbase.ca/blog/?p=258`; ACB-INKIND `https://www.adjustedcostbase.ca/blog/?p=438`;
+  ACB-SLR `https://www.adjustedcostbase.ca/blog/?p=589`
+- TAXTIPS `https://www.taxtips.ca/personaltax/investing/taxtreatment/superficial-losses-and-other-disallowed-losses.htm`
+- ACTIVEACB `https://activeacb.ca/book-cost-vs-acb.html`
+- MYCOSTBASE `https://mycostbase.ca/blog/broker-book-value-vs-adjusted-cost-base-canada/`
+- Bank of Canada Valet, series `FXUSDCAD` (observed data, see L-08).
+
+**Not retrieved or not opened, and needed to raise confidence:** CRA T4037 (capital gains), the CRA foreign-currency
+folio, CRA Technical Interpretation 2004-0073011E5 (partial superficial loss), and Bank of Canada notices on the 2017
+single daily rate. Rules marked `C` rest on convention, with secondary sources where named.
+
 ## Not modeled
+
+- Affiliated persons other than the taxpayer's own registered accounts: spouse, common-law partner, controlled
+  corporation, other trusts (ITA-251.1; flag only, see `SL-AFFILIATED`).
+- Rights to acquire (options, warrants) and the other items in the ITA-54 definition (deemed dispositions, option
+  expiry, loss restriction events, ITA-40(3.4) and ITA-69(5) cases).
+- The ITA-53(1)(f)(ii) reduction tied to ITA-112 dividend deductions on shares.
+- Capital-gains inclusion fraction and tax payable. ITA-38 in the copy read gives the taxable capital gain as "½ of the
+  taxpayer's capital gain"; this model stops at the capital gain or loss in CAD.
+- Foreign-currency gain or loss on holding or converting USD cash (ITA-39(1.1) and 39(2), including the $200
+  threshold); functional-currency elections (ITA-261 other than (1) and (2)).
+- Stock splits, consolidations, reinvested distributions, mergers, spin-offs, and trust-unit income components
+  (the ITA-53(2)(h)(i.1) carve-outs).
+- Depreciable property, partnership interests and the other deemed-gain cases in ITA-40(3.1) onward.
+- Which securities are "identical" beyond equal security IDs (for example two funds on one index).
+- Several loss sales inside one window beyond the convention in `SL-MULTI`.
+- Pre-2017 Bank of Canada rate series (`FX-PRE2017`), currencies other than USD and CAD, and intraday or broker rates.
+- Late-published ROC and other late corrections (L-09), except for the date rule `ROC-DATE`.
+
+## Changes from story drafts
+
+Where the proposed default differs from what a story assumes, or where a story sentence needs rewording once the rule
+set is accepted. None of these edits has been made to a story; they wait for the owner's decision.
+
+1. **Trade date versus settlement date (`DATE-BASIS`).** L-08 and `docs/build-plan.md` assume the **trade date**; L-07
+   AC8 and L-06 do not say. The default is the **settlement date, falling back to the trade date when absent**. L-01
+   defines `effective_date` as the trade date and `settlement_date` as optional. Consequences: (a) the L-08 AC1 to AC9
+   tests must supply no `settlement_date` (or an equal one), or they will select different rate days; (b) invariant 6
+   in `CLAUDE.md` says "effective date, then sequence", which would have to read "tax date, then sequence". The BA does
+   not edit `CLAUDE.md`; this is for the owner.
+2. **FX fallback (`FX-FALLBACK`).** L-08 says the prior-business-day fallback is "a project rule, not sourced" and that
+   the CRA rule on the rate was not opened. ITA-261(1) and (2)(b) were opened since: they give the Bank of Canada rate,
+   the day the amount arose, and the closest preceding quoted day. The L-08 background and "Needs owner decision" text
+   should be updated. The "business day = a rate exists in the cache" definition is consistent with the Act's wording.
+3. **FX staleness (`FX-COVERAGE`).** L-08 lists "maximum lookback" as open. The Act has no limit. The proposal replaces
+   it with cache coverage ranges; AC11 still passes (2025-03-01 lies before the R1 range) but its reason text should
+   name coverage. AC13 is unaffected.
+4. **Registered repurchase and "affiliated persons out of scope" (`SL-REGISTERED`, `SL-AFFILIATED`).** L-07 treats
+   affiliated persons as out of scope while AC4 and AC5 depend on a TFSA or RRSP. The statutory route for the registered
+   case is affiliation with a trust (ITA-251.1(1)(g)). The story's out-of-scope line should say: affiliation through
+   the taxpayer's **own registered accounts** is modeled; every other affiliated person is flagged only. L-07 AC4 also
+   flags "in-kind transfer modeled as sale plus purchase" as a judgment call: ITA-40(2)(g)(iv) makes a loss on a
+   disposition **to** a TFSA or RRSP nil by itself, which supports the AC4 outcome (`XFER-TO-REGISTERED`). Its
+   expected values are unchanged.
+5. **Add-back timing (`SL-ADDBACK-TIMING`).** L-07 AC1 reads "denied amount ... added to the pool's ACB" and the design
+   note leans to the blog's sale-date display. The default attaches it on the repurchase date (sale date in the
+   purchase-before case). All end-state numbers in AC1, AC3, AC6a and AC10 are unchanged; only an intermediate pool
+   state between the sale and the repurchase differs (0 shares, 0 ACB).
+6. **Partial repurchase (`SL-PARTIAL`).** L-07 AC6 is "blocked on the owner decision". The default adopts the formula
+   with ITA-40(2)(g) ("to the extent that it is") as the statutory hook. The formula itself is second-hand, so AC6a and
+   AC6b keep their "owner must accept" flag.
+7. **"Held at the end" (`SL-HELD-END`).** L-07 leaves pre-existing registered holdings open. The default excludes
+   registered shares bought before the window and includes non-registered pool shares bought before it. No L-07 AC
+   tests registered pre-window holdings, so no expected value changes.
+8. **Mixed repurchase and multiple windows (`SL-MIXED`, `SL-MULTI`).** Both are open in L-07 and have no AC. The defaults
+   are conventions with no source; a story or an explicit "unsupported" marker is needed before they are built.
+9. **ROC date and shape (`ROC-DATE`, `ROC-INPUT`).** L-06 AC4 and AC5 use one date per ROC; under the default that date
+   is the **record date**, and the L-01 `RETURN_OF_CAPITAL` row must carry the record date as its tax date and the total
+   amount in cents. L-06 notes the Act's "has become payable" wording differs from the blog's "record date"; the owner
+   should confirm.
+10. **Deemed gain from negative ACB (`ROC-NEG-GAIN`, `ROC-NEG-RESET`, `ROC-NEG-DATE`).** L-06 AC5 assumes event by
+    event, stamped on the ROC date, ACB reset to 0. ITA-40(3) supports the gain and the "at that time" testing. The
+    reset to zero is **not** in the statute text read and the L-06 source quote of T4037 is second-hand. AC5's
+    expected values stand, resting on ACB-NEG alone for the reset.
+11. **Rounding (`ROUND-SCALE`, `ROUND-MODE`, `ROUND-BOUNDARY`).** L-06, L-07 and L-08 each defer rounding to the owner.
+    The proposal is one shared rule: 10^-4 cent internally, half-up to the cent only when reporting. L-08 AC10
+    ("Converted CAD amount") stays blocked on a sourced worked example; with `FX-SCALE` the conversion itself is exact
+    and only the reporting round remains. L-06 compares pool ACB "in cents"; at the proposed scale a comparison in cents
+    is a rounded view, and the tests must say which they assert.
+12. **Source standard.** Each of L-06, L-07 and L-08 asks whether blog-grade sources are enough. This file labels each
+    rule `S`, `P` or `C`, so the owner can accept the statutory rules as they stand and decide the `[OD]` rules one by
+    one. It does not answer the question of whether to open T4037 first.
