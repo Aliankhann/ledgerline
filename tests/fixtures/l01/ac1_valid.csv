@@ -1,0 +1,4 @@
+idempotency_key,taxpayer_id,account_id,account_type,activity_type,effective_date,settlement_date,security_id,quantity,currency,amount,commission,counter_currency,counter_amount,description
+TP-0001-2025-0001,TP-0001,TP-0001-NR1,NON_REGISTERED,DEPOSIT,2025-01-06,2025-01-06,,,CAD,10000.00,0.00,,,Initial deposit
+TP-0001-2025-0002,TP-0001,TP-0001-NR1,NON_REGISTERED,BUY,2025-01-07,2025-01-08,SYN-AAA,100,CAD,3012.50,4.95,,,
+TP-0001-2025-0003,TP-0001,TP-0001-NR1,NON_REGISTERED,FX_CONVERSION,2025-01-09,2025-01-09,,,CAD,1380.00,0.00,USD,1000.00,

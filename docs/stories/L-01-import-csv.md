@@ -1,6 +1,6 @@
 # L-01 Import an activity CSV into canonical activities
 
-**Status:** Draft  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** Tests written  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 2 · **Branch:** `L-01-import-csv` · **Round:** 0 / 3
 
 ## Story
@@ -168,9 +168,23 @@ proposals the Dev may refine; QE tests the names the owner approves.
 
 ## Test map (QE fills)
 
+All tests are in `tests/spec/kotlin/dev/ledgerline/spec/L01ImportCsvSpec.kt`; fixtures in `tests/fixtures/l01/`.
+The spec's KDoc holds the API contract the tests compile against (provisional; share scale 10^-6 and "parser returns
+good rows plus rejections" are OWNER-INPUT placeholders). The Gradle command `:ingest:run --args="generate ..."` is
+NOT tested; AC7-AC10 test the function `SyntheticGenerator.generate(seed, taxpayers, year)`.
+
 | AC | Test |
 | --- | --- |
-| AC1 | `tests/spec/.../L01Spec.kt` › "L-01 AC1: …" |
+| AC1 | "L-01 AC1: valid canonical file parses into canonical activities" (`ac1_valid.csv`) |
+| AC2 | "L-01 AC2: every bad row is rejected with line number and reason code; good rows still returned" (`ac2_bad_rows.csv`) |
+| AC3 | "L-01 AC3: wrong header rejects the whole file, naming the missing column" |
+| AC4 | "L-01 AC4: LF, CRLF, BOM and quoted-comma variants parse identically" |
+| AC5 | "L-01 AC5: header-only file is empty success; zero-byte file is HEADER_INVALID" |
+| AC6 | "L-01 AC6: serialize(parse(file)) is byte-identical for the AC1 file and generated files" |
+| AC7 | "L-01 AC7: same seed gives byte-identical file; different seed differs" |
+| AC8 | "L-01 AC8: generator output does not depend on default locale or time zone" (sets Locale/TimeZone defaults in-test, restores after; does not set the JVM `TZ` env var) |
+| AC9 | "L-01 AC9: generator output is valid, covers all activity types, unique keys, no oversell" |
+| AC10 | "L-01 AC10: generator uses only synthetic identifiers" |
 
 ## Change notes (Dev fills)
 
