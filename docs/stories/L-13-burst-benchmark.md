@@ -11,9 +11,10 @@ a results table with the hardware, versions and seed, so that I can rerun it and
 ## Why it matters
 
 Correct positions under bursty load are the hard part of a retail brokerage, and published numbers are only credible
-if they can be reproduced. See [`docs/problem/evidence.md`](../problem/evidence.md) (no sourced evidence yet; see A-08): "Brokerage
-engineering roles and posts emphasise throughput and correctness under load; reviewers expect reproducible
-benchmarks".
+if they can be reproduced. See [`docs/problem/evidence.md`](../problem/evidence.md): E-19 ("tens of thousands of
+trades, transfers, and deposits land in the same minute" at market open, per Wealthsimple) and E-20 (weak: its ledger
+team built a load-testing framework for a client-balance service). That reviewers expect reproducible benchmarks is
+not sourced (A-08, A-09).
 
 ## Notes for QE and Dev
 

@@ -11,8 +11,9 @@ without changing the core, so that I can see the core is domain-neutral and reus
 ## Why it matters
 
 The pitch is the engineering, and a reusable core is what makes the pattern relevant beyond Canadian ACB. See
-[`docs/problem/evidence.md`](../problem/evidence.md) (no sourced evidence yet; see A-09): "The same ledger-and-stream pattern underlies
-payments and brokerage systems".
+[`docs/problem/evidence.md`](../problem/evidence.md): E-20 (weak; a Wealthsimple engineer says fintechs "are largely
+solving the same set of hard problems: ledgers, payments"). That Stripe- or Robinhood-style systems share this pattern
+is not sourced (A-09).
 
 ## Notes for QE and Dev
 

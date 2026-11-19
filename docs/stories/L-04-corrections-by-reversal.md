@@ -11,8 +11,8 @@ history keeps both the mistake and the fix and my balances end up exactly as if 
 ## Why it matters
 
 Late and corrected broker data is normal, and the audit trail must survive corrections. See
-[`docs/problem/evidence.md`](../problem/evidence.md) (no sourced evidence yet; see A-09): "Activity data gets corrected after the fact;
-an append-only ledger needs corrections that keep the history".
+[`docs/problem/evidence.md`](../problem/evidence.md): E-18 (Wealthsimple's ledger: "corrections are compensating
+entries, never edits") and E-32 (annual tax adjustments and amended slips arrive after the fact).
 
 ## Notes for QE and Dev
 

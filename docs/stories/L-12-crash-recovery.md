@@ -12,8 +12,9 @@ equal to a full replay.
 ## Why it matters
 
 Crash-safe, exactly-once effects are what separates a ledger demo from a toy, and they are central to the demo's
-"kill it, restart, zero drift" moment. See [`docs/problem/evidence.md`](../problem/evidence.md) (no sourced evidence yet; see A-09):
-"Streaming financial systems must survive consumer crashes and redelivery without double-applying events".
+"kill it, restart, zero drift" moment. See [`docs/problem/evidence.md`](../problem/evidence.md): E-17 (Wealthsimple
+makes a repeated event "a no-op") and E-19 (streaming read path that recomputes to "the same number every time").
+Crash and redelivery handling itself is not sourced (assumption A-12).
 
 ## Notes for QE and Dev
 

@@ -12,8 +12,9 @@ something I am told.
 ## Why it matters
 
 The differentiator is a cost-basis number that is replay-verified, not just computed. See
-[`docs/problem/evidence.md`](../problem/evidence.md) (E-11 for the "verify it yourself" part; reviewer expectations: see A-09): "Existing ACB calculators give a number with
-no way to verify it; reviewers of ledger systems look for reconciliation".
+[`docs/problem/evidence.md`](../problem/evidence.md): E-11 (existing tools tell users to "double check results") and
+E-19 (Wealthsimple's read path "continuously reconciles against the ledger" and aims to "land on the same number
+every time"; it does not say replay or hashes). What reviewers look for is not sourced (A-09).
 
 ## Notes for QE and Dev
 

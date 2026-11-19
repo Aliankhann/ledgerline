@@ -10,9 +10,10 @@ edited or deleted, so that the ledger is a trustworthy source of truth that ever
 
 ## Why it matters
 
-Ledgerline mirrors the published Book of Record pattern: one funnel into an append-only double-entry ledger. See
-[`docs/problem/evidence.md`](../problem/evidence.md) (no sourced evidence yet; see A-07): "Brokerage Book of Record designs use an
-append-only double-entry ledger as the source of truth".
+Ledgerline is inspired by Wealthsimple's published Book of Record: one validated funnel into an append-only
+double-entry ledger. See [`docs/problem/evidence.md`](../problem/evidence.md): E-16 to E-18 (the ledger records "in
+double-entry form, append-only, with reversal symmetry"), and its "differences" list (Wealthsimple validates before
+the ledger; Ledgerline's `ledger/` also owns idempotency).
 
 ## Notes for QE and Dev
 
