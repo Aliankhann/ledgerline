@@ -1,6 +1,6 @@
 # B-002 Description whitespace is silently trimmed, even inside quotes
 
-**Story:** L-01 (AC6 round trip, `description` is free text) · **Severity:** minor · **Status:** Open · **Round:** 1
+**Story:** L-01 (AC6 round trip, `description` is free text) · **Severity:** minor · **Status:** Fixed · **Round:** 1
 
 ## Reproduction
 
@@ -25,3 +25,7 @@ Failing test: "L-01 edge: description with leading/trailing spaces is not altere
 ## Notes
 
 Trimming is reasonable for keys, dates and numbers; only `description` (and arguably quoted fields) should be kept verbatim.
+
+## Fix note
+
+Round 2: `description` is no longer trimmed; kept verbatim after unquoting (empty becomes null).

@@ -1,6 +1,6 @@
 # B-001 UTF-8 BOM is not stripped; any BOM-prefixed file is rejected HEADER_INVALID
 
-**Story:** L-01 (AC4) · **Severity:** major · **Status:** Open · **Round:** 1
+**Story:** L-01 (AC4) · **Severity:** major · **Status:** Fixed · **Round:** 1
 
 ## Reproduction
 
@@ -31,3 +31,7 @@ Failing tests: "L-01 AC4: LF, CRLF, BOM and quoted-comma variants parse identica
 
 ktlintFormat on the tests also strips a literal U+FEFF from source; tests build it with `0xFEFF.toChar()` in
 tests/support/kotlin/dev/ledgerline/testsupport/CsvRows.kt (the AC4 spec uses the `﻿` escape).
+
+## Fix note
+
+Round 2: BOM now stripped via `0xFEFF.toChar()` constant in CanonicalCsv.kt (no literal character).

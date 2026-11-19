@@ -48,10 +48,12 @@ object CanonicalCsv {
         false,
     )
 
+    private val BOM = 0xFEFF.toChar().toString()
+
     private class Record(val line: Int, val fields: List<String>)
 
     fun parse(text: String): ParseResult {
-        val records = tokenize(text.removePrefix(""))
+        val records = tokenize(text.removePrefix(BOM))
         val header = records.firstOrNull()
         if (header == null) {
             return fileError("File is empty: header row required", null)
@@ -128,7 +130,7 @@ object CanonicalCsv {
         }
         return Activity(
             key, taxpayer, account, accountType, type, effective, settlement, security, quantity, currency, amount,
-            commission, counterCurrency, counterAmount, opt("description"),
+            commission, counterCurrency, counterAmount, f.getValue("description").ifEmpty { null },
         )
     }
 
