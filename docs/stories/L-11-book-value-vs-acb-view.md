@@ -12,8 +12,10 @@ numbers differ and check them myself.
 ## Why it matters
 
 Broker book value is not guaranteed to equal ACB, and investors are told to track ACB themselves. See
-[`docs/problem/evidence.md`](../problem/evidence.md) (no sourced evidence yet; see A-01): "Brokers' book value can differ from ACB
-(return of capital, superficial losses, pooling across accounts, FX), and the broker says so".
+[`docs/problem/evidence.md`](../problem/evidence.md): E-21 and E-22 (book value is not a tax figure; Wealthsimple
+says book cost "is never guaranteed to be accurate", second-hand), and the causes E-23 (pooling), E-24 (transfers;
+do not say "reset to market value"), E-25 and E-32 (return of capital), E-28 (superficial loss), E-29 (FX). All
+from vendor sources. That investors want a reason per difference is not sourced (A-11; E-31 is vendor advice).
 
 ## Notes for QE and Dev
 

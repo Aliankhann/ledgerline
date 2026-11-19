@@ -8,8 +8,9 @@ Rules for this file:
   launch**. Set every threshold and window **before** posting, write them here, and do not change them afterwards.
   Changing a threshold after seeing the results defeats the test.
 - Record observed results below each hypothesis with the date and where you looked. Never round up or estimate.
-- Evidence links point to `docs/problem/evidence.md`. Most of the audience claims there are still assumptions (A-IDs),
-  so these hypotheses test the assumptions as much as the launch.
+- Evidence links point to `docs/problem/evidence.md`. The book-value claims now have sources (E-IDs) but come from
+  commercial vendors; the audience claims (A-08 to A-11) are still assumptions, so these hypotheses test the
+  assumptions as much as the launch.
 
 ## Problem hypotheses (tested in owner conversations, step 0.3)
 
@@ -17,7 +18,8 @@ Rules for this file:
 
 - **Statement:** Canadian self-directed investors with holdings at more than one broker, or with RoC or USD holdings,
   have seen their broker's book value differ from what they believe their ACB is.
-- **Tests:** A-01 to A-05, E-14.
+- **Tests:** E-21 to E-24 and E-28 (book value differs from ACB; vendor sources, so it tests whether ordinary
+  investors see it too), E-14.
 - **Measure:** In the step 0.3 conversations, ask an open question ("How do you work out your cost base at tax time?")
   before mentioning book value. Count how many people bring up a mismatch unprompted, and write down the cause they give.
 - **Falsified if:** none of the investors spoken to bring up a mismatch, or fewer than N do (N = owner sets before
@@ -27,7 +29,7 @@ Rules for this file:
 
 - **Statement:** Investors who use an ACB tool want to know *why* their number differs from their broker's, not just
   a second number.
-- **Tests:** A-11, E-11.
+- **Tests:** A-11 (still an assumption), E-11, E-31 (vendors advise documenting reasons; not user demand).
 - **Measure:** In the step 0.3 conversations, show a mock row of "book value, ACB, reason". Record whether they ask
   for the reason or ignore it.
 - **Falsified if:** most investors spoken to say the reason is not useful, or they would not trust it over their
@@ -39,7 +41,7 @@ Rules for this file:
 
 - **Statement:** Engineers who work on ledgers, payments or brokerages will reply to the launch posts with technical
   questions or critique (for example "why not Flink?" or "how do you handle partial fills?"), not just reactions.
-- **Tests:** A-07, A-08, A-09.
+- **Tests:** A-08, A-09 (unsourced), with E-16 to E-20 as context (Wealthsimple publishes on ledgers; weak).
 - **Measure:** Count replies on X, LinkedIn and GitHub issues within a window W (W = owner sets) from people whose
   public profile shows they work as an engineer. Count only replies that mention a specific design choice. Keep a list
   of links, not just a count.
@@ -79,7 +81,8 @@ Rules for this file:
 ### H-07: The verification story is the hook, not the calculator (hypothesis)
 
 - **Statement:** Engineers respond more to the proof (replay hashes, zero drift after a crash, duplicate rejection)
-  than to the ACB feature itself. This matches the build plan's claim that ACB calculators already exist (E-12).
+  than to the ACB feature itself. This matches the build plan's claim that ACB calculators already exist (E-12,
+  E-34, E-35).
 - **Measure:** Tag each substantive reply from H-03 as "about verification or engineering" or "about tax or ACB".
   Report both counts.
 - **Falsified if:** replies about tax or ACB outnumber replies about verification. If so, the investor angle carries

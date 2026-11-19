@@ -11,8 +11,9 @@ between the database write and the publish, so that the calculation side never m
 ## Why it matters
 
 Writing to a database and then to Kafka separately loses or duplicates events on a crash; the transactional outbox is
-the standard fix. See [`docs/problem/evidence.md`](../problem/evidence.md) (no sourced evidence yet; see A-09): "Dual writes to a
-database and a message broker are unsafe under crashes; the outbox pattern is the published remedy".
+the standard fix. See [`docs/problem/evidence.md`](../problem/evidence.md): no sourced evidence yet (assumption
+A-12). E-19 shows only that Wealthsimple separates a write path from a streaming read path; it does not mention an
+outbox or Kafka.
 
 ## Notes for QE and Dev
 

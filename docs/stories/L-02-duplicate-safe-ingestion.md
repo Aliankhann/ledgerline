@@ -12,9 +12,10 @@ cost basis.
 ## Why it matters
 
 Duplicate-safe submission is the core trust property of payment and brokerage ledgers, and duplicate uploads are a
-common way to corrupt a spreadsheet ACB. See [`docs/problem/evidence.md`](../problem/evidence.md) (no sourced evidence yet; see A-09):
-"Idempotency keys with payload checks are standard practice for financial APIs; duplicate imports corrupt
-cost-basis records".
+common way to corrupt a spreadsheet ACB. See [`docs/problem/evidence.md`](../problem/evidence.md): E-17
+(Wealthsimple's Book of Record: "The same event submitted twice is a no-op; the same identifier with a different
+payload is a validation error") and E-30 (overlapping Wealthsimple exports create duplicates that an ACB tool must
+flag). Not sourced: that duplicate imports corrupt users' records in practice (no user report found).
 
 ## Notes for QE and Dev
 
