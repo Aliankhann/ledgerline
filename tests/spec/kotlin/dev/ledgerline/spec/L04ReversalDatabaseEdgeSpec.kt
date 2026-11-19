@@ -4,6 +4,7 @@ import dev.ledgerline.core.Activity
 import dev.ledgerline.ledger.LedgerRepository
 import dev.ledgerline.ledger.PostedEntry
 import dev.ledgerline.testsupport.Balances
+import dev.ledgerline.testsupport.CanonicalReplay
 import dev.ledgerline.testsupport.Integration
 import dev.ledgerline.testsupport.L03Activities
 import dev.ledgerline.testsupport.LedgerDb
@@ -216,18 +217,21 @@ class L04ReversalDatabaseEdgeSpec : FunSpec({
 
     test("L-04 edge (invariant 7, replay): in canonical order a reversal never comes before its original")
         .config(tags = setOf(Integration)) {
-            val (_, repo, pair) = withReversal()
-            val (original, reversal) = pair
-            // The story's own keys: original TP-0001-2025-0002, reversal REV-TP-0001-2025-0002. A replay that walks
-            // (effective date, source sequence, key) and does not pair entries up must never see negative holdings.
-            var held = 0L
-            val lowest =
-                repo.entries().sortedWith(compareBy({ it.effectiveDate }, { it.sourceSeq }, { it.idempotencyKey }))
-                    .filter { it.sequence == original.sequence || it.sequence == reversal.sequence }
-                    .map { e ->
-                        held += LineMath.delta(e.lines, nr1, aaa)
-                        held
-                    }.min()
-            withClue("holdings of $aaa during canonical replay of the AC1 buy and its reversal") { lowest shouldBe 0L }
+            // The story's own keys: original TP-0001-2025-0002, reversal REV-TP-0001-2025-0002 (REV < TP by key).
+            // Uses the public canonical order (C4 as amended, ADR 0005), not a raw (date, source_seq, key) sort.
+            val db = pg.freshDatabase()
+            val repo = LedgerRepository(db.app)
+            repo.post(L03Activities.ac4[0])
+            val original = repo.post(buy)
+            val reversal = repo.reverse(original.sequence, "REV-${buy.idempotencyKey}", "x")
+            val ordered = repo.entriesInCanonicalOrder()
+            withClue(
+                "reversals before their original",
+            ) { CanonicalReplay.reversalsBeforeOriginal(ordered) shouldBe emptyList() }
+            ordered.indexOfFirst { it.sequence == reversal.sequence } shouldBe
+                ordered.indexOfFirst { it.sequence == original.sequence } + 1
+            withClue("lowest holding of $aaa during canonical replay") {
+                CanonicalReplay.lowestHolding(ordered) shouldBe 0L
+            }
         }
 })

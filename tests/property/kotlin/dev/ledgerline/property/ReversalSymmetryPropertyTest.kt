@@ -5,6 +5,7 @@ import dev.ledgerline.ledger.Posting
 import dev.ledgerline.ledger.ReversalRefusedException
 import dev.ledgerline.testsupport.ActivityStreams
 import dev.ledgerline.testsupport.Balances
+import dev.ledgerline.testsupport.CanonicalReplay
 import dev.ledgerline.testsupport.Integration
 import dev.ledgerline.testsupport.LineMath
 import dev.ledgerline.testsupport.PostgresLedger
@@ -106,6 +107,19 @@ class ReversalSymmetryPropertyTest : FunSpec({
             Balances.ofEntries(repo.entries()) shouldBe expectedAll
             repo.entries().forEach { LineMath.imbalances(it.lines).shouldBeEmpty() }
             (reversedTotal > 0) shouldBe true
+            // B-009 / invariants 5 and 7: the public canonical order puts every reversal after its original, and
+            // replaying it (reversals included) never takes any holding below zero.
+            val ordered = repo.entriesInCanonicalOrder()
+            ordered.size shouldBe repo.entries().size
+            CanonicalReplay.reversalsBeforeOriginal(ordered) shouldBe emptyList()
+            // The generator may itself produce a sell above holdings (posting does not check it), so the floor is
+            // the lowest holding of the originals alone: reversals, which the oracle allows only when no holding
+            // goes negative, must never push it lower.
+            val floor = CanonicalReplay.lowestHolding(ordered.filter { it.reversesSequence == null })
+            println(
+                "L-04 B-009 property: replay floor $floor, with reversals ${CanonicalReplay.lowestHolding(ordered)}",
+            )
+            CanonicalReplay.lowestHolding(ordered) shouldBe floor
         }
 })
 
