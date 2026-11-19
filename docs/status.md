@@ -12,9 +12,9 @@ Step 0.3 is the owner's. QE phase A for L-01 starts once the owner approves L-01
 | ID | Title | Status | Round | Branch | Notes |
 | --- | --- | --- | --- | --- | --- |
 | L-01 | Import an activity CSV | QE passed, awaiting owner | 2 | main | 36 tests, 240 generated cases; 2 bugs fixed (B-001, B-002); share scale is a placeholder (C3) |
-| L-02 | Duplicate-safe ingestion | Draft | – | – | payload-hash fields, duplicate response code |
+| L-02 | Duplicate-safe ingestion | Dev round 2 done; integration NOT RUN | 2 | local `l-02` | B-012..B-014 fixed pending integration; 130 non-Docker tests pass; Docker unavailable in sandbox |
 | L-03 | Balanced, immutable ledger | QE passed, awaiting owner | 3 | main | 83 tests (29 integration); 5 bugs, 4 fixed, B-006 open pending C15; app runs as least-privilege role |
-| L-04 | Corrections by reversal | In QE | 1 | l-04 | provisional C16/C17/C18; V4 `ledger.reversal`; B-008 minor, B-009 major, B-010 minor open; correct() vs NEGATIVE_SHARES is an owner decision |
+| L-04 | Corrections by reversal | Escalated after round 3 | 3 | local `l-04` | B-008..B-010 fixed; B-011 needs owner decision C19 |
 | L-05 | Reliable event publication | Draft | – | – | outbox "sent" marker vs immutability |
 | L-06 | Pooled ACB: buy, sell, ROC, fees | Draft (tax) | – | – | sourced (adjustedcostbase.ca); rounding, ROC timing, negative-ACB gain timing |
 | L-07 | Superficial-loss detection | Draft (tax) | – | – | sourced except AC2; adopt partial-repurchase formula? |
@@ -59,9 +59,16 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
 
 ## Open questions
 
-- **B-011 (QE, L-04 round 3).** The amended canonical order passes B-009's literal checks, but replay still goes
-  negative when a sell and an earlier buy are both reversed (order: buy, REV-buy, sell, REV-sell). Owner/Dev: skip
-  reversed pairs in replay (ADR) or order a reversal by its own entry sequence. See `docs/bugs/B-011-*.md`.
+- **Blocked: no Docker in this sandbox** (the daemon hit the 2-hour background limit and can't be restarted).
+  L-02 and L-04 integration suites can't run locally. Options: owner allows pushing `l-02`/`l-04` as branches so
+  GitHub CI runs them, or a new session restarts Docker. Neither branch exists outside this container yet.
+
+- **ESCALATED: L-04 hit round 3 (B-011).** Buy → sell → reverse sell → reverse buy: canonical order is
+  buy, REV-buy, sell, REV-sell, so replay goes negative. B-009 (reversal before its original) is fixed.
+  *Recommendation:* replay skips each reversed pair entirely (they net to zero by invariant 4); the ledger still keeps
+  both rows for audit. *Alternative:* order a reversal by its own sequence, which breaks C17. Owner decides
+  (owner-inputs C19). L-04's code is on a **local** branch `l-04` (not pushed, gates not green).
+
 - **Sequence vs invariant 6 (from BA, L-03).** If "sequence" is assigned on arrival, two same-date activities order
   differently by arrival and break order independence. Proposed tie-breaker: a field from the activity itself
   (source row order, then idempotency key). Needs an ADR before L-03.
@@ -79,8 +86,6 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
   dev left it. L-03 integration tests pass with it in place.
 
 ## Log
-
-- 2026-11-19 · qe · L-04 phase B round 1: import fixes done; 3 failing attack tests = B-008, B-009 (major), B-010. No sign-off.
 
 - 2026-11-19 · dev · L-03 round 2: B-003, B-004, B-005, B-007 fixed; B-006 on placeholder C15 (open). Two tests
   conflict with the requested design (see Open questions). In QE.
