@@ -1,6 +1,6 @@
 # L-03 Balanced, immutable ledger
 
-**Status:** Draft  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** Tests written  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 3 · **Branch:** `L-03-balanced-immutable-ledger` · **Round:** 0 / 3
 
 ## Story
@@ -112,9 +112,36 @@ the ledger; Ledgerline's `ledger/` also owns idempotency).
 
 ## Test map (QE fills)
 
+Written provisionally while the story was Draft, on the owner's instruction. Placeholders (docs/owner-inputs.md),
+named in each test file's KDoc: C3 share scale 10^-6; C4 order (effective_date, source_seq, idempotency_key) with
+`sourceSeq` a field on the activity; immutability by BOTH revoked grants on role `ledgerline_app` AND an append-only
+trigger; share holdings are ledger lines in unit `SEC:<securityId>`; DomainPlugin stays in this story.
+The API contract the tests compile against is the KDoc at the top of `L03LedgerSpec.kt`.
+
+Files: spec `tests/spec/kotlin/dev/ledgerline/spec/L03LedgerSpec.kt` (S); property
+`tests/property/kotlin/dev/ledgerline/property/BalanceInvariantPropertyTest.kt` (B) and
+`ImmutabilityInvariantPropertyTest.kt` (I); support `tests/support/kotlin/dev/ledgerline/testsupport/`
+(`L03Activities`, `Activities`, `ActivityStreams` generators, `LineMath` oracle, `LedgerDb` Testcontainers helper,
+`ActivityCountPlugin`). [DB] = tagged `Integration`, Testcontainers `postgres:16.4-alpine`, needs `-PincludeIntegration`.
+
 | AC | Test |
 | --- | --- |
-| AC1 | `tests/spec/.../L03Spec.kt` › "L-03 AC1: …" |
+| AC1 | S › "L-03 AC1: CAD buy posts lines balanced in CAD and in SEC:SYN-AAA"; S › "L-03 AC1: CAD buy decreases TP-0001-NR1 CAD by 301745 and increases its SYN-AAA holding by 100000000 units"; S › "L-03 AC1: posting the CAD buy stores exactly one balanced entry for its key" [DB] |
+| AC2 | S › "L-03 AC2: USD buy balances in USD and in SEC:SYN-USX and has no CAD line" |
+| AC3 | S › "L-03 AC3: FX conversion balances in CAD and USD separately; account CAD -138000, USD +100000" |
+| AC4 | S › "L-03 AC4: all nine activity types post lines balanced per unit"; S › "L-03 AC4: share units move only for BUY, SELL and TRANSFER_IN, by the activity's quantity"; S › "L-03 AC4: posting all nine activities stores nine entries, each balanced per unit" [DB] |
+| AC5 | S › "L-03 AC5: unbalanced lines are refused with UNBALANCED, unit CAD, difference 1, and nothing is written" [DB]; B › "Invariant 1 (L-03 AC5 generalised): an entry unbalanced in one unit is refused, naming it (200 cases)" [DB] |
+| AC6 | S › "L-03 AC6: as ledgerline_app, UPDATE, DELETE and TRUNCATE of ledger rows all fail; table hash unchanged" [DB] (expects SQLSTATE 42501 on every ledger table); S › "L-03 AC6: the append-only trigger makes UPDATE and DELETE fail even for the table owner; table hash unchanged" [DB] |
+| AC7 | S › "L-03 AC7: ledger schema has no real, double or numeric column; amount and quantity columns are bigint" [DB] (also bans `money`) |
+| AC8 | B › "Invariant 1 (L-03 AC8): every generated entry balances per currency and per security unit (1000 cases)" (prints the case count); B › "Invariant 1 (L-03 AC8): every entry stored in Postgres balances per unit, checked in SQL (100 streams)" [DB] |
+| AC9 | I › "Invariant 3 (L-03 AC9): after every posting, every earlier row is present and byte-identical (200 cases)" [DB] |
+| AC10 | S › "L-03 AC10: validate rejects an activity with accountId \"\" and gives a reason"; "L-03 AC10: applying AC4's nine activities in order counts 9 for TP-0001-NR1"; "L-03 AC10: applying the nine activities to two fresh states yields equal states"; "L-03 AC10: explain lists the nine keys in apply order" |
+| AC11 | S › "L-03 AC11: AC1, then AC3, then AC2 get three distinct, strictly increasing sequences in commit order" [DB] |
+
+Not tested: that `apply` "does no I/O" (only determinism is observable); TRUNCATE by the table owner (the trigger
+placeholder covers UPDATE and DELETE only). AC4 keys other than AC1/AC3 are QE-chosen (`TP-0001-2025-0001`,
+`-0004` to `-0009`); the story gives none. AC6 orders rows by full row text rather than primary key before hashing,
+which gives the same equality check.
 
 ## Change notes (Dev fills)
 

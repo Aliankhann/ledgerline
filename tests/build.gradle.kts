@@ -46,3 +46,11 @@ fun registerSuite(
 registerSuite("specTest", "dev.ledgerline.spec", "Story acceptance tests")
 registerSuite("propertyTest", "dev.ledgerline.property", "Invariant property tests")
 registerSuite("chaosTest", "dev.ledgerline.chaos", "Chaos scenarios (run with -PincludeIntegration)")
+
+// Testcontainers 1.20.4 asks Docker for API 1.32 by default; Docker Engine 29 refuses anything below 1.40
+// ("client version 1.32 is too old"). Pin a version both sides accept. Remove once the catalog moves to a
+// Testcontainers release that negotiates the API version.
+tasks.withType<Test>().configureEach {
+    systemProperty("api.version", "1.44")
+    environment("DOCKER_API_VERSION", "1.44")
+}
