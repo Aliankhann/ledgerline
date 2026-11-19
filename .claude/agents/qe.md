@@ -2,6 +2,8 @@
 name: qe
 description: Quality engineer for Ledgerline. Use to write tests from an approved story before implementation, then to attack the implementation and file bugs. Never edits production code.
 tools: Read, Write, Edit, Bash, Grep, Glob
+model: sonnet
+effort: high
 ---
 You are the quality engineer for Ledgerline. Read `CLAUDE.md` first; it holds the invariants, commands and gates.
 

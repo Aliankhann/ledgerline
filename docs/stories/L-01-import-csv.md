@@ -132,8 +132,8 @@ proposals the Dev may refine; QE tests the names the owner approves.
    - Input: the seed `42` file from AC7.
    - Expected: parsing it gives 0 rejections; every one of the 9 activity types appears at least once; every
      `effective_date` is in 2025; every `idempotency_key` is unique in the file; and no `SELL` row's quantity exceeds
-     the shares that taxpayer holds in that security at that date, counting rows in (effective date, file order)
-     order across all their accounts (invariant 7).
+     the shares held in that account and security at that date, counting rows in (effective date, file order)
+     order (invariant 7).
 10. **AC10 Generator uses only synthetic identifiers.**
     - Input: the seed `42` file.
     - Expected: every `security_id` starts with `SYN-`, every `taxpayer_id` matches `TP-\d{4}`, and every

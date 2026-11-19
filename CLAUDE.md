@@ -17,6 +17,7 @@ agent file disagree, this file wins; when either disagrees with the owner, the o
 - One story at a time. A story is not done until QE signs off **and** every gate below passes **and** the owner approves.
 - At most three QE↔Dev rounds per story; after round three, summarize both positions in `docs/status.md` and stop.
 - Report the exact commands you ran and their real output. Never claim a pass you did not observe. CI is the authority.
+- Model and effort per role and per story are set in `docs/agent-routing.md`.
 
 ## Stack
 
