@@ -1,0 +1,99 @@
+# Ledgerline local stack.
+#   docker compose up -d --wait          core stack: postgres, redpanda, app
+#   docker compose --profile tools up    adds Redpanda Console on :8081
+#   docker compose --profile chaos up    adds Toxiproxy for fault injection (tests/chaos)
+#
+# Versions are pinned on purpose: replay hashes and benchmark numbers must be reproducible.
+
+name: ledgerline
+
+services:
+  postgres:
+    image: postgres:16.4-alpine
+    environment:
+      POSTGRES_DB: ledgerline
+      POSTGRES_USER: ledgerline
+      POSTGRES_PASSWORD: ledgerline
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ledgerline -d ledgerline"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redpanda:
+    image: redpandadata/redpanda:v24.2.7
+    command:
+      - redpanda
+      - start
+      - --mode=dev-container
+      - --smp=1
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+      - --rpc-addr=redpanda:33145
+      - --advertise-rpc-addr=redpanda:33145
+      - --default-log-level=warn
+    ports:
+      - "${KAFKA_EXTERNAL_PORT:-19092}:19092"
+      - "9644:9644"
+    volumes:
+      - redpanda:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  # One-shot: create topics. Partition key is taxpayer ID (see docs/build-plan.md, design decisions).
+  redpanda-init:
+    image: redpandadata/redpanda:v24.2.7
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        rpk topic create ledgerline.activities.v1 --brokers redpanda:9092 --partitions 6 --replicas 1 || true;
+        rpk topic list --brokers redpanda:9092
+    restart: "no"
+
+  app:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+    environment:
+      HTTP_PORT: "8080"
+      DATABASE_URL: jdbc:postgresql://postgres:5432/ledgerline
+      DATABASE_USER: ledgerline
+      DATABASE_PASSWORD: ledgerline
+      KAFKA_BOOTSTRAP: redpanda:9092
+    ports:
+      - "${APP_PORT:-8080}:8080"
+
+  console:
+    profiles: ["tools"]
+    image: redpandadata/console:v2.7.2
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+    ports:
+      - "8081:8080"
+
+  toxiproxy:
+    profiles: ["chaos"]
+    image: ghcr.io/shopify/toxiproxy:2.9.0
+    ports:
+      - "8474:8474"   # control API
+      - "25432:25432" # proxied postgres (configured by chaos scripts)
+
+volumes:
+  pgdata:
+  redpanda:

@@ -1,0 +1,7 @@
+# The owner reviews every change. Test and agent-definition changes always need owner review,
+# so a weakened test or a loosened agent rule cannot merge unnoticed.
+*                 @aliankhann
+/tests/           @aliankhann
+/.claude/agents/  @aliankhann
+/CLAUDE.md        @aliankhann
+/docs/adr/        @aliankhann

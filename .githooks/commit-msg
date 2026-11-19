@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Rejects commits without an "Agent:" trailer. Install with: make hooks
+msg_file="$1"
+if ! git interpret-trailers --parse < "$msg_file" | grep -qiE '^Agent: *(ba|dev|qe|owner)$'; then
+  echo "commit-msg: add a trailer line 'Agent: <ba|dev|qe|owner>' (see CLAUDE.md, Commits)." >&2
+  exit 1
+fi
