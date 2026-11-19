@@ -8,6 +8,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
+import io.ktor.server.request.contentLength
 import io.ktor.server.request.receiveText
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
@@ -34,8 +35,9 @@ import kotlinx.serialization.json.put
 fun Application.ingestionModule(service: IngestionService) {
     routing {
         post("/v1/activities") {
+            val text = call.receiveLimitedText(MAX_ACTIVITY_BYTES) ?: return@post call.respondTooLarge()
             val fields =
-                parseBody(call.receiveText()) ?: return@post call.respondJson(
+                parseBody(text) ?: return@post call.respondJson(
                     HttpStatusCode.BadRequest,
                     buildJsonObject {
                         put("code", "MALFORMED_JSON")
@@ -69,7 +71,9 @@ fun Application.ingestionModule(service: IngestionService) {
         }
 
         get("/v1/activities/{idempotencyKey}") {
-            val stored = service.find(requireNotNull(call.parameters["idempotencyKey"]))
+            val key = requireNotNull(call.parameters["idempotencyKey"])
+            // A key that breaks the L-01 pattern cannot exist; answer without touching the database.
+            val stored = if (CanonicalCsv.isValidKey(key)) service.find(key) else null
             if (stored == null) {
                 call.respondJson(HttpStatusCode.NotFound, buildJsonObject { put("code", "NOT_FOUND") })
             } else {
@@ -90,7 +94,8 @@ fun Application.ingestionModule(service: IngestionService) {
         }
 
         post("/v1/imports") {
-            val report = service.importCsv(call.receiveText())
+            val text = call.receiveLimitedText(MAX_IMPORT_BYTES) ?: return@post call.respondTooLarge()
+            val report = service.importCsv(text)
             call.respondJson(
                 HttpStatusCode.OK,
                 buildJsonObject {
@@ -131,6 +136,50 @@ fun Application.ingestionModule(service: IngestionService) {
     }
 }
 
+private const val MAX_ACTIVITY_BYTES = 4L * 1024 * 1024
+private const val MAX_IMPORT_BYTES = 32L * 1024 * 1024
+private const val MAX_JSON_DEPTH = 32
+
+/** The request body as text, or null if it is larger than [limit] bytes (checked on the header and on the text). */
+private suspend fun ApplicationCall.receiveLimitedText(limit: Long): String? {
+    if ((request.contentLength() ?: 0L) > limit) return null
+    val text = receiveText()
+    return if (text.length > limit) null else text
+}
+
+private suspend fun ApplicationCall.respondTooLarge() =
+    respondJson(
+        HttpStatusCode.PayloadTooLarge,
+        buildJsonObject {
+            put("code", "PAYLOAD_TOO_LARGE")
+            put("field", "")
+        },
+    )
+
+/** True if brackets or braces outside strings nest deeper than [MAX_JSON_DEPTH]. */
+private fun nestsTooDeep(body: String): Boolean {
+    var depth = 0
+    var inString = false
+    var escaped = false
+    for (c in body) {
+        when {
+            inString -> {
+                if (escaped) {
+                    escaped = false
+                } else if (c == '\\') {
+                    escaped = true
+                } else if (c == '"') {
+                    inString = false
+                }
+            }
+            c == '"' -> inString = true
+            c == '{' || c == '[' -> if (++depth > MAX_JSON_DEPTH) return true
+            c == '}' || c == ']' -> depth--
+        }
+    }
+    return false
+}
+
 private suspend fun ApplicationCall.respondJson(
     status: HttpStatusCode,
     body: JsonObject,
@@ -153,6 +202,7 @@ private suspend fun ApplicationCall.respondInvalid(
  * array fails those rules. Returns null if [body] is not a JSON object.
  */
 private fun parseBody(body: String): Map<String, String>? {
+    if (nestsTooDeep(body)) return null
     val root: JsonElement =
         try {
             Json.parseToJsonElement(body)

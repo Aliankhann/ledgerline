@@ -1,6 +1,6 @@
 # B-013 GET /v1/activities/{key} with an encoded NUL in the key is a 500
 
-**Story:** L-02 · **Severity:** minor · **Status:** Open · **Round:** 1
+**Story:** L-02 · **Severity:** minor · **Status:** Fixed (pending integration verification) · **Round:** 1
 
 ## Reproduction
 

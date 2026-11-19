@@ -39,6 +39,25 @@ object CanonicalCsv {
         )
 
     private val keyPattern = Regex("^[A-Za-z0-9._:-]{1,64}$")
+    private val TEXT_COLUMNS = listOf("taxpayer_id", "account_id", "security_id", "description")
+
+    /** True if [key] is a well-formed idempotency key (letters, digits and `._:-`, 1 to 64 characters). */
+    fun isValidKey(key: String): Boolean = keyPattern.matches(key)
+
+    private fun hasLoneSurrogate(v: String): Boolean {
+        var i = 0
+        while (i < v.length) {
+            val c = v[i]
+            if (c.isHighSurrogate() && i + 1 < v.length && v[i + 1].isLowSurrogate()) {
+                i++
+            } else if (c.isSurrogate()) {
+                return true
+            }
+            i++
+        }
+        return false
+    }
+
     private val datePattern = Regex("^(\\d{4})-(\\d{2})-(\\d{2})$")
     private val securityTypes =
         setOf(
@@ -120,6 +139,12 @@ object CanonicalCsv {
 
         val key = req("idempotency_key")
         if (!keyPattern.matches(key)) throw RowError("INVALID_IDEMPOTENCY_KEY", "idempotency_key", "Invalid key '$key'")
+        // Postgres text cannot hold NUL or a lone surrogate; refuse them here so they never reach the database.
+        for (name in TEXT_COLUMNS) {
+            if (f.getValue(name).any { it == '\u0000' } || hasLoneSurrogate(f.getValue(name))) {
+                throw RowError("INVALID_CHARACTER", name, "$name contains a character that cannot be stored")
+            }
+        }
         val taxpayer = req("taxpayer_id")
         val account = req("account_id")
         val accountType =

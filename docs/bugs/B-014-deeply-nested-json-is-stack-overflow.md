@@ -1,6 +1,6 @@
 # B-014 A deeply nested JSON body escapes as StackOverflowError (500)
 
-**Story:** L-02 · **Severity:** minor · **Status:** Open · **Round:** 1
+**Story:** L-02 · **Severity:** minor · **Status:** Fixed (pending integration verification) · **Round:** 1
 
 ## Reproduction
 

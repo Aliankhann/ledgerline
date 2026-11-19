@@ -1,6 +1,6 @@
 # B-012 A NUL character in a free-text field is a 500 on POST and aborts the whole CSV import
 
-**Story:** L-02 (AC8, C23) with L-01 · **Severity:** major · **Status:** Open · **Round:** 1
+**Story:** L-02 (AC8, C23) with L-01 · **Severity:** major · **Status:** Fixed (pending integration verification) · **Round:** 1
 
 ## Reproduction
 
