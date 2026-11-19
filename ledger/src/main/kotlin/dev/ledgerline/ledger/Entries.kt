@@ -1,5 +1,6 @@
 package dev.ledgerline.ledger
 
+import dev.ledgerline.core.ActivityType
 import java.time.LocalDate
 
 enum class Side { DEBIT, CREDIT }
@@ -40,5 +41,17 @@ class UnbalancedEntryException(val unit: String, val difference: Long) :
 
     companion object {
         const val CODE = "UNBALANCED"
+    }
+}
+
+// OWNER-INPUT: C15 zero amounts. Placeholder: refused at posting with ZERO_AMOUNT (docs/owner-inputs.md).
+
+/** A cash-only activity with amount 0 would post no lines, so it is refused. Nothing was written. */
+class ZeroAmountException(val idempotencyKey: String, val activityType: ActivityType) :
+    RuntimeException("$CODE: $idempotencyKey is a $activityType with amount 0, which posts nothing") {
+    val code: String = CODE
+
+    companion object {
+        const val CODE = "ZERO_AMOUNT"
     }
 }

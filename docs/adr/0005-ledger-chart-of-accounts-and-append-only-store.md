@@ -43,8 +43,27 @@ _Owner, in your own words._
   DELETE **and TRUNCATE** for every role, including the owner. TRUNCATE in the trigger goes beyond the placeholder
   (which says UPDATE/DELETE); drop it if the owner disagrees. A superuser can still disable triggers, so this guards
   against mistakes and the app role, not a hostile DBA.
-- **App role at runtime.** The app still connects as the compose superuser `ledgerline`; making the service run as
-  `ledgerline_app` (login, password, `SET ROLE`) is not wired in L-03.
+- **Two database logins (B-003, round 2).** Migrations and the service use different logins. At startup the app opens
+  a short-lived pool as the migration login (`DATABASE_MIGRATION_USER`, the compose Postgres admin `ledgerline`), runs
+  Flyway, runs `ALTER ROLE ledgerline_app LOGIN PASSWORD <DATABASE_PASSWORD>` (quoted server-side with `format('%L')`),
+  and closes that pool. It then serves through a pool that logs in as `DATABASE_USER` = `ledgerline_app`, which does
+  not own the tables and holds only SELECT and INSERT, so it cannot disable, drop or bypass the triggers (42501).
+  `AppConfig` refuses to start if both users are the same. Cost: the app process still receives the admin password in
+  its environment; a separate one-shot migration container would remove that and can replace this later. The
+  migration login is the superuser rather than a dedicated non-superuser owner, because `ALTER ROLE ... PASSWORD`
+  needs CREATEROLE and a fresh volume needs no init script this way.
+- **Entry sealing (B-004, migration V3).** Database-side, not only in Kotlin: a line may only be inserted for an entry
+  created by the same (sub)transaction (the line's `xmin` must equal the entry's `xmin`); lines of an entry are
+  appended in `line_id` order; and deferred constraint triggers check at commit that every entry has at least one line
+  and balances per unit. Only the entry's newest line runs the full balance query, so cost stays linear in lines.
+  Limits: lines written in a different savepoint from their entry are refused; `xmin` is 32-bit, so in theory an entry
+  from about 4 billion transactions earlier could share an `xmin` (Postgres freezes such rows long before).
+- **Balance arithmetic (B-005).** `Posting.requireBalanced` sums debits and credits separately per unit with
+  `Math.addExact`. Amounts are positive, so the outcome depends only on the set of lines; an entry whose total debits
+  or credits in a unit exceed `Long.MAX_VALUE` is refused whole with an `ArithmeticException` naming the unit.
+- **Zero-amount cash activities (B-006, placeholder C15).** A `DEPOSIT`, `WITHDRAWAL`, `FEE`, `DIVIDEND` or
+  `RETURN_OF_CAPITAL` with amount 0 is refused at posting with `ZERO_AMOUNT` (`ZeroAmountException`), because it
+  would post no lines and V3 refuses entries without lines. Owner to decide (`docs/owner-inputs.md` C15).
 - **`idempotency_key` is UNIQUE** in `ledger.entry`, so a duplicate key fails at the database. L-02 adds the
   key-plus-payload-hash behaviour on top (ADR 0001).
 - **Lines lose some activity detail.** A transfer-in's book value (`amountMinor`) is not a cash movement and posts no

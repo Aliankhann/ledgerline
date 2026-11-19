@@ -13,7 +13,7 @@ Step 0.3 is the owner's. QE phase A for L-01 starts once the owner approves L-01
 | --- | --- | --- | --- | --- | --- |
 | L-01 | Import an activity CSV | QE passed, awaiting owner | 2 | main | 36 tests, 240 generated cases; 2 bugs fixed (B-001, B-002); share scale is a placeholder (C3) |
 | L-02 | Duplicate-safe ingestion | Draft | – | – | payload-hash fields, duplicate response code |
-| L-03 | Balanced, immutable ledger | Draft | – | – | **sequence tie-breaker vs invariant 6 needs ADR**; immutability enforcement |
+| L-03 | Balanced, immutable ledger | In QE | 2 | l-03 | **sequence tie-breaker vs invariant 6 needs ADR**; immutability enforcement |
 | L-04 | Corrections by reversal | Draft | – | – | reversal-of-reversal policy |
 | L-05 | Reliable event publication | Draft | – | – | outbox "sent" marker vs immutability |
 | L-06 | Pooled ACB: buy, sell, ROC, fees | Draft (tax) | – | – | sourced (adjustedcostbase.ca); rounding, ROC timing, negative-ACB gain timing |
@@ -64,11 +64,21 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
   (source row order, then idempotency key). Needs an ADR before L-03.
 - **Outbox "sent" marker (L-05).** Marking an outbox row as sent is an `UPDATE` in the `ledger` schema; decide whether
   immutability covers the outbox or the marker lives elsewhere.
+- **B-003 Docker test vs the two-login design (dev, L-03 round 2, for QE).** `L03ImmutabilityEdgeSpec` "with
+  docker-compose credentials, the app's role is not superuser and cannot disable it" migrates a bare container with
+  the `DATABASE_USER` login. With the fix, migrations run as `DATABASE_MIGRATION_USER` and `ledgerline_app` only gets
+  LOGIN after them, so the test fails on login (28P01) before it reaches its assertions. Suggested change in
+  `docs/bugs/B-003-app-runs-as-database-superuser.md` (Fix note). Dev did not edit the test.
+- **B-006 test vs placeholder C15 (dev, L-03 round 2, for owner and QE).** The test expects zero-amount cash activities
+  to post; the C15 placeholder refuses them with `ZERO_AMOUNT`. One of them changes once the owner decides C15.
 - **Docker API pin in `tests/build.gradle.kts` (dev, L-03, for QE).** Testcontainers is now 1.21.3, which negotiates
   the Docker API version. The `api.version`/`DOCKER_API_VERSION` 1.44 pin says to remove it then; it is QE-owned, so
   dev left it. L-03 integration tests pass with it in place.
 
 ## Log
+
+- 2026-11-19 · dev · L-03 round 2: B-003, B-004, B-005, B-007 fixed; B-006 on placeholder C15 (open). Two tests
+  conflict with the requested design (see Open questions). In QE.
 
 - 2026-11-19 · dev · L-03 implemented on placeholders C3/C4; draft ADR 0005 (chart of accounts, sequence, trigger). In QE.
 

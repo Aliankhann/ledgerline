@@ -1,6 +1,6 @@
 # B-004 The app role can INSERT extra lines into an already committed entry, unbalancing it
 
-**Story:** L-03 (AC5, AC9; invariants 1 and 3) · **Severity:** minor · **Status:** Open · **Round:** 1
+**Story:** L-03 (AC5, AC9; invariants 1 and 3) · **Severity:** minor · **Status:** Fixed · **Round:** 1
 
 ## Reproduction
 
@@ -38,3 +38,8 @@ both miss it. Balance is enforced only in Kotlin (`Posting.requireBalanced`), be
   refuses lines for an entry created in an earlier transaction; or write entry and lines through one function.
 - Related: the app role can also commit an entry row with no lines. Not asserted here because B-006 may decide that
   zero-amount activities post as empty entries.
+
+## Fix note
+
+Round 2: migration V3 seals entries: a line must share its entry's transaction (`xmin`), lines append in `line_id`
+order, and deferred constraint triggers require at commit that every entry has a line and balances per unit.

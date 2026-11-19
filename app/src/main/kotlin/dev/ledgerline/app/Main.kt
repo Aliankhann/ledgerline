@@ -23,20 +23,37 @@ data class Health(val status: String, val modules: List<String>)
 fun main() {
     val config = AppConfig.fromEnv()
 
-    val dataSource =
-        HikariDataSource(
-            HikariConfig().apply {
-                jdbcUrl = config.databaseUrl
-                username = config.databaseUser
-                password = config.databasePassword
-                maximumPoolSize = 10
-            },
-        )
+    // Migrate as the owner login, then close that pool; the service only ever holds the app role's connections.
+    // Flyway holds two connections at once (schema-history lock plus migration).
+    pool(config.databaseUrl, config.migrationUser, config.migrationPassword, size = 2).use { owner ->
+        log.info("Flyway applied {} migration(s) as {}", LedgerMigrations.migrate(owner), config.migrationUser)
+        if (config.databaseUser == LedgerMigrations.APP_ROLE) {
+            LedgerMigrations.enableAppLogin(owner, config.databasePassword)
+        }
+    }
 
-    log.info("Flyway applied {} migration(s)", LedgerMigrations.migrate(dataSource))
+    // The ledger repository arrives on this pool with L-02's ingestion API.
+    val dataSource = pool(config.databaseUrl, config.databaseUser, config.databasePassword, size = 10)
+    log.info("Serving as database role {}", config.databaseUser)
+    Runtime.getRuntime().addShutdownHook(Thread { dataSource.close() })
 
     embeddedServer(Netty, port = config.httpPort, module = Application::module).start(wait = true)
 }
+
+private fun pool(
+    url: String,
+    user: String,
+    secret: String,
+    size: Int,
+): HikariDataSource =
+    HikariDataSource(
+        HikariConfig().apply {
+            jdbcUrl = url
+            username = user
+            password = secret
+            maximumPoolSize = size
+        },
+    )
 
 fun Application.module() {
     install(ContentNegotiation) { json() }

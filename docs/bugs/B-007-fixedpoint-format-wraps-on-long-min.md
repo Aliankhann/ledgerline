@@ -1,6 +1,6 @@
 # B-007 FixedPoint.format(Long.MIN_VALUE) wraps and returns garbage text
 
-**Story:** L-03 (invariant 8; code from L-01 in `core/`) · **Severity:** minor · **Status:** Open · **Round:** 1
+**Story:** L-03 (invariant 8; code from L-01 in `core/`) · **Severity:** minor · **Status:** Fixed · **Round:** 1
 
 ## Reproduction
 
@@ -29,3 +29,8 @@ expected:<"-92233720368547758.08"> but was:<"--92233720368547758.-8">
 Not reachable from `parse` (18 digits at most), but `format` is the reporting boundary for balances that the ledger
 and calculation will sum. `Math.absExact` would make it loud. Also `pow10` multiplies without `multiplyExact`, so a
 `decimals` of 20 or more would silently produce wrong text (constants are 2 and 6 today; not tested).
+
+## Fix note
+
+Round 2: `FixedPoint.format` uses `Math.absExact`, so `Long.MIN_VALUE` throws `ArithmeticException`; `pow10` uses
+`multiplyExact` too.
