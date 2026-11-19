@@ -1,6 +1,6 @@
 # B-010 Reversing a small buy fails with ArithmeticException when the account's other holdings exceed Long.MAX
 
-**Story:** L-04 (NEGATIVE_SHARES check, invariants 7 and 8) · **Severity:** minor · **Status:** Open · **Round:** 1
+**Story:** L-04 (NEGATIVE_SHARES check, invariants 7 and 8) · **Severity:** minor · **Status:** Fixed · **Round:** 1
 
 ## Reproduction
 
@@ -30,3 +30,7 @@ Failure(java.lang.ArithmeticException: long overflow)
 Unrealistic quantity (6 trillion shares at the 10^-6 scale), nothing is written, and the failure is loud, so minor.
 Decide whether such quantities should be refused at posting (then this cannot arise) or the walk should use an
 overflow-safe comparison.
+
+## Fix (dev, round 2)
+
+ShareHoldings walk now uses exact BigInteger running totals, scoped to the affected account and security.

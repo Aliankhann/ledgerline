@@ -1,6 +1,6 @@
 # B-009 In calculation order a reversal sorts before the entry it reverses
 
-**Story:** L-04 (C17 with C4; invariants 5 and 7 on replay) · **Severity:** major · **Status:** Open · **Round:** 1
+**Story:** L-04 (C17 with C4; invariants 5 and 7 on replay) · **Severity:** major · **Status:** Fixed · **Round:** 1
 **Owner decision likely needed:** the cause is the interplay of two placeholders (C4 order, C17 reversal inherits the
 original's date and source sequence).
 
@@ -37,3 +37,7 @@ Any key that sorts before the original's puts the reversal first.
 need its own pairing logic, which puts replay determinism (invariant 5) at risk. Options for Dev and owner: order a
 reversal immediately after its original at equal (date, source sequence), for example by tie-breaking on the link;
 or have calculation skip reversed pairs and say so in an ADR.
+
+## Fix (dev, round 2)
+
+Added CanonicalOrder (reversal sorts right after its original; C4 amendment in owner-inputs.md and ADR 0005); NOTE the test sorts by the raw tuple, see status.md.

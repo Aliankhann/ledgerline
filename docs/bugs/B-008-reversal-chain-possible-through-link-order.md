@@ -1,6 +1,6 @@
 # B-008 A reversal of a reversal can be committed by linking the rows in reverse order
 
-**Story:** L-04 (AC7, placeholder C16) · **Severity:** minor · **Status:** Open · **Round:** 1
+**Story:** L-04 (AC7, placeholder C16) · **Severity:** minor · **Status:** Fixed · **Round:** 1
 
 ## Reproduction
 
@@ -33,3 +33,7 @@ is already someone's original.
 `LedgerRepository` cannot produce this order, so it needs a caller that writes SQL directly with the app role. Minor
 for that reason, but the V4 header promises the database enforces C16. Fix: in `reversal_checks` also refuse when
 `EXISTS (SELECT 1 FROM ledger.reversal r WHERE r.original_entry_id = NEW.reversal_entry_id)`.
+
+## Fix (dev, round 2)
+
+V5 migration replaces reversal_checks to also refuse a reversal entry that is already someone's original, in either insert order.

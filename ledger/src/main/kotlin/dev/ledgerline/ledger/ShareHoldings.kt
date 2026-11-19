@@ -1,5 +1,6 @@
 package dev.ledgerline.ledger
 
+import java.math.BigInteger
 import java.sql.Connection
 import java.time.LocalDate
 
@@ -7,7 +8,8 @@ import java.time.LocalDate
  * Invariant 7 applied to reversals: reversing an entry must not leave any investor account with fewer than 0 units of
  * a security at any point in calculation order (effective date, source sequence, idempotency key).
  *
- * Reversed entries and their reversals cancel exactly, so both are left out of the walk; the entry being reversed is
+ * Only the account's holdings of each affected security are walked. Reversed entries and their reversals cancel
+ * exactly, so both are left out of the walk (a reversal sorts right after its original, see [CanonicalOrder]); the entry being reversed is
  * left out too, and an optional [Replacement] (a correction's new activity) is added. Runs inside the append
  * transaction, after the append lock is held, so the ledger cannot change under it.
  */
@@ -38,10 +40,12 @@ internal object ShareHoldings {
                         moves += Move(r.effectiveDate, r.sourceSeq, r.idempotencyKey, signed(it))
                     }
                 }
-                var held = 0L
+                // Exact integers: the account's holdings of one security may exceed Long.MAX (B-010); only the sign
+                // matters here, so the running total must never overflow.
+                var held = BigInteger.ZERO
                 moves.sortedWith(compareBy({ it.date }, { it.sourceSeq }, { it.key })).forEach {
-                    held = Math.addExact(held, it.delta)
-                    if (held < 0) {
+                    held += BigInteger.valueOf(it.delta)
+                    if (held.signum() < 0) {
                         throw ReversalRefusedException(
                             ReversalRefusedException.NEGATIVE_SHARES,
                             original.sequence,

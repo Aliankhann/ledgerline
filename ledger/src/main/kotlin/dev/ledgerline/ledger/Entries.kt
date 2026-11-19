@@ -20,7 +20,8 @@ data class EntryRequest(
     val lines: List<LedgerLine>,
 )
 
-// OWNER-INPUT: C4 ordering. sequence is storage order; calculation uses (effectiveDate, sourceSeq, idempotencyKey).
+// OWNER-INPUT: C4 ordering. sequence is storage order; calculation uses (effectiveDate, sourceSeq, idempotencyKey), with
+// a reversal placed right after its original (see CanonicalOrder).
 
 /**
  * A stored entry. [sequence] is assigned by the ledger and is strictly increasing in commit order; it is storage
