@@ -57,8 +57,14 @@ fun main() {
     embeddedServer(Netty, port = config.httpPort) {
         module()
         ingestionModule(ingestion)
+        // OWNER-INPUT: C29 no ledger-to-pool source exists yet, so the live route has no pools; book values come from
+        // the optional file named by BOOK_VALUE_CSV (header security_id,book_value).
+        acbVsBookModule(emptyMap(), bookValueCsv())
     }.start(wait = true)
 }
+
+private fun bookValueCsv(): String =
+    System.getenv("BOOK_VALUE_CSV")?.let { java.io.File(it).readText() } ?: "security_id,book_value\n"
 
 private fun pool(
     url: String,

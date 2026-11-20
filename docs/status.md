@@ -108,3 +108,5 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
 
 - 2026-11-19 · owner · Scaffold: Gradle multi-module build, docker compose (Postgres, Redpanda), Flyway V1, Ktor
   `/health`, QE-owned `tests/` project, role check, CI, agent files, docs skeleton.
+
+- **L-11 live route has no pool source (dev, round 2):** `Main.kt` wires `acbVsBookModule` with an empty pool map and `BOOK_VALUE_CSV`. Owner to decide how the service builds pools from the ledger (C29). Also, `UNEXPLAINED` was added to `CaIta2026v1.ruleIds` only because the L-11 tests require every reason ID to be in that set; QE/owner may prefer to relax the test.

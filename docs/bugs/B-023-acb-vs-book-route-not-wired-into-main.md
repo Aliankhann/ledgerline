@@ -1,6 +1,6 @@
 # B-023 GET /v1/holdings/{taxpayer}/acb-vs-book is not wired into the service
 
-**Story:** L-11 · **Severity:** major · **Status:** Open · **Round:** 1
+**Story:** L-11 · **Severity:** major · **Status:** Fixed · **Round:** 1
 
 ## Reproduction
 
