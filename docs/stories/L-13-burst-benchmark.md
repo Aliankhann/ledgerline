@@ -1,6 +1,6 @@
 # L-13 Burst benchmark and report
 
-**Status:** Tests written (provisional)  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 9 · **Branch:** `L-13-burst-benchmark` · **Round:** 0 / 3
 
 ## Story
@@ -94,4 +94,12 @@ not sourced (A-08, A-09).
 
 ## Change notes (Dev fills)
 
-- …
+- Harness and renderer live in `app/src/main/kotlin/dev/ledgerline/bench/` (`BenchReport`, `BenchResults`, `Hardware`,
+  `BenchConfig`, `BenchHarness`) because `:tests` depends on `:app` and not on a new module. `bench/` is a thin
+  Gradle module (`application` plugin) whose `main` runs `./gradlew :bench:run --args="--seed 42 --activities N"`
+  against the Postgres in the compose stack (env as `AppConfig`) and writes `bench/out/report.md`.
+- The workload is `SyntheticGenerator` (ceil(N/40) taxpayers, first N activities), submitted one by one through
+  `IngestionService`; any non-accepted result throws. Report has throughput and p50/p95/p99 only; no targets, no
+  `Met` column, no lag/replay rows (owner inputs C10/B3). AC4 to AC9 are not implemented.
+- Ran `ktlintFormat build --rerun-tasks`: green; the five pure L-13 tests pass. The Integration smoke test and
+  `:bench:run` were not run here (no Docker).
