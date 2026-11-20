@@ -302,6 +302,21 @@ class L02AttackLedgerSpec : FunSpec({
 
     // ---------- bulk ----------
 
+    test("L-02 diagnostic: 500 plain submits, per-append cost (timing in the failure message)")
+        .config(tags = setOf(Integration)) {
+            val e = pg.l02Env()
+            val n = 500
+            val stream = ActivityStreams.generate(Random(20_251_120), "PF", n)
+            val t0 = System.nanoTime()
+            stream.forEach { e.service.submit(it) }
+            val totalMs = (System.nanoTime() - t0) / 1_000_000
+            val perRowMs = totalMs.toDouble() / stream.size
+            println("L-02 diagnostic: ${stream.size} submits in $totalMs ms ($perRowMs ms/row)")
+            withClue("rows=${stream.size} totalMs=$totalMs perRowMs=$perRowMs (bound 100 ms/row)") {
+                (perRowMs < 100.0) shouldBe true
+            }
+        }
+
     test("L-02 attack: a 10 000-row file imports once, then re-uploads as 10 000 duplicates, in bounded time")
         .config(tags = setOf(Integration), timeout = kotlin.time.Duration.parse("15m")) {
             // Service level, not HTTP: the Ktor test host aborts a request body that runs longer than 60 s.
@@ -327,8 +342,9 @@ class L02AttackLedgerSpec : FunSpec({
             e.count("activity") shouldBe n.toLong()
             val last = "SELECT source_seq FROM ledger.entry WHERE idempotency_key = 'BIG-10000'"
             e.db.query(e.db.owner, last)[0][0] shouldBe "10001"
-            (firstMs < 180_000) shouldBe true
-            (secondMs < 180_000) shouldBe true
+            val clue = "firstMs=$firstMs reuploadMs=$secondMs rows=$n"
+            withClue("first import too slow: $clue") { (firstMs < 180_000) shouldBe true }
+            withClue("re-upload too slow: $clue") { (secondMs < 180_000) shouldBe true }
             e.db.shouldBeConsistent()
         }
 })
