@@ -1,6 +1,6 @@
 # L-07 Superficial-loss detection across accounts
 
-**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** QE passed (round 1; local build green, CI pending), awaiting owner approval  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 6 · **Branch:** `L-07-superficial-loss` · **Round:** 0 / 3
 
 ## Story
