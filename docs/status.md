@@ -18,7 +18,7 @@ Step 0.3 is the owner's. QE phase A for L-01 starts once the owner approves L-01
 | L-05 | Reliable event publication | QE passed, awaiting owner | 2 | main | CI green incl. 21 outbox/attack tests (run 44658644992); B-015..B-017 fixed; placeholders C5, C25–C27 (parked events block their taxpayer until owner decides) |
 | L-06 | Pooled ACB: buy, sell, ROC, fees | QE passed, awaiting owner | 2 | main | CI green (run 44665217794); B-018 fixed; tax values provisional CA-ITA-2026.1 |
 | L-07 | Superficial-loss detection | QE passed, awaiting owner | 1 | main | CI green (run 44665217794); AC2 skipped pending sourced example (A2); SL-PARTIAL provisional |
-| L-08 | USD to CAD by trade date | Draft (tax) | – | – | real BoC rates; AC10 needs example; scale 10⁻⁴? |
+| L-08 | USD to CAD by trade date | QE passed, awaiting owner | 2 | main | CI green (run 44678105986); real BoC rates; B-019, B-020 fixed; AC10 skipped pending sourced example; scale 10^-4 provisional |
 | L-09 | Late correction recompute | Draft | – | – | |
 | L-10 | Reconciliation by full replay | Draft | – | – | replay-hash format ADR |
 | L-11 | Book value vs true ACB view | Draft | – | – | book value source |
