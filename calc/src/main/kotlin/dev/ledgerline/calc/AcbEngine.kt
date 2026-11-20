@@ -125,6 +125,7 @@ class AcbEngine(val ruleSet: TaxRuleSet) {
         gains: List<GainLine>,
         rules: Set<String>,
         text: String,
+        ruleAmounts: Map<String, Long> = emptyMap(),
     ): PoolStep.Applied {
         val history =
             if (sharesDelta == 0L && acbDelta == 0L) {
@@ -138,6 +139,7 @@ class AcbEngine(val ruleSet: TaxRuleSet) {
                         sharesDelta,
                         acbDelta,
                         rules,
+                        ruleAmounts,
                     )
             }
         val next =

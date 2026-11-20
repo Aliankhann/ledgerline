@@ -1,6 +1,6 @@
 # B-021 A superficial-loss add-back is explained as POOL-IDENTICAL, not an SL-* rule
 
-**Story:** L-11 · **Severity:** major · **Status:** Open · **Round:** 1
+**Story:** L-11 · **Severity:** major · **Status:** Fixed · **Round:** 1
 
 ## Reproduction
 

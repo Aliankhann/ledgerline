@@ -18,6 +18,7 @@ object BookValueComparison {
 
     // OWNER-INPUT: C29 a book value with no pool is shown with this pseudo rule ID (not a rule-set ID).
     const val NO_LEDGER_HISTORY = "NO-LEDGER-HISTORY"
+    const val UNEXPLAINED = "UNEXPLAINED"
 
     fun compare(
         pools: Map<PoolKey, AcbPool>,
@@ -52,37 +53,56 @@ object BookValueComparison {
                 ),
             )
         }
-        val rocs = pool.history.filter { "ROC-REDUCES-ACB" in it.ruleIds }
-        val rocCents = rules.toReportedCents(rocs.sumOf { it.acbDelta })
-        val fits = rocCents != 0L && java.lang.Long.signum(rocCents) == java.lang.Long.signum(difference)
-        val rocPart = if (fits && Math.abs(rocCents) <= Math.abs(difference)) rocCents else 0L
+        // Each candidate is a rule with its own recorded amount in the pool history; only those that point the same
+        // way as the difference and fit inside what is left are used, so the parts always sum to the difference.
+        val ruleNames = pool.history.flatMap { it.ruleAmounts.keys }.distinct().sorted()
+        val candidates = (listOf("ROC-REDUCES-ACB") + ruleNames).map { candidate(pool, it) }
         val result = mutableListOf<Reason>()
-        if (rocPart != 0L) {
-            result +=
-                Reason(
-                    "ROC-REDUCES-ACB",
-                    "Returns of capital lower ACB by ${money(-rocPart)}; book value that ignores them is higher.",
-                    rocs.map { it.entryId },
-                    rocPart,
-                )
+        var rest = difference
+        for (c in candidates) {
+            val fits = c.cents != 0L && java.lang.Long.signum(c.cents) == java.lang.Long.signum(rest)
+            if (fits && Math.abs(c.cents) <= Math.abs(rest)) {
+                result += Reason(c.rule, describe(c.rule, c.cents), c.entryIds, c.cents)
+                rest -= c.cents
+            }
         }
-        val rest = difference - rocPart
         if (rest != 0L) {
-            // OWNER-INPUT: C29 provisional: the remainder is attributed to the pooled entries (POOL-IDENTICAL).
-            val pooled = pool.history.filter { "POOL-IDENTICAL" in it.ruleIds }
-            val source = pooled.ifEmpty { pool.history }
-            val rule = if (pooled.isEmpty()) pool.history.first().ruleIds.min() else "POOL-IDENTICAL"
+            // OWNER-INPUT: C29 what no recorded pool step explains is shown as such, never given to an unrelated rule.
             result +=
                 Reason(
-                    rule,
-                    "The remaining ${money(rest)} is not explained by a return of capital; ACB is built from these " +
-                        "pooled entries, so the broker's book value follows a different method.",
-                    source.map { it.entryId },
+                    UNEXPLAINED,
+                    "${money(rest)} of the difference is not explained by any recorded pool step; " +
+                        "the broker's book value may follow a different method.",
+                    pool.history.map { it.entryId },
                     rest,
                 )
         }
         return result
     }
+
+    private class Candidate(val rule: String, val cents: Long, val entryIds: List<Long>)
+
+    private fun candidate(
+        pool: AcbPool,
+        rule: String,
+    ): Candidate {
+        val roc = rule == "ROC-REDUCES-ACB"
+        val changes = pool.history.filter { if (roc) rule in it.ruleIds else rule in it.ruleAmounts }
+        val units = changes.sumOf { if (roc) it.acbDelta else it.ruleAmounts.getValue(rule) }
+        return Candidate(rule, rules.toReportedCents(units), changes.map { it.entryId })
+    }
+
+    private fun describe(
+        rule: String,
+        cents: Long,
+    ): String =
+        when {
+            rule == "ROC-REDUCES-ACB" ->
+                "Returns of capital lower ACB by ${money(-cents)}; book value that ignores them is higher."
+            rule.startsWith("SL-") ->
+                "Denied superficial losses of ${money(cents)} are added back to ACB; book value without them is lower."
+            else -> "$rule accounts for ${money(cents)}."
+        }
 
     private fun money(cents: Long): String {
         val a = Math.abs(cents)
