@@ -9,6 +9,7 @@ import io.ktor.http.ContentType
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
+import io.ktor.server.application.pluginOrNull
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
@@ -24,7 +25,8 @@ fun Application.acbVsBookModule(
     pools: Map<PoolKey, AcbPool>,
     bookValueCsv: String,
 ) {
-    install(ContentNegotiation) { json() }
+    // module() installs it too in the live service; a second install would fail.
+    if (pluginOrNull(ContentNegotiation) == null) install(ContentNegotiation) { json() }
     routing {
         get("/v1/holdings/{taxpayer}/acb-vs-book") {
             val taxpayer = call.parameters["taxpayer"].orEmpty()

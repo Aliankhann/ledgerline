@@ -121,3 +121,7 @@ Reasons carry `amountMinor` and the AC6 sum check is covered. A book value with 
 ### Round 2 (B-022): buy commission reason
 
 - A buy records `COST-BUY-COMMISSION` with its commission (internal units) in `PoolChange.ruleAmounts`; the comparison reports it under that rule ID with the buy entry. FX has no reason: the pool takes CAD amounts, so there is no FX pool step yet.
+
+### Round 2 (B-023): route wired
+
+- `Main.kt` now calls `acbVsBookModule`. Not run against the live stack (needs Postgres and Kafka). There is still no ledger-to-pool source, so the live route is given an empty pool map and the book value file named by `BOOK_VALUE_CSV` (default: header only); it answers 200 with no holdings until a pool source exists. Owner to decide that source (Open question, C29). `acbVsBookModule` installs `ContentNegotiation` only if absent, since `module()` installs it as well.
