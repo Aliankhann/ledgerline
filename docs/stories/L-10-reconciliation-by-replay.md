@@ -1,6 +1,6 @@
 # L-10 Reconciliation by full replay
 
-**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** QE passed (round 1, pure part; DB/CLI ACs pending), awaiting owner approval  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 8 · **Branch:** `L-10-reconciliation-by-replay` · **Round:** 0 / 3
 
 ## Story
