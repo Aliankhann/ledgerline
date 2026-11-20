@@ -25,7 +25,12 @@ object L08Fx {
     /** Published dates (rows) of the fixture, read independently of the cache with a regex. */
     val publishedDates: Set<LocalDate> =
         responses
-            .flatMap { Regex("\"d\"\\s*:\\s*\"(\\d{4}-\\d{2}-\\d{2})\"").findAll(it.json).map { m -> m.groupValues[1] } }
+            .flatMap {
+                Regex("\"d\"\\s*:\\s*\"(\\d{4}-\\d{2}-\\d{2})\"").findAll(it.json).map {
+                        m ->
+                    m.groupValues[1]
+                }
+            }
             .map(LocalDate::parse)
             .toSet()
 }
