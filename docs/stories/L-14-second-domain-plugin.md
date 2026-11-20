@@ -1,6 +1,6 @@
 # L-14 Second domain plugin
 
-**Status:** Draft  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** Tests written (provisional)  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 10 · **Branch:** `L-14-second-domain-plugin` · **Round:** 0 / 3
 
 ## Story
@@ -87,7 +87,7 @@ is not sourced (A-09).
 
 | AC | Test |
 | --- | --- |
-| AC1 | `tests/spec/.../L14Spec.kt` › "L-14 AC1: …" |
+| AC2-AC5 | `tests/spec/.../L14CashPluginSpec.kt` and `tests/property/.../L14CashPluginPropertyTest.kt` (provisional); AC1, AC6, AC7 not yet covered |
 
 ## Change notes (Dev fills)
 
