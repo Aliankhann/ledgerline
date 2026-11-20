@@ -1,6 +1,7 @@
 package dev.ledgerline.calc
 
 import dev.ledgerline.core.Activity
+import java.math.BigInteger
 import java.time.LocalDate
 
 /**
@@ -22,7 +23,25 @@ interface TaxRuleSet {
 
     /** `DATE-BASIS`: the date that orders and dates an activity. */
     fun taxDate(activity: Activity): LocalDate
+
+    /** `SL-WINDOW`: the period around a sale's tax date, both ends inclusive; "held at the end" is its end. */
+    fun superficialWindow(saleTaxDate: LocalDate): ClosedRange<LocalDate> = noSuperficialRules()
+
+    /**
+     * `SL-PARTIAL`: the denied part of [loss] (internal units, > 0) for [sold] shares disposed, [acquired] identical
+     * shares acquired in the window and [heldAtEnd] shares held at its end (10^-6 units). Result in internal units.
+     */
+    fun superficialLossDenied(
+        sold: Long,
+        acquired: Long,
+        heldAtEnd: Long,
+        loss: Long,
+    ): Long = noSuperficialRules()
 }
+
+/** Rule sets that predate L-07 define no SL values; the interface holds none either (ADR 0004). */
+private fun TaxRuleSet.noSuperficialRules(): Nothing =
+    throw UnsupportedOperationException("Rule set $id defines no superficial loss rules")
 
 /** Rule set `CA-ITA-2026.1` (docs/tax-model.md, PROPOSED: the owner has not accepted these values). */
 object CaIta2026v1 : TaxRuleSet {
@@ -45,6 +64,14 @@ object CaIta2026v1 : TaxRuleSet {
             "ROUND-SCALE",
             "ROUND-MODE",
             "ROUND-BOUNDARY",
+            "SL-DEFINITION",
+            "SL-WINDOW",
+            "SL-IDENTICAL",
+            "SL-HELD-END",
+            "SL-PARTIAL",
+            "SL-REGISTERED",
+            "SL-ADDBACK-TARGET",
+            "SL-ADDBACK-TIMING",
         )
 
     // OWNER-INPUT: C6/C7 ROUND-SCALE: pool ACB at 10^-4 cent.
@@ -60,4 +87,20 @@ object CaIta2026v1 : TaxRuleSet {
 
     // OWNER-INPUT: C6/C7 DATE-BASIS: settlement date when present, else trade date.
     override fun taxDate(activity: Activity): LocalDate = activity.settlementDate ?: activity.effectiveDate
+
+    // OWNER-INPUT: SL-WINDOW: 30 days before through 30 days after the sale's tax date, both ends inclusive.
+    override fun superficialWindow(saleTaxDate: LocalDate): ClosedRange<LocalDate> =
+        saleTaxDate.minusDays(30)..saleTaxDate.plusDays(30)
+
+    // OWNER-INPUT: SL-PARTIAL (provisional): least(S, P, B) / S x L, rounded down at the internal scale.
+    override fun superficialLossDenied(
+        sold: Long,
+        acquired: Long,
+        heldAtEnd: Long,
+        loss: Long,
+    ): Long {
+        val matched = minOf(sold, acquired, heldAtEnd)
+        if (sold <= 0L || matched <= 0L || loss <= 0L) return 0L
+        return (BigInteger.valueOf(loss) * BigInteger.valueOf(matched) / BigInteger.valueOf(sold)).longValueExact()
+    }
 }

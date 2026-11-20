@@ -52,6 +52,9 @@ class AcbEngine(val ruleSet: TaxRuleSet) {
 
     fun replay(activities: Collection<PostedActivity>): Replay = replayAll(this, activities)
 
+    /** Like [replay], with the superficial loss rule (L-07): registered buys are substituted property. */
+    fun replaySuperficial(activities: Collection<PostedActivity>): SlReplay = replaySuperficialLosses(this, activities)
+
     private fun buy(
         pool: AcbPool,
         posted: PostedActivity,
