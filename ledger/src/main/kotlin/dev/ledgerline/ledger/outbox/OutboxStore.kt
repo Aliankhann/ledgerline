@@ -2,12 +2,13 @@ package dev.ledgerline.ledger.outbox
 
 import dev.ledgerline.ledger.LedgerRepository
 import org.apache.kafka.clients.producer.RecordMetadata
+import java.sql.Connection
 import java.sql.ResultSet
 import javax.sql.DataSource
 
 /**
- * Reads `ledger.outbox` and appends to `ledger.outbox_delivery`. Works as the app role (SELECT and INSERT only).
- * OWNER-INPUT: C5: an event is pending while it has no delivery row; nothing is ever updated.
+ * Reads `ledger.outbox` and appends to `ledger.outbox_delivery` and `ledger.outbox_parked`. Works as the app role
+ * (SELECT and INSERT only). OWNER-INPUT: C5: an event is pending while it has no delivery row; nothing is ever updated.
  */
 class OutboxStore(private val dataSource: DataSource) {
     /** Every outbox row, ascending [OutboxEvent.eventId]. */
@@ -45,16 +46,50 @@ class OutboxStore(private val dataSource: DataSource) {
             }
         }
 
-    /** Up to [max] pending events with id above [afterId], ascending, ready to send. One query (legacy rows aside). */
+    /** Every parked event (OWNER-INPUT: C27), ascending event id. Parked events are also in [pendingEventIds]. */
+    fun parkedEvents(): List<ParkedEvent> =
+        dataSource.connection.use { c ->
+            c.prepareStatement(
+                "SELECT outbox_id, taxpayer_id, reason_code, detail FROM ledger.outbox_parked ORDER BY outbox_id",
+            ).use { st ->
+                st.executeQuery().use { rs ->
+                    buildList {
+                        while (rs.next()) {
+                            add(
+                                ParkedEvent(
+                                    rs.getLong(1),
+                                    rs.getString(2),
+                                    ParkReason.valueOf(rs.getString(3)),
+                                    rs.getString(4),
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+    /**
+     * Up to [max] sendable pending rows with id above [afterId], ascending. One query (legacy rows aside). Leaves out
+     * parked rows and every row of a taxpayer that has a parked row before it (OWNER-INPUT: C27), so a parked event
+     * holds back only its own taxpayer and is never retried. A row whose event cannot be built is returned as an
+     * [UnreadableRow] instead of throwing (B-017); database errors still throw.
+     */
     internal fun pendingBatch(
         afterId: Long,
         max: Int,
-    ): List<PendingEvent> {
+    ): List<PendingRow> {
         val rows =
             dataSource.connection.use { c ->
                 c.prepareStatement(
-                    "SELECT o.outbox_id, o.entry_id, o.activity_id, o.taxpayer_id, o.payload FROM ledger.outbox o " +
-                        "$PENDING AND o.outbox_id > ? ORDER BY o.outbox_id LIMIT ?",
+                    "SELECT o.outbox_id, o.entry_id, o.activity_id, o.taxpayer_id, o.payload, " +
+                        "COALESCE(o.taxpayer_id, a.taxpayer_id) FROM ledger.outbox o " +
+                        "LEFT JOIN ledger.activity a ON o.taxpayer_id IS NULL AND a.activity_id = o.activity_id " +
+                        "$PENDING AND o.outbox_id > ? " +
+                        "AND NOT EXISTS (SELECT 1 FROM ledger.outbox_parked p WHERE p.outbox_id = o.outbox_id) " +
+                        "AND NOT EXISTS (SELECT 1 FROM ledger.outbox_parked p " +
+                        "WHERE p.taxpayer_id = COALESCE(o.taxpayer_id, a.taxpayer_id) AND p.outbox_id < o.outbox_id) " +
+                        "ORDER BY o.outbox_id LIMIT ?",
                 ).use { st ->
                     st.setLong(1, afterId)
                     st.setInt(2, max)
@@ -74,29 +109,22 @@ class OutboxStore(private val dataSource: DataSource) {
         }
     }
 
-    /** Appends one delivery row per acknowledged event, in one transaction. A row already recorded is left as is. */
-    internal fun recordDeliveries(
+    /**
+     * In one transaction: one delivery row per acknowledged event and one parked row per event in [parked]. A row
+     * already recorded (another relay won the race) is left as is.
+     */
+    internal fun record(
         topic: String,
         acked: List<Pair<PendingEvent, RecordMetadata>>,
+        parked: List<ParkedEvent>,
     ) {
-        if (acked.isEmpty()) return
+        if (acked.isEmpty() && parked.isEmpty()) return
         dataSource.connection.use { c ->
             val previous = c.autoCommit
             c.autoCommit = false
             try {
-                c.prepareStatement(
-                    "INSERT INTO ledger.outbox_delivery (outbox_id, topic, kafka_partition, kafka_offset) " +
-                        "VALUES (?, ?, ?, ?) ON CONFLICT (outbox_id) DO NOTHING",
-                ).use { st ->
-                    acked.forEach { (event, meta) ->
-                        st.setLong(1, event.eventId)
-                        st.setString(2, topic)
-                        st.setInt(3, meta.partition())
-                        st.setLong(4, maxOf(meta.offset(), 0L))
-                        st.addBatch()
-                    }
-                    st.executeBatch()
-                }
+                if (acked.isNotEmpty()) insertDeliveries(c, topic, acked)
+                if (parked.isNotEmpty()) insertParked(c, parked)
                 c.commit()
             } catch (e: Throwable) {
                 c.rollback()
@@ -107,8 +135,47 @@ class OutboxStore(private val dataSource: DataSource) {
         }
     }
 
-    /** A row written before V7 (no event columns): always an ACTIVITY_POSTED with an activity row. */
-    private fun legacy(r: Row): PendingEvent {
+    private fun insertDeliveries(
+        c: Connection,
+        topic: String,
+        acked: List<Pair<PendingEvent, RecordMetadata>>,
+    ) {
+        c.prepareStatement(
+            "INSERT INTO ledger.outbox_delivery (outbox_id, topic, kafka_partition, kafka_offset) " +
+                "VALUES (?, ?, ?, ?) ON CONFLICT (outbox_id) DO NOTHING",
+        ).use { st ->
+            acked.forEach { (event, meta) ->
+                st.setLong(1, event.eventId)
+                st.setString(2, topic)
+                st.setInt(3, meta.partition())
+                st.setLong(4, maxOf(meta.offset(), 0L))
+                st.addBatch()
+            }
+            st.executeBatch()
+        }
+    }
+
+    private fun insertParked(
+        c: Connection,
+        parked: List<ParkedEvent>,
+    ) {
+        c.prepareStatement(
+            "INSERT INTO ledger.outbox_parked (outbox_id, taxpayer_id, reason_code, detail) " +
+                "VALUES (?, ?, ?, ?) ON CONFLICT (outbox_id) DO NOTHING",
+        ).use { st ->
+            parked.forEach { p ->
+                st.setLong(1, p.eventId)
+                st.setString(2, p.taxpayerId)
+                st.setString(3, p.reason.name)
+                st.setString(4, p.detail)
+                st.addBatch()
+            }
+            st.executeBatch()
+        }
+    }
+
+    /** A row written before V7 (no event columns): an ACTIVITY_POSTED built from its activity row, if that exists. */
+    private fun legacy(r: Row): PendingRow {
         val key =
             dataSource.connection.use { c ->
                 c.prepareStatement("SELECT idempotency_key FROM ledger.activity WHERE activity_id = ?").use { st ->
@@ -117,9 +184,17 @@ class OutboxStore(private val dataSource: DataSource) {
                 }
             }
         val record =
-            checkNotNull(key?.let { LedgerRepository(dataSource).findActivity(it) }) {
-                "outbox row ${r.eventId} has no event payload and no activity row"
-            }
+            try {
+                key?.let { LedgerRepository(dataSource).findActivity(it) }
+            } catch (e: IllegalArgumentException) {
+                // A stored value the domain types refuse (for example an unknown enum name).
+                return UnreadableRow(r.eventId, r.keyTaxpayerId, ParkReason.LEGACY_UNREADABLE, "activity row: $e")
+            } ?: return UnreadableRow(
+                r.eventId,
+                r.keyTaxpayerId,
+                ParkReason.LEGACY_UNREADABLE,
+                "outbox row ${r.eventId} has no event payload and no activity row",
+            )
         return PendingEvent(
             r.eventId,
             record.activity.taxpayerId,
@@ -133,9 +208,12 @@ class OutboxStore(private val dataSource: DataSource) {
         val activityId: String?,
         val taxpayerId: String?,
         val payload: String?,
+        /** The message key: the row's own taxpayer, or a legacy row's activity taxpayer; null if neither exists. */
+        val keyTaxpayerId: String?,
     ) {
         companion object {
-            fun of(rs: ResultSet) = Row(rs.getLong(1), rs.getLong(2), rs.getString(3), rs.getString(4), rs.getString(5))
+            fun of(rs: ResultSet) =
+                Row(rs.getLong(1), rs.getLong(2), rs.getString(3), rs.getString(4), rs.getString(5), rs.getString(6))
         }
     }
 
@@ -145,5 +223,18 @@ class OutboxStore(private val dataSource: DataSource) {
     }
 }
 
-/** An event ready to send: key [taxpayerId], stored body [payload] (without `eventId`). */
-internal class PendingEvent(val eventId: Long, val taxpayerId: String, val payload: String)
+/** A pending outbox row as the relay reads it. */
+internal sealed interface PendingRow {
+    val eventId: Long
+}
+
+/** An event to send: key [taxpayerId], stored body [payload] (without `eventId`; not yet checked to be JSON). */
+internal class PendingEvent(override val eventId: Long, val taxpayerId: String, val payload: String) : PendingRow
+
+/** A row whose event cannot be built; the relay parks it ([taxpayerId] null if the key is unknown). */
+internal class UnreadableRow(
+    override val eventId: Long,
+    val taxpayerId: String?,
+    val reason: ParkReason,
+    val detail: String,
+) : PendingRow

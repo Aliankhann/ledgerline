@@ -42,7 +42,7 @@ fun main() {
 
     // Draft ADR 0005 (L-05): the outbox relay runs in the service process, as the app role. OWNER-INPUT: C26.
     val producer = OutboxProducers.create(config.kafkaBootstrap)
-    val relay = OutboxRelay(dataSource, producer)
+    val relay = OutboxRelay(dataSource, producer, OutboxTopic.NAME, config.maxEventBytes)
     relay.start()
     log.info("Outbox relay draining to {} at {}", OutboxTopic.NAME, config.kafkaBootstrap)
     Runtime.getRuntime().addShutdownHook(
@@ -53,7 +53,7 @@ fun main() {
         },
     )
 
-    val ingestion = IngestionService(LedgerRepository(dataSource))
+    val ingestion = IngestionService(LedgerRepository(dataSource, config.maxEventBytes))
     embeddedServer(Netty, port = config.httpPort) {
         module()
         ingestionModule(ingestion)

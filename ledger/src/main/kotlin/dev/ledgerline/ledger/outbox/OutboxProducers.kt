@@ -14,6 +14,9 @@ import org.apache.kafka.common.serialization.StringSerializer
  */
 object OutboxProducers {
     const val DELIVERY_TIMEOUT_MS = 30_000
+
+    /** Kafka's default `max.request.size`, set explicitly because [OutboxLimits] is sized under it. */
+    const val MAX_REQUEST_BYTES = 1024 * 1024
     private const val REQUEST_TIMEOUT_MS = 10_000
     private const val MAX_BLOCK_MS = 10_000L
     private const val LINGER_MS = 5
@@ -31,6 +34,7 @@ object OutboxProducers {
                 ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG to REQUEST_TIMEOUT_MS,
                 ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG to DELIVERY_TIMEOUT_MS,
                 ProducerConfig.MAX_BLOCK_MS_CONFIG to MAX_BLOCK_MS,
+                ProducerConfig.MAX_REQUEST_SIZE_CONFIG to MAX_REQUEST_BYTES,
             ),
             StringSerializer(),
             ByteArraySerializer(),

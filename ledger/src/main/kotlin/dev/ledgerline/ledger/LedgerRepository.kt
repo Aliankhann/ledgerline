@@ -4,6 +4,7 @@ import dev.ledgerline.core.AccountType
 import dev.ledgerline.core.Activity
 import dev.ledgerline.core.ActivityType
 import dev.ledgerline.core.Currency
+import dev.ledgerline.ledger.outbox.OutboxLimits
 import dev.ledgerline.ledger.outbox.OutboxWrites
 import java.sql.Connection
 import java.sql.SQLException
@@ -17,9 +18,17 @@ import javax.sql.DataSource
 /**
  * The append-only ledger store. Works with connections that run as role `ledgerline_app` (SELECT and INSERT only).
  * Each append is one transaction; appends are serialised by a transaction-scoped advisory lock, so
- * [PostedEntry.sequence] increases in commit order (draft ADR 0005).
+ * [PostedEntry.sequence] increases in commit order (draft ADR 0005). An append whose outbox event would exceed
+ * [maxEventBytes] throws [dev.ledgerline.ledger.outbox.EventTooLargeException] and writes nothing (OWNER-INPUT: C27).
  */
-class LedgerRepository(private val dataSource: DataSource) {
+class LedgerRepository(
+    private val dataSource: DataSource,
+    private val maxEventBytes: Int = OutboxLimits.DEFAULT_MAX_EVENT_BYTES,
+) {
+    init {
+        OutboxLimits.requireValid(maxEventBytes)
+    }
+
     /** Posts [activity] as one entry with the lines from [Posting.linesFor]. */
     fun post(activity: Activity): PostedEntry =
         append(
@@ -202,7 +211,7 @@ class LedgerRepository(private val dataSource: DataSource) {
                         appendReversal(c, entrySequence, correctionKey, reason, ShareHoldings.Replacement(request))
                     val posted = insert(c, request)
                     // OWNER-INPUT: C25: the replacement is published like any posted activity.
-                    OutboxWrites.activityPosted(c, posted, null, replacement)
+                    OutboxWrites.activityPosted(c, posted, null, replacement, maxEventBytes)
                     CorrectionResult(reversal, posted)
                 }
             }
@@ -256,7 +265,7 @@ class LedgerRepository(private val dataSource: DataSource) {
         val request = EntryRequest(key, original.effectiveDate, original.sourceSeq, Posting.reversalOf(original.lines))
         val reversal = insert(c, request, ReversalLink(entrySequence, reason))
         // OWNER-INPUT: C25: a reversal writes its ENTRY_REVERSED outbox row in the same transaction.
-        OutboxWrites.entryReversed(c, reversal, entrySequence, reason)
+        OutboxWrites.entryReversed(c, reversal, entrySequence, reason, maxEventBytes)
         return reversal
     }
 
@@ -339,7 +348,7 @@ class LedgerRepository(private val dataSource: DataSource) {
         val entry = insertEntry(c, request)
         val activityId = UUID.randomUUID().toString()
         insertActivity(c, activityId, entry.sequence, hash, recordedAt, activity)
-        OutboxWrites.activityPosted(c, entry, activityId, activity)
+        OutboxWrites.activityPosted(c, entry, activityId, activity, maxEventBytes)
         return SubmitOutcome.Posted(activityId, entry.sequence)
     }
 

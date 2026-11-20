@@ -1,6 +1,6 @@
 # B-015 After a failed ack mid-drain, a taxpayer's later events reach the topic before the retried earlier one
 
-**Story:** L-05 · **Severity:** major · **Status:** Open · **Round:** 1
+**Story:** L-05 · **Severity:** major · **Status:** Fixed (pending CI) · **Round:** 1
 
 ## Reproduction
 
@@ -39,3 +39,11 @@ key succeed. With a real idempotent producer that mostly happens when a batch ex
 later batch for the partition is accepted. Owner to choose: fix (serial per key, or stop sending a key after its first
 unacked record and wait for that ack before sending more), or accept and require the L-12 consumer to re-order by
 ledger sequence (then AC7's wording must change).
+
+## Fix (dev, round 2)
+
+Fixed (pending CI) in `OutboxRelay.drainOnce`: sends are strictly serial per taxpayer and parallel across taxpayers
+(rounds of one event per taxpayer; a taxpayer's next event is sent only after the previous one is acknowledged). A
+failed send stops that taxpayer for the rest of the drain; the next drain resends from the failed event. For this
+reproduction, events 5, 7 and 9 are not sent in the first drain, so `TP-0001`'s topic order is `1, 3, 5, 7, 9`.
+Other taxpayers keep flowing. Draft ADR 0005 "Per-taxpayer order" updated. Not run locally (no Docker).
