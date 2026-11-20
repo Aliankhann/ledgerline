@@ -14,7 +14,7 @@ import kotlinx.serialization.json.long
 import kotlinx.serialization.json.longOrNull
 import java.time.LocalDate
 
-/** Rebuilds the posted activity from an outbox message value. Null for events that carry none (reversals). */
+/** Rebuilds the posted activity from an outbox message value. Null for events that carry none (reversals; see [reversedEntryId]). */
 internal object EventDecoder {
     fun decode(value: ByteArray): PostedActivity? {
         val body = Json.parseToJsonElement(value.toString(Charsets.UTF_8)).jsonObject
@@ -41,6 +41,13 @@ internal object EventDecoder {
             )
         val activityId = body["activityId"]?.jsonPrimitive?.contentOrNull ?: "act-${activity.idempotencyKey}"
         return PostedActivity(activityId, body.getValue("entryId").jsonPrimitive.long, activity)
+    }
+
+    /** The id of the entry an ENTRY_REVERSED event reverses; null for any other event. */
+    fun reversedEntryId(value: ByteArray): Long? {
+        val body = Json.parseToJsonElement(value.toString(Charsets.UTF_8)).jsonObject
+        if (body.getValue("eventType").jsonPrimitive.content != "ENTRY_REVERSED") return null
+        return body.getValue("reversesEntryId").jsonPrimitive.long
     }
 
     private fun JsonObject.str(k: String) = getValue(k).jsonPrimitive.content
