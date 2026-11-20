@@ -10,6 +10,7 @@ import javax.sql.DataSource
  */
 object CalcMigrations {
     const val LOCATION = "classpath:db/calc"
+    const val SCHEMA = "calc"
     const val HISTORY_TABLE = "calc_schema_history"
 
     /** Applies pending migrations and returns how many ran. */
@@ -17,6 +18,9 @@ object CalcMigrations {
         Flyway.configure()
             .dataSource(dataSource)
             .locations(LOCATION)
+            .schemas(SCHEMA)
+            .defaultSchema(SCHEMA)
+            .createSchemas(true)
             .table(HISTORY_TABLE)
             .load()
             .migrate()
