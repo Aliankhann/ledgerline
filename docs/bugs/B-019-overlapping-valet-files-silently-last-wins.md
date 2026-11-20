@@ -1,6 +1,6 @@
 # B-019 Same date in two overlapping Valet files: last file silently wins
 
-**Story:** L-08 · **Severity:** major · **Status:** Open · **Round:** 1
+**Story:** L-08 · **Severity:** major · **Status:** Fixed · **Round:** 1
 
 ## Reproduction
 
