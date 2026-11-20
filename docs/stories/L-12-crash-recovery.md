@@ -1,6 +1,6 @@
 # L-12 Crash recovery
 
-**Status:** Tests written (provisional)  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 5 (part 1), 9 (part 2) · **Branch:** `L-12-crash-recovery` · **Round:** 0 / 3
 
 ## Story
@@ -105,4 +105,18 @@ Crash and redelivery handling itself is not sourced (assumption A-12).
 
 ## Change notes (Dev fills)
 
-- …
+- `calc/` gains `PoolConsumer` (Kafka consumer of `ledgerline.activities.v1`), `InboxState` (pure inbox logic shared with
+  the consumer through `applyToPool`), `PoolStore`, `CalcMigrations` and `EventDecoder`.
+- Per record: one Postgres transaction and one `commit()`: advisory lock, inbox check, pool upsert, inbox insert, offset
+  upsert (`GREATEST`, so an offset never moves back). A duplicate event id only advances the offset.
+- Offsets live in `calc.consumer_offset`; the consumer assigns all partitions itself and seeks to the stored offset
+  (earliest if none). It never commits to Kafka. After any failure it re-seeks from the database.
+- Migration `calc/src/main/resources/db/calc/V1__calc_state.sql` (own history table `calc_schema_history`); run
+  `CalcMigrations.migrate` as the owner after the ledger's. Pool and offset rows are updated in place because calc state
+  is derived (rebuildable by replay); the app role has only SELECT and INSERT on the inbox.
+- Choices for the owner (not ADR-level, noted here): the consumer lives in `calc/` and is not yet wired into `app/` or
+  `docker-compose.yml`; one transaction per event; a global advisory lock serializes consumers; `ENTRY_REVERSED` events
+  are recorded in the inbox but change no pool yet (reversal and correction handling is L-09); pools persist shares and
+  ACB only, not history.
+- Ran `./gradlew ktlintFormat build --rerun-tasks`: build successful, `L12InboxPropertyTest` passes. The Docker-backed
+  `L12CrashRecoverySpec` tests are skipped locally (no Docker); CI runs them.
