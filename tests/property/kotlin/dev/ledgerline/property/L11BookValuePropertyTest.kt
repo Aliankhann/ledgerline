@@ -53,6 +53,7 @@ class L11BookValuePropertyTest : FunSpec({
             diffs.forEach {
                 it.differenceCents shouldBe 0L
                 it.reasons.shouldBeEmpty()
+                it.reasons.sumOf { r -> r.amountMinor } shouldBe it.differenceCents
             }
         }
     }
@@ -71,6 +72,7 @@ class L11BookValuePropertyTest : FunSpec({
             d.key shouldBe victim
             d.differenceCents shouldBe -signed
             d.reasons.shouldNotBeEmpty()
+            d.reasons.sumOf { it.amountMinor } shouldBe d.differenceCents
             val ids = pools.getValue(victim).history.map { it.entryId }
             d.reasons.forEach { reason ->
                 CaIta2026v1.ruleIds shouldContain reason.ruleId

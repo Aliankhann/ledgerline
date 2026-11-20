@@ -41,21 +41,23 @@ import java.time.LocalDate
  *   `fun compare(pools: Map<PoolKey, AcbPool>, bookValues: Map<PoolKey, Long>): List<HoldingDiff>`.
  *   Uses rule set `CaIta2026v1`. One row per pool with shares > 0 or history, sorted by (taxpayerId, securityId), zero
  *   differences included. Book values are cents; `acbCents` is `toReportedCents(pool.totalAcb)` (the single rounding
- *   point). A pool with no book value entry is not compared (no row is invented); a book value with no pool is out of
- *   this contract (open question, see docs/status.md).
+ *   point). A pool with no book value entry is not compared (no row is invented); a book value with no pool (provisional C29)
+ *   becomes a row with `acbCents = 0` and exactly one reason, ruleId `NO-LEDGER-HISTORY` (not a rule-set ID), non-blank
+ *   text, empty `entryIds`, whose `amountMinor` is the whole difference.
  * - `data class HoldingDiff(key: PoolKey, bookValueCents: Long, acbCents: Long, differenceCents: Long,
  *   reasons: List<Reason>)` with `differenceCents = acbCents - bookValueCents` (story AC6 sign).
- * - `data class Reason(ruleId: String, text: String, entryIds: List<Long>)`. A zero difference has no reasons. Every
+ * - `data class Reason(ruleId: String, text: String, entryIds: List<Long>, amountMinor: Long)`. A zero difference has no reasons. Every
  *   non-zero difference has at least one reason; each names a rule ID in `CaIta2026v1.ruleIds`, non-blank text, and at
- *   least one entry ID taken from that pool's `history`. A return of capital in the history is explained by
- *   `ROC-REDUCES-ACB` naming the ROC entry. Reason amounts are NOT in this contract (story AC6 sum check is a follow-up).
+ *   least one entry ID taken from that pool's `history`. The `amountMinor` of the reasons sum exactly to
+ *   `differenceCents` (story AC6), for every holding including zero differences (empty sum). A return of capital in the history is explained by
+ *   `ROC-REDUCES-ACB` naming the ROC entry.
  * - `object BookValueCsv` with `fun parse(taxpayerId: String, csv: String): Map<PoolKey, Long>`. PROVISIONAL format
  *   until owner input B2: header `security_id,book_value`, then rows with book value in dollars, an optional
  *   two-decimal fraction, no thousands separators, no sign. Malformed input throws `IllegalArgumentException`.
  * - Package `dev.ledgerline.app`: `fun Application.acbVsBookModule(pools: Map<PoolKey, AcbPool>, bookValueCsv: String)`
  *   installs JSON content negotiation and `GET /v1/holdings/{taxpayer}/acb-vs-book`, answering 200 with
  *   `{"taxpayerId", "currency":"CAD", "holdings":[{"securityId","bookValueCents","acbCents","differenceCents",
- *   "reasons":[{"ruleId","text","entryIds":[...]}]}]}` for that taxpayer only; an unknown taxpayer gets `holdings: []`.
+ *   "reasons":[{"ruleId","text","entryIds":[...],"amountMinor"}]}]}` for that taxpayer only; an unknown taxpayer gets `holdings: []`.
  */
 class L11BookValueSpec : FunSpec({
 
@@ -99,6 +101,7 @@ class L11BookValueSpec : FunSpec({
         a.differenceCents shouldBe cents(afterRoc.getValue(aaa)) - cents(beforeRoc.getValue(aaa))
         (a.differenceCents != 0L) shouldBe true
         a.reasons.shouldNotBeEmpty()
+        a.reasons.sumOf { it.amountMinor } shouldBe a.differenceCents
         val roc = a.reasons.first { it.ruleId == "ROC-REDUCES-ACB" }
         roc.entryIds shouldContain rocA.entryId
         diffs.single { it.key == bbb }.reasons.shouldBeEmpty()
@@ -109,6 +112,7 @@ class L11BookValueSpec : FunSpec({
         BookValueComparison.compare(afterRoc, book).forEach { diff ->
             diff.differenceCents shouldBe -777L
             diff.reasons.shouldNotBeEmpty()
+            diff.reasons.sumOf { it.amountMinor } shouldBe diff.differenceCents
             val historyIds = afterRoc.getValue(diff.key).history.map { it.entryId }.toSet()
             diff.reasons.forEach { r ->
                 CaIta2026v1.ruleIds shouldContain r.ruleId
@@ -127,6 +131,18 @@ class L11BookValueSpec : FunSpec({
             ).single { it.key == bbb }
         d.differenceCents shouldBe -1L
         d.reasons.shouldNotBeEmpty()
+    }
+
+    test("L-11 AC6 backend: a book value with no pool is a NO-LEDGER-HISTORY row for the whole difference") {
+        val ghost = PoolKey(tp1, "SYN-GHOST")
+        val d = BookValueComparison.compare(afterRoc, equalBook + (ghost to 5_000L)).single { it.key == ghost }
+        d.acbCents shouldBe 0L
+        d.bookValueCents shouldBe 5_000L
+        d.differenceCents shouldBe -5_000L
+        val r = d.reasons.single()
+        r.ruleId shouldBe "NO-LEDGER-HISTORY"
+        r.amountMinor shouldBe -5_000L
+        r.text.isNotBlank() shouldBe true
     }
 
     test("L-11 CSV: parses the provisional security_id,book_value format to cents without floating point") {
@@ -183,6 +199,11 @@ class L11BookValueSpec : FunSpec({
                 CaIta2026v1.ruleIds shouldContain it.jsonObject.getValue("ruleId").jsonPrimitive.content
                 it.jsonObject.getValue("entryIds").jsonArray.shouldNotBeEmpty()
             }
+            reasons.sumOf { it.jsonObject.getValue("amountMinor").jsonPrimitive.content.toLong() } shouldBe
+                a
+                    .getValue("differenceCents")
+                    .jsonPrimitive.content
+                    .toLong()
             holdings[1].jsonObject.getValue("reasons").jsonArray.shouldBeEmpty()
 
             val empty = client.get("/v1/holdings/TP-9999/acb-vs-book")
