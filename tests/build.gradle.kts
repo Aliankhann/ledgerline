@@ -56,3 +56,12 @@ tasks.withType<Test>().configureEach {
     systemProperty("api.version", "1.44")
     environment("DOCKER_API_VERSION", "1.44")
 }
+
+// Surface test stdout (timings printed by perf tests) in CI logs.
+tasks.withType<Test>().configureEach {
+    testLogging {
+        events("standard_out", "failed")
+        showStandardStreams = true
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+}
