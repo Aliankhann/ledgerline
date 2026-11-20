@@ -1,6 +1,6 @@
 # B-018 Zero-quantity sell on an empty pool throws a divide-by-zero
 
-**Story:** L-06 · **Severity:** minor · **Status:** Open · **Round:** 1
+**Story:** L-06 · **Severity:** minor · **Status:** Fixed · **Round:** 1
 
 ## Reproduction
 
