@@ -21,6 +21,7 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.maps.shouldBeEmpty as mapShouldBeEmpty
 
 /**
  * Story L-09 (docs/stories/L-09-late-correction-recompute.md), pure: no database, rule set `CA-ITA-2026.1`.
@@ -171,7 +172,7 @@ class L09RecomputeSpec : FunSpec({
         val first = recomputer.recomputeFrom(engine.replay(history).pools, history, c)
         val settledPools = first.changedPools + first.unchangedPools
         val again = recomputer.recomputeFrom(settledPools, effective(history, c), c)
-        again.changedPools.shouldBeEmpty()
+        again.changedPools.mapShouldBeEmpty()
         again.fromDate.shouldBeNull()
         again.unchangedPools shouldBe settledPools
         again.outputHash shouldBe first.outputHash
