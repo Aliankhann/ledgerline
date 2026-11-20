@@ -1,6 +1,6 @@
 # L-12 Crash recovery
 
-**Status:** Draft  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** Tests written (provisional)  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 5 (part 1), 9 (part 2) · **Branch:** `L-12-crash-recovery` · **Round:** 0 / 3
 
 ## Story
@@ -97,7 +97,11 @@ Crash and redelivery handling itself is not sourced (assumption A-12).
 
 | AC | Test |
 | --- | --- |
-| AC1 | `tests/spec/.../L12Spec.kt` › "L-12 AC1: …" |
+| AC1 | `L12CrashRecoverySpec` "L-12 AC1: …" (two tests), `L12InboxPropertyTest` |
+| AC2 | `L12CrashRecoverySpec` "L-12 AC2: …" |
+| AC3, AC4 | `L12CrashRecoverySpec` "L-12 AC3: …", "L-12 AC4: …" (kill before commit 1, n/2, n-1; after commit 7) |
+| AC6, AC7 | `L12CrashRecoverySpec` "L-12 AC6: …", "L-12 AC7: …" (in-process, no Toxiproxy) |
+| AC5, AC8, AC9 | not written (L-12b; needs Toxiproxy and L-09/L-10 wiring) |
 
 ## Change notes (Dev fills)
 
