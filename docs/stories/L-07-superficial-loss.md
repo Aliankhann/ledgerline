@@ -1,6 +1,6 @@
 # L-07 Superficial-loss detection across accounts
 
-**Status:** Draft  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** Tests written (provisional)  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 6 · **Branch:** `L-07-superficial-loss` · **Round:** 0 / 3
 
 ## Story
@@ -291,9 +291,25 @@ Tax judgment (each goes into an ADR with its source once decided):
 
 ## Test map (QE fills)
 
-| AC | Test |
-| --- | --- |
-| AC1 | `tests/spec/.../L07Spec.kt` › "L-07 AC1: …" |
+Spec: `tests/spec/kotlin/dev/ledgerline/spec/L07SuperficialLossSpec.kt` (API contract in its KDoc). Fixtures:
+`tests/fixtures/l07/`, each citing its URL. Property: `tests/property/.../L07SuperficialLossPropertyTest.kt`.
+
+| AC | Test (name starts with) | Fixture |
+| --- | --- | --- |
+| AC1 | "L-07 AC1 [CA-ITA-2026.1]: full repurchase ..." and "...later sale reports the reduced gain" | `acb-slr-example1` |
+| AC2 | disabled `xtest` "L-07 AC2 ..." (NEEDS SOURCED EXAMPLE; AC8 cases 3 and 4 cover the before-sale boundary) | none |
+| AC3 | "L-07 AC3 ...: a repurchase in another non-registered account" | `acb-slr-example1` (t3 in NR_B) |
+| AC4 | "L-07 AC4 ...: repurchase in a TFSA is permanently lost" | `acb-inkind-example2` |
+| AC5 | "L-07 AC5 ..." (2 tests) | `acb-slr-example2` |
+| AC6 | "L-07 AC6a", "L-07 AC6b", "L-07 AC6 ...: the proration formula" (adopts the formula; owner decision open) | `taxtips-partial` |
+| AC7 | "L-07 AC7 ..." | `acb-slr-jeff` |
+| AC8 | "L-07 AC8 case 1..4" (rule text, not a worked example) | `ita54-window` |
+| AC9 | "L-07 AC9 ..." and property "a sale at a gain is never flagged" | `acb-slr-jeff`, `ita54-window` |
+| AC10 | "L-07 AC10 ..." and property "Invariant 6 (L-07 AC10)" | `acb-slr-example1` |
+| AC11 | "L-07 AC11 ..." (2 tests; outcome name `PERMANENTLY_LOST` as in the story, to confirm) | `acb-inkind-example2`, `acb-slr-example1` |
+| (pluggability) | "L-07 ...: the window is a rule-set value" (ADR 0004) | none |
+
+Not run: none of these compile yet (missing SL-* API); no test has been executed.
 
 ## Change notes (Dev fills)
 

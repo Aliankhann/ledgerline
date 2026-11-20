@@ -1,7 +1,6 @@
 package dev.ledgerline.spec
 
 import dev.ledgerline.calc.AcbEngine
-import dev.ledgerline.calc.AcbPool
 import dev.ledgerline.calc.CaIta2026v1
 import dev.ledgerline.calc.PoolKey
 import dev.ledgerline.calc.PostedActivity
@@ -10,12 +9,14 @@ import dev.ledgerline.calc.SlOutcome
 import dev.ledgerline.calc.SlReplay
 import dev.ledgerline.calc.TaxRuleSet
 import dev.ledgerline.core.AccountType
+import dev.ledgerline.core.ActivityType
+import dev.ledgerline.testsupport.Activities
 import dev.ledgerline.testsupport.L06Activities
 import dev.ledgerline.testsupport.L07Activities
 import dev.ledgerline.testsupport.L07Fixture
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldContainAll
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import java.time.LocalDate
@@ -87,7 +88,9 @@ class L07SuperficialLossSpec : FunSpec({
         rules.superficialWindow(d) shouldBe d.minusDays(30)..d.plusDays(30)
     }
 
-    test("L-07 AC1 $rs: full repurchase after the sale denies the whole loss; add-back lifts the pool ACB (ACB-SLR #1)") {
+    test(
+        "L-07 AC1 $rs: full repurchase after the sale denies the whole loss; add-back lifts the pool ACB (ACB-SLR #1)",
+    ) {
         val sale = engine.replaySuperficial(rows(ex1, "t1", "t2", "t3", "t4")).sale(ex1, "t2")
         sale.gainBeforeRule shouldBe -units(ex1.long("expected.t2.lossBeforeRule.cents"))
         sale.denied shouldBe units(ex1.long("expected.t2.denied.cents"))
@@ -244,26 +247,29 @@ class L07SuperficialLossSpec : FunSpec({
     /** The four AC8 shapes of `ita54-window.properties`: a sale on D and one identical purchase on a given day. */
     fun boundaryCase(n: Int): Pair<List<PostedActivity>, String> {
         val rebuyDate = window.date("case$n.rebuy.date")
+
         fun t(
             k: String,
-            type: dev.ledgerline.core.ActivityType,
+            type: ActivityType,
             date: LocalDate,
             shares: Long,
             cents: Long,
             seq: Long,
         ) = L06Activities.trade("L07-win$n-$k", type, date, window.security, shares, cents, 0L, seq)
         val whole = window.long("sale.shares.units")
-        val gross = { price: String -> window.long(price) * whole / dev.ledgerline.testsupport.Activities.SHARE }
-        val setup = t("setup", dev.ledgerline.core.ActivityType.BUY, window.date("setup.date"), whole, gross("setup.price.cents"), 1)
-        val sale = t("sale", dev.ledgerline.core.ActivityType.SELL, window.date("sale.date"), whole, gross("sale.price.cents"), 2)
-        val rebuy = t("rebuy", dev.ledgerline.core.ActivityType.BUY, rebuyDate, whole, gross("rebuy.price.cents"), 3)
+        val gross = { price: String -> window.long(price) * whole / Activities.SHARE }
+        val setup = t("setup", ActivityType.BUY, window.date("setup.date"), whole, gross("setup.price.cents"), 1)
+        val sale = t("sale", ActivityType.SELL, window.date("sale.date"), whole, gross("sale.price.cents"), 2)
+        val rebuy = t("rebuy", ActivityType.BUY, rebuyDate, whole, gross("rebuy.price.cents"), 3)
         return listOf(setup, sale, rebuy) to "act-L07-win$n-sale"
     }
 
     (1..4).forEach { n ->
         val d = window.date("case$n.rebuy.date")
         val expected = window.bool("case$n.expected.superficial")
-        test("L-07 AC8 case $n $rs: repurchase on $d: superficial loss recorded = $expected (ITA-54, TAXTIPS 61 days)") {
+        test(
+            "L-07 AC8 case $n $rs: repurchase on $d: superficial loss recorded = $expected (ITA-54, TAXTIPS 61 days)",
+        ) {
             val (trades, saleId) = boundaryCase(n)
             val sale = engine.replaySuperficial(trades).sales.single { it.activityId == saleId }
             (sale.gainBeforeRule < 0L) shouldBe true
