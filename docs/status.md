@@ -60,6 +60,7 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
 ## Open questions
 
 
+
 - **Follow-up after merging L-02 into l-04 (dev):** `LedgerRepository.reverse` and `correct` write only `ledger.entry`, `ledger.line` and `ledger.reversal`. They write no `ledger.activity` or `ledger.outbox` row (no test requires it; L-02's `submit` does both). A reversal therefore never reaches the L-05 outbox, and the replacement entry in `correct` has no activity row (so `findActivity` cannot see it and its key is not replayable through `submit`). Owner to decide what the outbox should carry for a reversal (an event naming the reversed entry?) before L-05. Migrations were renumbered: L-04's are now V5 (reversals) and V6 (chain guard). *L-05 (dev):* reversals and corrections now write `ENTRY_REVERSED` outbox rows (placeholder C25); the replacement still has no activity row.
 
 - **No Docker in this sandbox:** integration suites run in GitHub CI on story branches (owner allowed pushing `l-*`). Was: **Blocked: no Docker in this sandbox** (the daemon hit the 2-hour background limit and can't be restarted).
