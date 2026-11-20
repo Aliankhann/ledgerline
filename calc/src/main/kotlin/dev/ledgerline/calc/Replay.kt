@@ -15,23 +15,30 @@ data class Replay(
 
 private val POOL_TYPES = setOf(ActivityType.BUY, ActivityType.SELL, ActivityType.RETURN_OF_CAPITAL)
 
+/** Activities on a security, in canonical order. */
+internal fun canonicalOrder(
+    engine: AcbEngine,
+    activities: Collection<PostedActivity>,
+): List<PostedActivity> =
+    activities
+        .filter { it.activity.securityId != null }
+        .sortedWith(
+            compareBy<PostedActivity>(
+                { engine.ruleSet.taxDate(it.activity) },
+                { it.activity.sourceSeq },
+                { it.activity.idempotencyKey },
+            ),
+        )
+
 /** Canonical order: tax date, then sourceSeq, then idempotency key. Never arrival order (invariant 6). */
 internal fun replayAll(
     engine: AcbEngine,
     activities: Collection<PostedActivity>,
 ): Replay {
     val ordered =
-        activities
-            .filter { it.activity.securityId != null }
+        canonicalOrder(engine, activities)
             .filter { it.activity.accountType == AccountType.NON_REGISTERED }
             .filter { it.activity.activityType in POOL_TYPES }
-            .sortedWith(
-                compareBy<PostedActivity>(
-                    { engine.ruleSet.taxDate(it.activity) },
-                    { it.activity.sourceSeq },
-                    { it.activity.idempotencyKey },
-                ),
-            )
     val pools = mutableMapOf<PoolKey, AcbPool>()
     val gains = mutableListOf<GainLine>()
     val rejections = mutableListOf<Rejection>()
@@ -61,18 +68,26 @@ private fun outputHash(
     val text =
         buildString {
             append("rules=").append(ruleSetId).append('\n')
-            pools.forEach { (k, p) ->
-                append("pool|${k.taxpayerId}|${k.securityId}|${p.shares}|${p.totalAcb}\n")
-                p.history.forEach { c ->
-                    append("chg|${c.activityId}|${c.entryId}|${c.taxDate}|${c.sharesDelta}|${c.acbDelta}|")
-                    append(c.ruleIds.sorted().joinToString(",")).append('\n')
-                }
-            }
+            appendPools(pools)
             gains.forEach { g ->
                 append("gain|${g.kind}|${g.activityId}|${g.taxDate}|${g.gain}|${g.gainCents}|${g.acbSold}|")
                 append(g.ruleIds.sorted().joinToString(",")).append('\n')
             }
         }
+    return sha256Hex(text)
+}
+
+internal fun sha256Hex(text: String): String {
     val digest = MessageDigest.getInstance("SHA-256").digest(text.toByteArray(Charsets.UTF_8))
     return digest.joinToString("") { "%02x".format(it) }
+}
+
+internal fun StringBuilder.appendPools(pools: Map<PoolKey, AcbPool>) {
+    pools.forEach { (k, p) ->
+        append("pool|${k.taxpayerId}|${k.securityId}|${p.shares}|${p.totalAcb}\n")
+        p.history.forEach { c ->
+            append("chg|${c.activityId}|${c.entryId}|${c.taxDate}|${c.sharesDelta}|${c.acbDelta}|")
+            append(c.ruleIds.sorted().joinToString(",")).append('\n')
+        }
+    }
 }
