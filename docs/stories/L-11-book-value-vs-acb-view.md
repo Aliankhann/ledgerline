@@ -125,3 +125,9 @@ Reasons carry `amountMinor` and the AC6 sum check is covered. A book value with 
 ### Round 2 (B-023): route wired
 
 - `Main.kt` now calls `acbVsBookModule`. Not run against the live stack (needs Postgres and Kafka). There is still no ledger-to-pool source, so the live route is given an empty pool map and the book value file named by `BOOK_VALUE_CSV` (default: header only); it answers 200 with no holdings until a pool source exists. Owner to decide that source (Open question, C29). `acbVsBookModule` installs `ContentNegotiation` only if absent, since `module()` installs it as well.
+
+### Wiring (branch l-wire)
+
+- The live route is backed by `PoolStore.pools()` (read-only query of `calc.pool`) through a new
+  `acbVsBookModule(poolSource, csv)` overload; the map overload delegates to it. Pools carry totals only (no history),
+  so live reasons beyond the totals difference are `UNEXPLAINED`. Book values still come from `BOOK_VALUE_CSV`.
