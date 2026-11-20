@@ -1,6 +1,6 @@
 # L-08 USD to CAD by trade date
 
-**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** QE passed (round 2; local build green, CI pending), awaiting owner approval  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 7 · **Branch:** `L-08-usd-cad-fx` · **Round:** 0 / 3
 
 ## Story
