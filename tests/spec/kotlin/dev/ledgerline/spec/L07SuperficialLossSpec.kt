@@ -192,4 +192,99 @@ class L07SuperficialLossSpec : FunSpec({
         sale.reason shouldContain "ADDED_TO_ACB"
         sale.ruleIds shouldContainAll setOf("SL-DEFINITION", "SL-ADDBACK-TARGET")
     }
+
+    val partial = L07Fixture.load("taxtips-partial")
+    val jeff = L07Fixture.load("acb-slr-jeff")
+    val window = L07Fixture.load("ita54-window")
+
+    /** Rows `a.t1`.. or `b.t1`.. of the TaxTips fixture; the fixture keeps one security for both cases. */
+    fun partialRows(case: String): List<PostedActivity> {
+        val prefixes = (1..4).map { "$case.t$it" }.filter { partial.has("$it.type") }
+        return prefixes.mapIndexed { i, p -> L07Activities.row(partial, p, seq = i + 1L) }
+    }
+
+    test("L-07 AC6a $rs: S=50 P=20 B=20 L=1,000: 400 denied, 600 allowed, 400 added to the 20 shares (TAXTIPS)") {
+        val result = engine.replaySuperficial(partialRows("a"))
+        val sale = result.sale(partial, "a.t2")
+        sale.gainBeforeRule shouldBe -units(partial.long("a.expected.lossBeforeRule.cents"))
+        sale.denied shouldBe units(partial.long("a.expected.denied.cents"))
+        sale.reportedGain shouldBe -units(partial.long("a.expected.allowed.cents"))
+        sale.outcome shouldBe SlOutcome.ADDED_TO_ACB
+        val pool = result.pools.getValue(PoolKey(L06Activities.TAXPAYER, partial.security))
+        pool.shares shouldBe partial.long("a.expected.pool.shares.units")
+        pool.totalAcb shouldBe units(partial.long("a.expected.pool.acb.cents"))
+    }
+
+    test("L-07 AC6b $rs: S=50 P=150 B=120 L=1,000: the whole loss is denied (TAXTIPS)") {
+        val sale = engine.replaySuperficial(partialRows("b")).sale(partial, "b.t3")
+        sale.gainBeforeRule shouldBe -units(partial.long("b.expected.lossBeforeRule.cents"))
+        sale.denied shouldBe units(partial.long("b.expected.denied.cents"))
+        sale.reportedGain shouldBe -units(partial.long("b.expected.allowed.cents"))
+        sale.triggers.map { it.activityId }.toSet() shouldBe
+            setOf(L07Activities.id(partial, "b.t2"), L07Activities.id(partial, "b.t4"))
+    }
+
+    test("L-07 AC6 $rs: the proration formula is a rule-set method: least(S,P,B)/S x L (TAXTIPS cases)") {
+        val s = 50_000_000L
+        rules.superficialLossDenied(s, 20_000_000L, 20_000_000L, units(100_000)) shouldBe units(40_000)
+        rules.superficialLossDenied(s, 150_000_000L, 120_000_000L, units(100_000)) shouldBe units(100_000)
+    }
+
+    test("L-07 AC7 $rs: nothing held 30 days after the window: the loss is allowed in full (ACB-SLR, Jeff)") {
+        val result = engine.replaySuperficial(rows(jeff, "t1", "t2", "t3", "t4"))
+        val sale = result.sale(jeff, "t4")
+        sale.denied shouldBe jeff.long("expected.t4.denied.cents")
+        sale.outcome shouldBe SlOutcome.NONE
+        sale.triggers.size shouldBe 0
+        (sale.gainBeforeRule < 0L) shouldBe true
+        sale.reportedGain shouldBe sale.gainBeforeRule
+        result.pools.getValue(key).shares shouldBe jeff.long("expected.afterT4.shares.units")
+    }
+
+    /** The four AC8 shapes of `ita54-window.properties`: a sale on D and one identical purchase on a given day. */
+    fun boundaryCase(n: Int): Pair<List<PostedActivity>, String> {
+        val rebuyDate = window.date("case$n.rebuy.date")
+        fun t(
+            k: String,
+            type: dev.ledgerline.core.ActivityType,
+            date: LocalDate,
+            shares: Long,
+            cents: Long,
+            seq: Long,
+        ) = L06Activities.trade("L07-win$n-$k", type, date, window.security, shares, cents, 0L, seq)
+        val whole = window.long("sale.shares.units")
+        val gross = { price: String -> window.long(price) * whole / dev.ledgerline.testsupport.Activities.SHARE }
+        val setup = t("setup", dev.ledgerline.core.ActivityType.BUY, window.date("setup.date"), whole, gross("setup.price.cents"), 1)
+        val sale = t("sale", dev.ledgerline.core.ActivityType.SELL, window.date("sale.date"), whole, gross("sale.price.cents"), 2)
+        val rebuy = t("rebuy", dev.ledgerline.core.ActivityType.BUY, rebuyDate, whole, gross("rebuy.price.cents"), 3)
+        return listOf(setup, sale, rebuy) to "act-L07-win$n-sale"
+    }
+
+    (1..4).forEach { n ->
+        val d = window.date("case$n.rebuy.date")
+        val expected = window.bool("case$n.expected.superficial")
+        test("L-07 AC8 case $n $rs: repurchase on $d: superficial loss recorded = $expected (ITA-54, TAXTIPS 61 days)") {
+            val (trades, saleId) = boundaryCase(n)
+            val sale = engine.replaySuperficial(trades).sales.single { it.activityId == saleId }
+            (sale.gainBeforeRule < 0L) shouldBe true
+            (sale.denied > 0L) shouldBe expected
+        }
+    }
+
+    test("L-07 AC9 $rs: a sale at a gain with a repurchase in the window is never flagged (ITA-54 definition)") {
+        val result = engine.replaySuperficial(rows(jeff, "t1", "t2", "t3"))
+        val sale = result.sale(jeff, "t2")
+        (sale.gainBeforeRule > 0L) shouldBe true
+        sale.denied shouldBe 0L
+        sale.outcome shouldBe SlOutcome.NONE
+        sale.reportedGain shouldBe sale.gainBeforeRule
+        sale.triggers.size shouldBe 0
+        result.pools.getValue(key).totalAcb shouldBe units(500_000)
+    }
+
+    xtest("L-07 AC2 $rs: purchase before the loss sale denies it (NEEDS SOURCED EXAMPLE, see story L-07 AC2)") {
+        // Disabled by design. The story gives rule text only (ITA-54 "begins 30 days before") and no worked numbers;
+        // QE does not invent them. Enable when the BA adds a sourced dated example and the owner approves it.
+        // AC8 cases 3 and 4 already cover the before-sale boundary from rule text.
+    }
 })
