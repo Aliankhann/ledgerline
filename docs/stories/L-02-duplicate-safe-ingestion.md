@@ -1,6 +1,6 @@
 # L-02 Duplicate-safe ingestion
 
-**Status:** Draft  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** QE passed (round 2; CI integration green), awaiting owner approval  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 4 · **Branch:** `L-02-duplicate-safe-ingestion` · **Round:** 0 / 3
 
 ## Story
@@ -107,10 +107,64 @@ flag). Not sourced: that duplicate imports corrupt users' records in practice (n
 
 ## Test map (QE fills)
 
+Tests are provisional (story still Draft); placeholders C20 to C24 are in the KDoc of `L02IngestionSpec`. The API
+contract (`IngestionService`, `SubmitResult`, `ImportReport`, `PayloadHash`, `ingestionModule`, `ledger.outbox`) is there
+too. Differences from the story's interface proposal: error code `IDEMPOTENCY_KEY_MISMATCH` (not `..._REUSED`) and an
+`alreadyExisted` flag instead of `status`. All database tests are tagged Integration (Docker).
+S = `tests/spec/kotlin/dev/ledgerline/spec/`.
+
 | AC | Test |
 | --- | --- |
-| AC1 | `tests/spec/.../L02Spec.kt` › "L-02 AC1: …" |
+| AC1 | `S/L02IngestionSpec.kt` "L-02 AC1: first submission posts one entry and one outbox row"; HTTP "L-02 AC1: POST /v1/activities with A1 on an empty ledger is 201 ..." |
+| AC2 | `S/L02IngestionSpec.kt` "L-02 AC2: identical resubmission is a no-op ..." (service) and "L-02 AC2: the same body again is 200 ..." (HTTP) |
+| AC3 | `S/L02IngestionSpec.kt` "L-02 AC3: same key with amount 3021.50 ..." (service), "L-02 AC3: amount 3021.50 under the used key is 409 ..." (HTTP), "L-02 AC3 (C20): any hashed field changed is a mismatch; description alone is a duplicate" |
+| AC4 | `S/L02IngestionSpec.kt` "L-02 AC4: reversed field order, extra whitespace, amount 3012.5 and quantity 100.000000 are all duplicates"; `S/L02ImportSpec.kt` "L-02 AC4 (C20): PayloadHash is 64 lowercase hex ..." |
+| AC5 | `S/L02IngestionSpec.kt` "L-02 AC5: A1 resubmitted a day later ..." (service) and "L-02 AC5: A1 at 2025-01-07T15:00:00Z ..." (HTTP) |
+| AC6 | `S/L02IngestionSpec.kt` "L-02 AC6: 32 threads ..." (service) and "L-02 AC6: 20 concurrent POSTs of A1 ..." (HTTP) |
+| AC7 | `S/L02IngestionSpec.kt` "L-02 AC7: 16 threads ..." (service) and "L-02 AC7: 10 concurrent POSTs ..." (HTTP) |
+| AC8 | `S/L02IngestionSpec.kt` "L-02 AC8: currency EUR is 422 UNSUPPORTED_CURRENCY ..." (HTTP) and "L-02 AC8 (C21): a refused zero-amount deposit ..." (service) |
+| AC9 | `S/L02ImportSpec.kt` "L-02 AC9: the L-01 AC1 file twice ..." (HTTP), "L-02 AC9 and AC10: importCsv reports the same numbers through the service", "L-02 AC9 (C23) ...", "L-02 AC9 (C24) ..." |
+| AC10 | `S/L02ImportSpec.kt` "L-02 AC10: after AC9, line 3 with amount 3021.50 ..." (HTTP) and the service test above |
+| AC11 | `tests/property/kotlin/dev/ledgerline/property/IdempotencyInvariantPropertyTest.kt` "Invariant 2 (L-02 AC11) ..." (500 cases; prints the case count) |
+
+Phase B attack tests (round 1), `S/L02AttackHttpSpec.kt`, `S/L02AttackLedgerSpec.kt`, `S/L02AttackHashSpec.kt`: lookalike
+and over-long keys, malformed JSON, hostile text, number edges, crash injection at the activity and outbox inserts,
+app-role privileges, concurrent imports, mismatch after a duplicate in one file, 10 000 rows, hash stability across
+locale, time zone and JVM. Bugs: B-012, B-013, B-014 in `docs/bugs/`.
 
 ## Change notes (Dev fills)
 
-- …
+- 2026-11-19, Dev (provisional build on placeholders C20 to C24 in `docs/owner-inputs.md`; marked `OWNER-INPUT: Cn`).
+
+- **Funnel.** `LedgerRepository.submit` (ledger/) takes the append lock, looks up `ledger.activity` by key, and either
+  returns the original ids (same hash), `Mismatch` (other hash), or inserts entry, lines, activity and outbox in one
+  transaction. A 23505 is retried once and answered from the winner's row. `IngestionService` (app/) maps this to
+  `SubmitResult`; `ZeroAmountException` becomes `Invalid(ZERO_AMOUNT)` and writes nothing (C21).
+- **Hash (C20, amended).** `PayloadHash`: SHA-256 over a length-prefixed serialization of every Activity field except
+  `description` and `sourceSeq` (`recorded_at` is not an activity field). `importCsv` sets `sourceSeq` to the row's
+  physical line (C4 ordering) and it is not hashed, so C24 and re-uploads work.
+- **Contradictions with amended C20 (for QE, tests untouched).** Three tests expect `sourceSeq` to be hashed and fail on
+  that alone: `L02ImportSpec` "AC4 (C20) PayloadHash ..." (`sourceSeq = 7L`), `L02IngestionSpec` "AC3 (C20)" (the
+  `sourceSeq` entry), and `IdempotencyInvariantPropertyTest` (the `sourceSeq + 1000` mutant from `IdempotencyPlans`).
+  Everything else passes. Recorded in `docs/status.md`.
+- **Outbox.** AC1, AC2 and AC6 assert one outbox row per new entry, so the table is required by the ACs (the story's
+  note that outbox rows are L-05 conflicts with them; the ACs win). Minimal and append-only: `outbox_id`, `entry_id`,
+  `activity_id`, no sent marker (delivery state is L-05, C5).
+- **Migration V4** (`V4__activity_and_outbox.sql`): `ledger.activity`, `ledger.outbox`, append-only triggers, SELECT and
+  INSERT only for `ledgerline_app`, sequence USAGE re-granted. No foreign keys, because the L-03 superuser TRUNCATE
+  test needs "append-only" to fire before an FK error. **V-number clash:** L-04 is not on this branch; if it also adds
+  a V4, one must be renumbered at merge.
+- **HTTP.** `POST /v1/activities`, `GET /v1/activities/{key}`, `POST /v1/imports` in `IngestionRoutes.kt`, wired in
+  `Main.kt`. JSON values are read as text and parsed with the L-01 rules (`CanonicalCsv.parseFields`), so no number
+  becomes a double. The import response also carries `fileErrors`. `ParseResult` gained `activityLines`.
+- **Build file.** Root `build.gradle.kts` opts the `:tests` project into `io.kotest.common.ExperimentalKotest`;
+  without it `IdempotencyInvariantPropertyTest` fails to compile under warnings-as-errors.
+- **Results.** `./gradlew ktlintFormat build --rerun-tasks`: compiles and lints clean; `:tests:test` 106 tests, 1 failed
+  (the non-Docker PayloadHash test), 49 skipped. `:tests:test -PincludeIntegration`: 106 tests, 3 failed (the three above),
+  1 skipped, 102 passed.
+
+- 2026-11-19, Dev, round 2 (B-012, B-013, B-014; Fixed, pending integration verification, Docker not available).
+  `CanonicalCsv` refuses NUL and lone surrogates in `taxpayer_id`, `account_id`, `security_id` and `description` with
+  `INVALID_CHARACTER` (422 over HTTP, a per-row rejection in CSV import, nothing reaches the DB). `GET
+  /v1/activities/{key}` answers 404 for a key that breaks the key pattern without querying. `POST` bodies are capped
+  (4 MB activity, 32 MB import, 413 `PAYLOAD_TOO_LARGE`) and JSON nesting beyond 32 levels is `MALFORMED_JSON` (400).

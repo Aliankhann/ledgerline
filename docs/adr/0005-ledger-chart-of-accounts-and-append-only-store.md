@@ -69,7 +69,7 @@ _Owner, in your own words._
 - **Lines lose some activity detail.** A transfer-in's book value (`amountMinor`) is not a cash movement and posts no
   line; dividend and return-of-capital lines do not name the security. Calculation must read these from the activity
   (L-05 outbox payload), not from the lines.
-- **Reversals (L-04, migration V4).** A reversal is an ordinary entry (same V3 sealing and balance checks) plus one
+- **Reversals (L-04, migration V5).** A reversal is an ordinary entry (same V3 sealing and balance checks) plus one
   row in the append-only `ledger.reversal(reversal_entry_id, original_entry_id UNIQUE, reason)`. "Reversed" is derived
   from that row, so the original entry is never updated. The database also checks that the link is written in the
   reversal entry's own transaction, that the original is not itself a reversal (placeholder C16) and that the lines
@@ -92,9 +92,14 @@ _Owner, in your own words._
   `LedgerRepository.entriesForReplay()`; the L-06 engine must use these, not the full listing. The `NEGATIVE_SHARES`
   check already left reversed pairs out of its walk. Alternative not taken: order a reversal by its own sequence
   (breaks C17).
-- **Reversal chains at the database (B-008, migration V5).** `reversal_checks` refuses a link when the original is
+- **Reversal chains at the database (B-008, migration V6).** `reversal_checks` refuses a link when the original is
   already a reversal and also when the reversal entry is already someone's original, so no chain A <- R <- R2 can
   commit whichever order the links are written in.
 - **Share check arithmetic (B-010).** The `NEGATIVE_SHARES` walk covers only the affected account and security and uses
   exact (`BigInteger`) running totals, so holdings above `Long.MAX_VALUE` units cannot make it throw.
+- **L-02 tables (V4).** `ledger.activity` (key, payload hash, canonical fields, `recorded_at`) and `ledger.outbox`
+  (one row per new entry, no sent marker) are written in the entry's transaction, append-only like the others. They
+  carry no foreign keys to `ledger.entry`: Postgres reports an FK before the append-only trigger fires, which would
+  break "TRUNCATE ledger.entry, ledger.line" failing with "append-only". Pairing is by UNIQUE `entry_id` and
+  `idempotency_key`. Concurrent duplicates are serialised by the append lock; the unique keys are the backstop.
 - Verified by `L03LedgerSpec`, `BalanceInvariantPropertyTest` and `ImmutabilityInvariantPropertyTest`.
