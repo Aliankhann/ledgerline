@@ -1,6 +1,6 @@
 # L-06 Pooled ACB for buy, sell, return of capital and fees
 
-**Status:** Draft  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** Tests written (provisional: the story is not owner-approved; owner instruction 2026-11-19)  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 5 · **Branch:** `L-06-pooled-acb` · **Round:** 0 / 3
 
 ## Story
@@ -224,9 +224,34 @@ Tax judgment (each goes into an ADR with its source once decided):
 
 ## Test map (QE fills)
 
+Written provisionally while the story is Draft (owner instruction). Every test assumes rule set `CA-ITA-2026.1`
+(`docs/tax-model.md`, PROPOSED) and says so in its name. The API contract (`TaxRuleSet`, `CaIta2026v1`, `AcbEngine`,
+`AcbPool`, `PoolStep`, `GainLine`, `Rejection`, `Replay`) is in the KDoc of `L06PooledAcbSpec`. Tests are pure (no
+database). Expected tax values come only from the fixtures in `tests/fixtures/l06/`, each citing its source URL and
+heading: `acb-howto-chain` (ACB-HOWTO, transactions 1 to 4), `acb-roc-ref-un` (ACB-ROC, REF-UN.TO),
+`acb-neg-body` (ACB-NEG, article body), `acb-neg-sharon1` (ACB-NEG, Sharon1 comments), `acb-reg-pooling` (ACB-REG,
+rule only; numbers from ACB-HOWTO transaction 1). The fixture loader refuses a file without a source URL and heading.
+Reported cents use `toReportedCents` (`ROUND-MODE`); each value is also asserted exactly at the internal scale
+(`acbUnitsPerCent`, `ROUND-SCALE`), which is possible because every source value is exact in cents.
+`S` = `tests/spec/kotlin/dev/ledgerline/spec/L06PooledAcbSpec.kt`;
+`P6/7` = `tests/property/kotlin/dev/ledgerline/property/L06OrderAndSharesPropertyTest.kt`;
+`P8` = `tests/property/kotlin/dev/ledgerline/property/L06PrecisionAndRulesPropertyTest.kt`.
+
 | AC | Test |
 | --- | --- |
-| AC1 | `tests/spec/.../L06Spec.kt` › "L-06 AC1: …" |
+| AC1 | S "L-06 AC1 [CA-ITA-2026.1]: buy with commission; total ACB = cost + commission (ACB-HOWTO transaction 1)" |
+| AC1b | S "L-06 AC1b [CA-ITA-2026.1]: buy with commission, second example (ACB-ROC, 1,000 units of REF-UN.TO)" |
+| AC2 | S "L-06 AC2 [CA-ITA-2026.1]: a second buy adds to the post-sale pool (ACB-HOWTO transaction 3)" |
+| AC2b | S "L-06 AC2b [CA-ITA-2026.1]: 90 shares onto 280 shares at ACB 0; per-share display 13.64 (ACB-NEG, Sharon1)". The 280-share, zero-ACB pool is built by a QE-chosen buy plus an equal ROC |
+| AC3 | S "L-06 AC3 [CA-ITA-2026.1]: sells with commission; gain uses total ACB x sold / held (ACB-HOWTO transactions 2, 4)" |
+| AC4 | S "L-06 AC4 [CA-ITA-2026.1]: return of capital reduces ACB; shares unchanged; no gain (ACB-ROC, REF-UN.TO)". Dates are QE-chosen (the source gives none) |
+| AC5 | S "L-06 AC5 [CA-ITA-2026.1]: ROC above ACB resets ACB to 0 and the excess is a deemed gain (ACB-NEG body)". Asserts the year (story) and the ROC's tax date (`ROC-NEG-DATE`) |
+| AC6 | S "L-06 AC6 [CA-ITA-2026.1]: selling 11 when 10 are held is rejected (held 10, requested 11); pool unchanged"; P6/7 "Invariant 7 (L-06 AC6) …" (3 tests). Reason code `INSUFFICIENT_SHARES`. "No ledger entry is posted" is tested only through the pure pre-posting gate `AcbEngine.check`; wiring that gate into ledger posting needs an integration test once the wiring exists |
+| AC7 | S "L-06 AC7 [CA-ITA-2026.1]: reverse arrival order gives the same pools, results and hash (ACB-HOWTO chain)"; P6/7 "Invariant 6 (L-06 AC7) [CA-ITA-2026.1]: any arrival order gives an equal replay and output hash (500 cases)" |
+| AC8 | S "L-06 AC8 [CA-ITA-2026.1]: one pool across non-registered accounts; a TFSA buy never enters it (ACB-REG)" |
+| AC9 | S "L-06 AC9 [CA-ITA-2026.1]: every pool change names the activity ID and ledger entry that caused it" |
+| Invariant 8 | P8 "Invariant 8 [CA-ITA-2026.1]: ROUND-MODE …", "… exact against a BigInteger oracle (500 cases)", "Invariant 8: no Double, Float or BigDecimal …" |
+| ADR 0004 | P8 "ADR 0004 [CA-ITA-2026.1]: the rule set defines every L-06 rule ID", "… every pool step, change and gain line names the rule IDs it used (500 cases)", "ADR 0004: the rule set ID is part of the output hash …" |
 
 ## Change notes (Dev fills)
 
