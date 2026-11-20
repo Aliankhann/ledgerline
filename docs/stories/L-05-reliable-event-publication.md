@@ -1,7 +1,7 @@
 # L-05 Reliable event publication
 
 **Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
-**Day:** 4 · **Branch:** `L-05-reliable-event-publication` · **Round:** 0 / 3
+**Day:** 4 · **Branch:** `L-05-reliable-event-publication` · **Round:** 1 / 3
 
 ## Story
 
@@ -90,6 +90,11 @@ outbox or Kafka.
   Toxiproxy). A config flag is deterministic but adds test hooks to production code.
 - **Drainer placement**: in the same process as the API (simplest) or a separate process.
 - **Latency bounds in AC3, AC4 and AC6** (10, 30 and 60 seconds) are BA placeholders, not measured.
+- **Should the L-03 direct `post`/`append` APIs publish?** (QE, phase B round 1.) Entries written through
+  `LedgerRepository.post`/`append` get no outbox row, and their reversals publish nothing (placeholder C25, ADR 0005).
+  No L-05 AC or invariant covers them: every AC posts through the service, and the service never calls these APIs. QE
+  wrote no test and filed no bug. The story statement says "every posted ledger entry"; confirm that excluding these
+  entries (which carry no taxpayer) is intended, or require `post` to publish too.
 
 ## Test map (QE fills)
 
@@ -117,6 +122,18 @@ Integration (Postgres 16 + `redpandadata/redpanda:v24.2.7`).
 | C5 | S "L-05 C5: delivery is appended to ledger.outbox_delivery; no other ledger row changes and it is append-only" |
 | C25 | S "L-05 C25: a correction publishes ENTRY_REVERSED and ACTIVITY_POSTED; repeats and refusals publish nothing" |
 | Contract | S "L-05 contract: drainOnce(max) sends at most max rows in outbox order and never re-sends delivered rows"; S "L-05 contract: start() drains in the background; after stop() new rows wait for the next relay" |
+
+Phase B, round 1 (QE attack tests, all Integration). `D` = `tests/spec/kotlin/dev/ledgerline/spec/L05AttackDeliverySpec.kt`;
+`R` = `tests/spec/kotlin/dev/ledgerline/spec/L05AttackRobustnessSpec.kt`.
+
+| Covers | Test | Bug |
+| --- | --- | --- |
+| AC7 | D "L-05 attack AC7 (B-015): a failed ack mid-drain must not let a later event of that taxpayer be seen first" | B-015 (major) |
+| AC7, C5, C26 | D "L-05 attack: two relays draining one outbox concurrently record each event once; copies share bytes and order" | — |
+| AC6 (scale) | D "L-05 attack: 10 000 pending events drain within a generous bound (timing printed)" (bound 120 s) | — |
+| Story, AC3 | R "L-05 attack (B-016): an activity accepted with a 1.5 MB description is published or refused, never stuck" | B-016 (major) |
+| AC7, C26 | R "L-05 attack (B-017): one undecodable outbox row does not stop other taxpayers or re-send earlier rows" | B-017 (minor) |
+| C5 | R "L-05 attack C5: the app role cannot update, delete or bypass ledger.outbox_delivery; owner upserts fail" | — |
 
 ## Change notes (Dev fills)
 
