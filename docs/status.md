@@ -22,7 +22,7 @@ Step 0.3 is the owner's. QE phase A for L-01 starts once the owner approves L-01
 | L-09 | Late correction recompute | QE passed, awaiting owner | 1 | main | CI green (run 44681018201); AC6–AC8 integration parts pending; outputHash still from full replay (follow-up) |
 | L-10 | Reconciliation by full replay | QE passed (pure part), awaiting owner | 1 | main | CI green (run 44683743890); DB/CLI ACs pending; hash scope is owner decision C28 |
 | L-11 | Book value vs true ACB view | QE passed (backend), awaiting owner | 2 | main | CI green (run 44687695210); B-021..B-023 fixed; UI table + live ledger-to-pool source are follow-ups; UNEXPLAINED in rule set and C29 are owner questions |
-| L-12 | Crash recovery | Draft | – | – | proposed split L-12a/b |
+| L-12 | Crash recovery | L-12a QE passed, awaiting owner | 2 | main | CI green incl. crash + reversal integration (run 44697235379); B-024 fixed; follow-ups: Toxiproxy AC5, AC8, AC9, wire consumer into app/compose; ADR 0006 draft |
 | L-13 | Burst benchmark and report | Draft | – | – | owner sets targets before first run |
 | L-14 | Second domain plugin | Draft | – | – | which plugin |
 
