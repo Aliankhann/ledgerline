@@ -1,6 +1,6 @@
 # B-022 A buy commission difference is explained as POOL-IDENTICAL, not COST-BUY-COMMISSION
 
-**Story:** L-11 · **Severity:** major · **Status:** Open · **Round:** 1
+**Story:** L-11 · **Severity:** major · **Status:** Fixed · **Round:** 1
 
 ## Reproduction
 
