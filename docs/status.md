@@ -15,7 +15,7 @@ Step 0.3 is the owner's. QE phase A for L-01 starts once the owner approves L-01
 | L-02 | Duplicate-safe ingestion | QE passed, awaiting owner | 2 | main | CI green incl. integration (run 44637937633); B-012..B-014 fixed; placeholders C20–C24 |
 | L-03 | Balanced, immutable ledger | QE passed, awaiting owner | 3 | main | 83 tests (29 integration); 5 bugs, 4 fixed, B-006 open pending C15; app runs as least-privilege role |
 | L-04 | Corrections by reversal | QE passed, awaiting owner | 3+C19 | main | CI green incl. integration (run 44648004200); B-008..B-011 fixed; C19 provisional (replay skips reversed pairs) |
-| L-05 | Reliable event publication | In QE (provisional, Draft) | 2 | l-05 | B-015..B-017 Fixed pending CI (serial per taxpayer; size cap and parked table, C27); Integration tests not run locally (no Docker); placeholders C5, C25, C26, C27 |
+| L-05 | Reliable event publication | QE passed, awaiting owner | 2 | main | CI green incl. 21 outbox/attack tests (run 44658644992); B-015..B-017 fixed; placeholders C5, C25–C27 (parked events block their taxpayer until owner decides) |
 | L-06 | Pooled ACB: buy, sell, ROC, fees | Draft (tax) | – | – | sourced (adjustedcostbase.ca); rounding, ROC timing, negative-ACB gain timing |
 | L-07 | Superficial-loss detection | Draft (tax) | – | – | sourced except AC2; adopt partial-repurchase formula? |
 | L-08 | USD to CAD by trade date | Draft (tax) | – | – | real BoC rates; AC10 needs example; scale 10⁻⁴? |

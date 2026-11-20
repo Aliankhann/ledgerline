@@ -1,6 +1,6 @@
 # L-05 Reliable event publication
 
-**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** QE passed (round 2; CI integration green), awaiting owner approval  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 4 · **Branch:** `L-05-reliable-event-publication` · **Round:** 1 / 3
 
 ## Story
