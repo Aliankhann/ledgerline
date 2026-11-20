@@ -1,6 +1,6 @@
 # L-04 Corrections by reversal
 
-**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** QE passed (round 3 + C19; CI integration green), awaiting owner approval  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 3 · **Branch:** `L-04-corrections-by-reversal` · **Round:** 0 / 3
 
 ## Story
