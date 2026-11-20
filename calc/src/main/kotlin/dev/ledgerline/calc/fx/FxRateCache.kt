@@ -88,7 +88,11 @@ class FxRateCache private constructor(
                     val obj: JsonObject = o.jsonObject
                     val date = LocalDate.parse(obj.getValue("d").jsonPrimitive.content)
                     require(date >= r.start && date <= r.end) { "$date outside declared range ${r.start}..${r.end}" }
-                    rates[date] = parseScaled(obj.getValue(SERIES).jsonObject.getValue("v").jsonPrimitive.content)
+                    val rate = parseScaled(obj.getValue(SERIES).jsonObject.getValue("v").jsonPrimitive.content)
+                    val previous = rates.put(date, rate)
+                    require(previous == null || previous == rate) {
+                        "Conflicting rates for $date: $previous vs $rate"
+                    }
                 }
             }
             return FxRateCache(rates, responses.map { it.start..it.end })
