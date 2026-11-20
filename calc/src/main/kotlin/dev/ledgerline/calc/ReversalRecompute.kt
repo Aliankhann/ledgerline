@@ -1,12 +1,6 @@
 package dev.ledgerline.calc
 
-import dev.ledgerline.core.AccountType
-import dev.ledgerline.core.Activity
-import dev.ledgerline.core.ActivityType
-import dev.ledgerline.core.Currency
 import java.sql.Connection
-import java.sql.ResultSet
-import java.time.LocalDate
 
 /**
  * Applies an ENTRY_REVERSED event to the live pool (bug B-024). The pool of the reversed activity's (taxpayer,
@@ -82,28 +76,4 @@ internal class ReversalRecompute(private val engine: AcbEngine) {
             it.setLong(3, beforeEntryId)
             it.executeQuery().use { rs -> buildList { while (rs.next()) add(rs.posted()) } }
         }
-
-    private fun ResultSet.posted(): PostedActivity =
-        PostedActivity(
-            getString("activity_id"),
-            getLong("entry_id"),
-            Activity(
-                idempotencyKey = getString("idempotency_key"),
-                taxpayerId = getString("taxpayer_id"),
-                accountId = getString("account_id"),
-                accountType = AccountType.valueOf(getString("account_type")),
-                activityType = ActivityType.valueOf(getString("activity_type")),
-                effectiveDate = getObject("effective_date", LocalDate::class.java),
-                settlementDate = getObject("settlement_date", LocalDate::class.java),
-                securityId = getString("security_id"),
-                quantity = getLong("quantity").takeUnless { wasNull() },
-                currency = Currency.valueOf(getString("currency")),
-                amountMinor = getLong("amount"),
-                commissionMinor = getLong("commission"),
-                counterCurrency = getString("counter_currency")?.let(Currency::valueOf),
-                counterAmountMinor = getLong("counter_amount").takeUnless { wasNull() },
-                description = getString("description"),
-                sourceSeq = getLong("source_seq"),
-            ),
-        )
 }
