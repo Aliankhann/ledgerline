@@ -59,6 +59,8 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
 
 ## Open questions
 
+- **Live holdings use `replay`, not `replaySuperficial`**, so totals match the consumer's calc.pool but superficial-loss reasons don't appear live. Align consumer and route on one engine path (owner decision).
+
 - **Holdings route lists only securities in the book-value CSV.** Pools without a book value are hidden. Should it list all pools (book value shown as missing)? (owner)
 - **New relay/consumer logs use System.Logger (JUL), not logback.** Add an slf4j/JUL bridge so all logs share one format. (Dev follow-up)
 - **End-to-end pipeline is live** (`scripts/demo.sh`, checked in CI's compose job): POST → ledger → outbox → Redpanda → consumer → pools → holdings route.
