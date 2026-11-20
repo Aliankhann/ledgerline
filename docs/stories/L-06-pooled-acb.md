@@ -1,6 +1,6 @@
 # L-06 Pooled ACB for buy, sell, return of capital and fees
 
-**Status:** Tests written (provisional: the story is not owner-approved; owner instruction 2026-11-19)  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** In QE (provisional: the story is not owner-approved; owner instruction 2026-11-19)  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 5 · **Branch:** `L-06-pooled-acb` · **Round:** 0 / 3
 
 ## Story
@@ -255,4 +255,12 @@ Reported cents use `toReportedCents` (`ROUND-MODE`); each value is also asserted
 
 ## Change notes (Dev fills)
 
-- …
+- Pure calc API in `calc/`: `TaxRuleSet` + `CaIta2026v1` (all rule values, each PROPOSED one marked
+  `OWNER-INPUT: C6/C7`: `ROUND-SCALE` 10^-4 cent, `ROUND-MODE` half up, `DATE-BASIS` settlement else trade date),
+  `AcbPool` types, `AcbEngine` (`apply`, `check`, `acbPerShareCents`, `replay`) and `Replay` (canonical order by tax
+  date, sourceSeq, key; SHA-256 output hash over rule set ID, pools and gains).
+- Exact math: Long `*Exact` plus `BigInteger` for ACB x shares sold / held (truncating, pool keeps remainder).
+  No Double, Float or BigDecimal.
+- Scope: pure engine only. Wiring `check` into ledger posting is not done (needs the integration test the test map notes).
+- Fixtures unchanged; none looked wrong. Results: L06PooledAcbSpec 12/12, L06OrderAndSharesPropertyTest 4/4,
+  L06PrecisionAndRulesPropertyTest 6/6; `./gradlew build` successful.
