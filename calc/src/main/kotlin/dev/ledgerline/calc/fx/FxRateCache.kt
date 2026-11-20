@@ -100,7 +100,9 @@ class FxRateCache private constructor(
             val fraction = parts.getOrElse(1) { "" }
             require(fraction.length <= RATE_DECIMALS) { "Rate '$v' has more than $RATE_DECIMALS decimals" }
             val whole = Math.multiplyExact(parts[0].toLong(), RATE_SCALE)
-            return Math.addExact(whole, fraction.padEnd(RATE_DECIMALS, '0').toLong())
+            val scaled = Math.addExact(whole, fraction.padEnd(RATE_DECIMALS, '0').toLong())
+            require(scaled > 0) { "Rate '$v' must be positive" }
+            return scaled
         }
     }
 }
