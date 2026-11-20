@@ -1,6 +1,6 @@
 # 0005 Ledger line layout, chart of accounts and append-only store
 
-**Status:** Draft · **Date:** 2026-11-19 · **Drafted by:** agent (dev, story L-03)
+**Status:** Draft · **Date:** 2026-11-19 (L-05 section 2026-11-20) · **Drafted by:** agent (dev, stories L-03, L-04, L-05)
 
 ## Context
 
@@ -98,8 +98,51 @@ _Owner, in your own words._
 - **Share check arithmetic (B-010).** The `NEGATIVE_SHARES` walk covers only the affected account and security and uses
   exact (`BigInteger`) running totals, so holdings above `Long.MAX_VALUE` units cannot make it throw.
 - **L-02 tables (V4).** `ledger.activity` (key, payload hash, canonical fields, `recorded_at`) and `ledger.outbox`
-  (one row per new entry, no sent marker) are written in the entry's transaction, append-only like the others. They
+  (one row per new entry, no sent marker; L-05 adds event columns and a delivery table, below) are written in the entry's transaction, append-only like the others. They
   carry no foreign keys to `ledger.entry`: Postgres reports an FK before the append-only trigger fires, which would
   break "TRUNCATE ledger.entry, ledger.line" failing with "append-only". Pairing is by UNIQUE `entry_id` and
   `idempotency_key`. Concurrent duplicates are serialised by the append lock; the unique keys are the backstop.
-- Verified by `L03LedgerSpec`, `BalanceInvariantPropertyTest` and `ImmutabilityInvariantPropertyTest`.
+- **Outbox events and delivery (L-05, migration V7; placeholders C5, C25, C26).** Each `ledger.outbox` row now carries
+  its event: `event_type` (`ACTIVITY_POSTED` or `ENTRY_REVERSED`), `taxpayer_id` (the message key) and `payload`, the
+  event body as JSON text without `eventId`. The relay sends `eventId` (= `outbox_id`) followed by the stored body, so
+  every copy of an event is byte-identical; the body is stored rather than rebuilt so that a correction's replacement,
+  which has no `ledger.activity` row, still carries the activity's fields for L-06. `text`, not `jsonb`, because
+  `jsonb` reorders keys. Rows written before V7 have NULL event columns (V7 cannot fill them without an `UPDATE`); a
+  `NOT VALID` CHECK binds every new row, and the relay derives an old row's event from its activity row.
+  - **Reversals and corrections publish (C25).** A reversal writes `ENTRY_REVERSED` (keyed by the reversed entry's
+    taxpayer, with `reversesEntryId` and `reason`) in its own transaction; a correction writes `ENTRY_REVERSED` then
+    `ACTIVITY_POSTED` for the replacement. Entries written by the L-03 direct `post`/`append` APIs have no taxpayer and
+    no outbox row, and their reversals publish nothing (there is nothing to retract). The service never calls those
+    APIs; the owner may prefer `post` to publish too.
+  - **Sealing.** A trigger refuses an outbox row unless its entry was created in the same transaction (equal `xmin`,
+    as for lines and reversal links), so a committed entry cannot be republished under a new event id; it also checks
+    that `ENTRY_REVERSED` is used exactly for entries with a reversal link.
+  - **"Sent" is append-only (C5).** `ledger.outbox_delivery(outbox_id PK, topic, kafka_partition, kafka_offset,
+    delivered_at)` gets one row per broker-acknowledged event, written only after the ack; nothing is updated. Pending
+    is outbox minus delivery, a `NOT EXISTS` anti-join on the two primary keys (the delivery PK is the index). `ON
+    CONFLICT DO NOTHING` lets two relays race without an error. A trigger refuses a delivery row for an outbox row
+    that does not exist (it would otherwise hide that future event). Same append-only trigger, grants and no-FK rule as
+    the other tables. Retention is out of scope, so both tables grow without bound.
+  - **Delivery (C26).** At-least-once to `ledgerline.activities.v1`, key = taxpayer id, header `eventId`. A crash after
+    the ack and before the delivery row is written leaves the row pending, so it is sent again: two identical copies,
+    deduplicated by the L-12 consumer on `eventId`. Producer: `acks=all`, idempotence on, at most 5 requests in
+    flight, 30 s delivery timeout, no Kafka transactions (rejected in the build plan).
+  - **Relay cost per drain.** One query for up to 500 pending rows, all sends pipelined, one wait for the acks, then
+    one transaction that appends every delivery row as a JDBC batch. No lock or transaction per event. Each relay also
+    remembers the highest id below which everything is delivered and queries above it, so the anti-join does not
+    rescan history. This relies on event ids increasing in commit order: every outbox insert happens under the append
+    lock held to commit, and the identity has `CACHE 1`. Changing either breaks this and per-key order.
+  - **Per-taxpayer order.** Rows are sent in event-id order; the idempotent producer keeps per-partition order with
+    retries, and key = taxpayer id maps a taxpayer to one partition. If a send for a taxpayer fails, later rows of that
+    taxpayer in the same drain are not recorded even if acknowledged, so they are sent again after the failed one.
+    This is weaker than "never send past an unacknowledged row" (the spec KDoc's wording): sends are pipelined for
+    throughput, so after a broker failure mid-drain a later event's first copy can reach the topic before a retried
+    earlier event (the later event is then sent again after it). Strictly serial sends per taxpayer would close this
+    at the cost of one round trip per event; owner to choose.
+  - **Broker errors never throw.** A send that throws (for example no metadata within 10 s while the broker is down)
+    stops the drain; unacknowledged rows stay pending and count as `failed`. Database errors do throw. `start()` runs a
+    daemon thread that polls every 100 ms, backs off 1 s after a failure, and survives both kinds of outage.
+  - **Drainer placement.** The relay runs inside the service process (`Main` starts it as the app role and stops it on
+    shutdown). Simplest; a separate process can reuse `OutboxRelay` unchanged. No fault hook in production code: the
+    L-05 tests inject crashes at the producer they hand to the relay.
+- Verified by `L03LedgerSpec`, `BalanceInvariantPropertyTest` and `ImmutabilityInvariantPropertyTest`. L-05: `L05OutboxSpec`, `OutboxDeliveryPropertyTest`.

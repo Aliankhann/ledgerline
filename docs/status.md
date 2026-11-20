@@ -15,7 +15,7 @@ Step 0.3 is the owner's. QE phase A for L-01 starts once the owner approves L-01
 | L-02 | Duplicate-safe ingestion | QE passed, awaiting owner | 2 | main | CI green incl. integration (run 44637937633); B-012..B-014 fixed; placeholders C20–C24 |
 | L-03 | Balanced, immutable ledger | QE passed, awaiting owner | 3 | main | 83 tests (29 integration); 5 bugs, 4 fixed, B-006 open pending C15; app runs as least-privilege role |
 | L-04 | Corrections by reversal | QE passed, awaiting owner | 3+C19 | main | CI green incl. integration (run 44648004200); B-008..B-011 fixed; C19 provisional (replay skips reversed pairs) |
-| L-05 | Reliable event publication | Draft | – | – | outbox "sent" marker vs immutability |
+| L-05 | Reliable event publication | In QE (provisional, Draft) | 0 | l-05 | 15 Integration tests not run locally (no Docker); CI on `l-05` is the authority; placeholders C5, C25, C26 |
 | L-06 | Pooled ACB: buy, sell, ROC, fees | Draft (tax) | – | – | sourced (adjustedcostbase.ca); rounding, ROC timing, negative-ACB gain timing |
 | L-07 | Superficial-loss detection | Draft (tax) | – | – | sourced except AC2; adopt partial-repurchase formula? |
 | L-08 | USD to CAD by trade date | Draft (tax) | – | – | real BoC rates; AC10 needs example; scale 10⁻⁴? |
@@ -61,7 +61,7 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
 
 - **Fragile perf bound (QE follow-up):** L-02's 10k-row import test failed twice above its 180 s bound on the merged code, then passed at 96 s (re-upload 50 s). Plain submits measure ~9 ms/row in CI. Likely runner variance plus a real per-append cost (one transaction and append lock per row). Make the bound robust or move it to the L-13 benchmark, and profile the per-row cost there.
 
-- **Follow-up after merging L-02 into l-04 (dev):** `LedgerRepository.reverse` and `correct` write only `ledger.entry`, `ledger.line` and `ledger.reversal`. They write no `ledger.activity` or `ledger.outbox` row (no test requires it; L-02's `submit` does both). A reversal therefore never reaches the L-05 outbox, and the replacement entry in `correct` has no activity row (so `findActivity` cannot see it and its key is not replayable through `submit`). Owner to decide what the outbox should carry for a reversal (an event naming the reversed entry?) before L-05. Migrations were renumbered: L-04's are now V5 (reversals) and V6 (chain guard).
+- **Follow-up after merging L-02 into l-04 (dev):** `LedgerRepository.reverse` and `correct` write only `ledger.entry`, `ledger.line` and `ledger.reversal`. They write no `ledger.activity` or `ledger.outbox` row (no test requires it; L-02's `submit` does both). A reversal therefore never reaches the L-05 outbox, and the replacement entry in `correct` has no activity row (so `findActivity` cannot see it and its key is not replayable through `submit`). Owner to decide what the outbox should carry for a reversal (an event naming the reversed entry?) before L-05. Migrations were renumbered: L-04's are now V5 (reversals) and V6 (chain guard). *L-05 (dev):* reversals and corrections now write `ENTRY_REVERSED` outbox rows (placeholder C25); the replacement still has no activity row.
 
 - **No Docker in this sandbox:** integration suites run in GitHub CI on story branches (owner allowed pushing `l-*`). Was: **Blocked: no Docker in this sandbox** (the daemon hit the 2-hour background limit and can't be restarted).
   L-02 and L-04 integration suites can't run locally. Options: owner allows pushing `l-02`/`l-04` as branches so
@@ -77,7 +77,7 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
   differently by arrival and break order independence. Proposed tie-breaker: a field from the activity itself
   (source row order, then idempotency key). Needs an ADR before L-03.
 - **Outbox "sent" marker (L-05).** Marking an outbox row as sent is an `UPDATE` in the `ledger` schema; decide whether
-  immutability covers the outbox or the marker lives elsewhere.
+  immutability covers the outbox or the marker lives elsewhere. *L-05 (dev):* built provisionally as the append-only `ledger.outbox_delivery` table (C5).
 - **B-003 Docker test vs the two-login design (dev, L-03 round 2, for QE).** `L03ImmutabilityEdgeSpec` "with
   docker-compose credentials, the app's role is not superuser and cannot disable it" migrates a bare container with
   the `DATABASE_USER` login. With the fix, migrations run as `DATABASE_MIGRATION_USER` and `ledgerline_app` only gets

@@ -1,6 +1,6 @@
 # L-05 Reliable event publication
 
-**Status:** Tests written  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 4 · **Branch:** `L-05-reliable-event-publication` · **Round:** 0 / 3
 
 ## Story
@@ -120,4 +120,18 @@ Integration (Postgres 16 + `redpandadata/redpanda:v24.2.7`).
 
 ## Change notes (Dev fills)
 
-- …
+- 2026-11-20 (dev, round 0, provisional while Draft). API of the `L05OutboxSpec` KDoc in
+  `dev.ledgerline.ledger.outbox`: `OutboxTopic`, `OutboxEventType`, `OutboxEvent`, `DrainResult`, `OutboxStore`
+  (`events()`, `pendingEventIds()` as an anti-join of outbox minus delivery), `OutboxProducers` (idempotent,
+  `acks=all`, 5 in flight), `OutboxRelay` (`drainOnce`, `start`, `stop`, `close`). Migration V7: event columns on
+  `ledger.outbox` (type, taxpayer, stored JSON body), a sealing trigger (an outbox row only in its entry's
+  transaction), and the append-only `ledger.outbox_delivery` (C5) with SELECT/INSERT for the app role. Reversals and
+  corrections write their outbox rows in the same transaction (C25). Delivery rows are written after the broker's ack,
+  one transaction per drain (C26). `Main` starts the relay in the service process. Details and trade-offs (per-key
+  order on a mid-drain broker failure, pre-V7 rows, L-03 `post`/`append` entries not published) in draft ADR 0005.
+- Ran `./gradlew ktlintFormat build --rerun-tasks`: BUILD SUCCESSFUL; 187 tests, 67 passed, 120 skipped (Integration),
+  0 failed. All 15 L-05 tests are Integration and did not run here (no Docker). Not a substitute: a throwaway smoke
+  program (not committed) against a local Postgres 16 with Kafka's `MockProducer` checked the migrations, the event rows
+  for post/reverse/correct, drain batching and resume, held-back rows after a failed ack, byte-identical re-sends, the
+  append-only and sealing refusals, and a pre-V7 outbox row draining after V7. Redpanda behaviour is unverified until CI.
+
