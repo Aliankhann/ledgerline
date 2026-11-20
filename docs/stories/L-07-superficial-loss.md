@@ -1,6 +1,6 @@
 # L-07 Superficial-loss detection across accounts
 
-**Status:** Tests written (provisional)  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 6 · **Branch:** `L-07-superficial-loss` · **Round:** 0 / 3
 
 ## Story
@@ -313,4 +313,9 @@ Not run: none of these compile yet (missing SL-* API); no test has been executed
 
 ## Change notes (Dev fills)
 
-- …
+- `TaxRuleSet` gains `superficialWindow` and `superficialLossDenied` (defaults throw: older rule sets define no SL values).
+  `CaIta2026v1` implements both, marked `// OWNER-INPUT`; SL-PARTIAL proration (floor at the internal scale) is provisional.
+- `AcbEngine.replaySuperficial` (calc `Superficial.kt`, `SuperficialReplay.kt`): canonical order; share counts from a
+  first pass, add-back applied to the pool at the earliest substituted acquisition on or after the sale (SL-ADDBACK-TIMING).
+- Conventions chosen (owner-input, no AC): SL-MULTI each acquired share matches one sale, earliest first; SL-MIXED split by
+  shares per class, non-registered part floored, outcome ADDED_TO_ACB if any part is added. AC2 stays disabled.
