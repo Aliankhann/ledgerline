@@ -70,6 +70,7 @@ class PoolConsumer(
             assigned = false // positions in memory are now suspect: re-seek from the database next time
             throw e
         }
+        if (handled > 0) log.log(System.Logger.Level.INFO, "pool consumer handled $handled record(s) from $topic")
         return handled
     }
 
@@ -83,7 +84,7 @@ class PoolConsumer(
                         try {
                             pollOnce()
                         } catch (e: Exception) {
-                            System.err.println("pool consumer: ${e.message}; retrying")
+                            log.log(System.Logger.Level.WARNING, "pool consumer failed; retrying: $e", e)
                             Thread.sleep(RETRY_MS)
                             0
                         }
@@ -109,13 +110,21 @@ class PoolConsumer(
                 topic,
                 Duration.ofSeconds(5),
             )?.map { TopicPartition(topic, it.partition()) }
-        if (partitions.isNullOrEmpty()) return false
+        if (partitions.isNullOrEmpty()) {
+            log.log(System.Logger.Level.WARNING, "pool consumer: topic $topic has no partitions yet; will retry")
+            return false
+        }
         kafka.assign(partitions)
         val stored = storedOffsets()
         partitions.forEach { tp ->
             stored[tp.partition()]?.let { kafka.seek(tp, it) } ?: kafka.seekToBeginning(listOf(tp))
         }
         assigned = true
+        log.log(
+            System.Logger.Level.INFO,
+            "pool consumer assigned ${partitions.size} partition(s) of $topic; stored offsets for ${stored.size}, " +
+                "earliest for the rest",
+        )
         return true
     }
 
@@ -227,6 +236,7 @@ class PoolConsumer(
     }
 
     private companion object {
+        val log: System.Logger = System.getLogger(PoolConsumer::class.java.name)
         val POLL_TIMEOUT: Duration = Duration.ofMillis(300)
         const val LOCK_KEY = 4_200_012L
         const val IDLE_MS = 50L
