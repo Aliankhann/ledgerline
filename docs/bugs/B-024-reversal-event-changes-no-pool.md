@@ -1,6 +1,6 @@
 # B-024 PoolConsumer records ENTRY_REVERSED but changes no pool, so live pools drift after a reversal
 
-**Story:** L-12 · **Severity:** major · **Status:** Open · **Round:** 1
+**Story:** L-12 · **Severity:** major · **Status:** Fixed · **Round:** 1
 
 ## Reproduction
 

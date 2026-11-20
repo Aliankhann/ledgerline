@@ -120,3 +120,9 @@ Crash and redelivery handling itself is not sourced (assumption A-12).
   ACB only, not history.
 - Ran `./gradlew ktlintFormat build --rerun-tasks`: build successful, `L12InboxPropertyTest` passes. The Docker-backed
   `L12CrashRecoverySpec` tests are skipped locally (no Docker); CI runs them.
+- B-024 fix (round 1): an `ENTRY_REVERSED` event now recomputes the affected pool (`ReversalRecompute`) by replaying the
+  stored, non-reversed activities of that (taxpayer, security) in the same transaction; a rejection fails the
+  transaction. Calc V2 migration grants `DELETE` on `calc.pool`. Draft `docs/adr/0006-calc-reads-ledger-activity-on-reversal.md`.
+  This supersedes the "change no pool yet" note above.
+- B-024 follow-ups, still open: `PoolConsumer` is not wired into `app/` or `docker-compose.yml`; `CalcMigrations.migrate`
+  must run after `LedgerMigrations` (it grants DML to the ledger's app role) and no code enforces it.
