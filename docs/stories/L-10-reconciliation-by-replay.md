@@ -1,6 +1,6 @@
 # L-10 Reconciliation by full replay
 
-**Status:** Draft  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** Tests written (provisional)  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 8 · **Branch:** `L-10-reconciliation-by-replay` · **Round:** 0 / 3
 
 ## Story
@@ -87,7 +87,17 @@ every time"; it does not say replay or hashes). What reviewers look for is not s
 
 | AC | Test |
 | --- | --- |
-| AC1 | `tests/spec/.../L10Spec.kt` › "L-10 AC1: …" |
+| AC1 | `L10ReconciliationSpec` "L-10 AC1: ..." (pure); exit code `0` and F1 load: NOT WRITTEN (needs DB, CLI, L-09 F1) |
+| AC2 | `L10ReconciliationSpec` "L-10 AC2: ..." (pure diff); tampering real tables and exit code `1`: NOT WRITTEN |
+| AC3 | `L10ReconciliationSpec` "L-10 AC3: ..." (pure diff); real tables: NOT WRITTEN |
+| AC4 | pure part only ("L-10 AC4 (pure part)"); row hashes of `ledger`/`calc`/`recon`: NOT WRITTEN (Integration) |
+| AC5 | `L10ReconciliationSpec` "L-10 AC5: ..." and property "Invariant 5 (L-10)"; seed 42 via CLI: NOT WRITTEN |
+| AC6 | `L10ReconciliationSpec` "L-10 AC6: ..." (hash format, locale, TZ); two-JVM run: NOT WRITTEN |
+| AC7 | `L10ReconciliationSpec` "L-10 AC7: ..." and property "Invariant 6 (L-10)"; three stacks: NOT WRITTEN |
+| AC8 | NOT WRITTEN (proposed criterion, owner decision on watermark open) |
+| AC9 | NOT WRITTEN (CI job, L-12) |
+
+Property tests: `tests/property/.../L10ReconciliationPropertyTest.kt`.
 
 ## Change notes (Dev fills)
 
