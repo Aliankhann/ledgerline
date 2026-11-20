@@ -1,6 +1,6 @@
 # L-11 Book value versus true ACB view with reasons
 
-**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** QE passed (round 2; backend only, live data source pending), awaiting owner approval  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 10 · **Branch:** `L-11-book-value-vs-acb-view` · **Round:** 0 / 3
 
 ## Story
