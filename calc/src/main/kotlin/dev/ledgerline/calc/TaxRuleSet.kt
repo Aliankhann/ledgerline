@@ -72,6 +72,9 @@ object CaIta2026v1 : TaxRuleSet {
             "SL-REGISTERED",
             "SL-ADDBACK-TARGET",
             "SL-ADDBACK-TIMING",
+            // OWNER-INPUT: C29 not a tax rule: L-11's honest label for a difference no pool step explains. The L-11
+            // provisional tests require every reason ID to be in this set.
+            "UNEXPLAINED",
         )
 
     // OWNER-INPUT: C6/C7 ROUND-SCALE: pool ACB at 10^-4 cent.

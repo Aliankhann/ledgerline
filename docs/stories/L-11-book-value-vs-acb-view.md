@@ -111,3 +111,9 @@ Reasons carry `amountMinor` and the AC6 sum check is covered. A book value with 
 - `calc/BookValueComparison.kt`: pure `BookValueComparison`, `BookValueCsv`, `HoldingDiff`, `Reason`. Reasons: return of capital (rule `ROC-REDUCES-ACB`, entry IDs from the pool history), then the remainder under `POOL-IDENTICAL` (pooled entries); a book value with no pool gets `NO-LEDGER-HISTORY`. Amounts always sum to the difference. Provisional choices marked `OWNER-INPUT` (B2, C29 in `docs/owner-inputs.md`).
 - `app/AcbVsBookRoutes.kt`: `acbVsBookModule` and `GET /v1/holdings/{taxpayer}/acb-vs-book`; a taxpayer with no pools gets `holdings: []`. Not wired into `Main` (needs a pool source and a book value file; follow-up).
 - Not done: UI table (`npm run typecheck` fails here with missing modules because `node_modules` is not installed); superficial loss, FX and commission reasons.
+
+### Round 2 (B-021): reasons from pool steps
+
+- `PoolChange` has an additive `ruleAmounts` map (internal units a rule contributed). The superficial-loss add-back records `SL-ADDBACK-TARGET` with its amount, under the sale's entry ID.
+- `BookValueComparison` builds reasons from those amounts (and `ROC-REDUCES-ACB`), keeping only parts that point the same way as the difference and fit inside it. Any remainder is `UNEXPLAINED` with its amount; it is never given to `POOL-IDENTICAL`.
+- `UNEXPLAINED` is added to `CaIta2026v1.ruleIds` (marked OWNER-INPUT C29) only because the provisional L-11 tests require every reason ID to be in that set. It is not a tax rule; the owner may prefer to change the test instead.

@@ -17,6 +17,8 @@ data class PoolChange(
     val sharesDelta: Long,
     val acbDelta: Long,
     val ruleIds: Set<String>,
+    /** Internal-unit ACB amount each rule contributed to [acbDelta], where a rule has its own amount. */
+    val ruleAmounts: Map<String, Long> = emptyMap(),
 )
 
 /** Shares in 10^-6 share units; [totalAcb] in internal units, never negative. */

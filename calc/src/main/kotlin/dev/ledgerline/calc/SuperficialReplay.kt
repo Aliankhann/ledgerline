@@ -64,6 +64,7 @@ internal fun replaySuperficialLosses(
                     0L,
                     ab.amount,
                     setOf("SL-ADDBACK-TARGET", "SL-ADDBACK-TIMING"),
+                    mapOf("SL-ADDBACK-TARGET" to ab.amount),
                 )
             pools[ab.key] =
                 pool.copy(totalAcb = Math.addExact(pool.totalAcb, ab.amount), history = pool.history + change)
