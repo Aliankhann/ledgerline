@@ -78,6 +78,11 @@ services:
       DATABASE_USER: ledgerline_app
       DATABASE_PASSWORD: ledgerline_app
       KAFKA_BOOTSTRAP: redpanda:9092
+      KAFKA_GROUP_ID: ledgerline-calc
+      # The holdings route lists only securities that have a book value, so the demo supplies one (synthetic).
+      BOOK_VALUE_CSV: /opt/ledgerline/demo/book-values.csv
+    volumes:
+      - ./demo/book-values.csv:/opt/ledgerline/demo/book-values.csv:ro
     ports:
       - "${APP_PORT:-8080}:8080"
 

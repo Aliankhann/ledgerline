@@ -2,6 +2,11 @@ package dev.ledgerline.app
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
+import dev.ledgerline.calc.AcbEngine
+import dev.ledgerline.calc.CaIta2026v1
+import dev.ledgerline.calc.CalcMigrations
+import dev.ledgerline.calc.PoolConsumer
+import dev.ledgerline.calc.PoolStore
 import dev.ledgerline.ledger.LedgerMigrations
 import dev.ledgerline.ledger.LedgerRepository
 import dev.ledgerline.ledger.outbox.OutboxProducers
@@ -31,7 +36,9 @@ fun main() {
     // Migrate as the owner login, then close that pool; the service only ever holds the app role's connections.
     // Flyway holds two connections at once (schema-history lock plus migration).
     pool(config.databaseUrl, config.migrationUser, config.migrationPassword, size = 2).use { owner ->
-        log.info("Flyway applied {} migration(s) as {}", LedgerMigrations.migrate(owner), config.migrationUser)
+        log.info("Ledger Flyway applied {} migration(s) as {}", LedgerMigrations.migrate(owner), config.migrationUser)
+        // Must follow the ledger's migrations: calc V1 grants DML to the ledger's app role.
+        log.info("Calc Flyway applied {} migration(s) as {}", CalcMigrations.migrate(owner), config.migrationUser)
         if (config.databaseUser == LedgerMigrations.APP_ROLE) {
             LedgerMigrations.enableAppLogin(owner, config.databasePassword)
         }
@@ -45,11 +52,26 @@ fun main() {
     val relay = OutboxRelay(dataSource, producer, OutboxTopic.NAME, config.maxEventBytes)
     relay.start()
     log.info("Outbox relay draining to {} at {}", OutboxTopic.NAME, config.kafkaBootstrap)
+    val consumer =
+        PoolConsumer(
+            dataSource,
+            mapOf(
+                "bootstrap.servers" to config.kafkaBootstrap,
+                "group.id" to config.kafkaGroupId,
+                "auto.offset.reset" to "earliest",
+            ),
+            AcbEngine(CaIta2026v1),
+        )
+    consumer.start()
+    log.info("Pool consumer started, group {} at {}", config.kafkaGroupId, config.kafkaBootstrap)
     Runtime.getRuntime().addShutdownHook(
         Thread {
+            log.info("Shutting down: stopping pool consumer and outbox relay")
+            consumer.close()
             relay.stop()
             producer.close(Duration.ofSeconds(5))
             dataSource.close()
+            log.info("Shutdown complete")
         },
     )
 
@@ -57,9 +79,9 @@ fun main() {
     embeddedServer(Netty, port = config.httpPort) {
         module()
         ingestionModule(ingestion)
-        // OWNER-INPUT: C29 no ledger-to-pool source exists yet, so the live route has no pools; book values come from
-        // the optional file named by BOOK_VALUE_CSV (header security_id,book_value).
-        acbVsBookModule(emptyMap(), bookValueCsv())
+        // Pools are read from calc state on every request; book values come from the optional file named by
+        // BOOK_VALUE_CSV (header security_id,book_value). OWNER-INPUT: C29.
+        acbVsBookModule(PoolStore(dataSource)::pools, bookValueCsv())
     }.start(wait = true)
 }
 

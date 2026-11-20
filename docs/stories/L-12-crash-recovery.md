@@ -126,3 +126,10 @@ Crash and redelivery handling itself is not sourced (assumption A-12).
   This supersedes the "change no pool yet" note above.
 - B-024 follow-ups, still open: `PoolConsumer` is not wired into `app/` or `docker-compose.yml`; `CalcMigrations.migrate`
   must run after `LedgerMigrations` (it grants DML to the ledger's app role) and no code enforces it.
+
+### Wiring (branch l-wire)
+
+- `Main.kt` now runs `LedgerMigrations` then `CalcMigrations` (same owner pool), starts `PoolConsumer` (group from
+  `KAFKA_GROUP_ID`, default `ledgerline-calc`) after the outbox relay, and logs startup and shutdown. The shutdown hook
+  stops the consumer, relay, producer and pool in that order. Closes the two B-024 follow-ups. Not run against Docker
+  here; CI's compose smoke test checks startup.
