@@ -82,6 +82,11 @@ jobs:
       - uses: actions/checkout@v4
       - run: docker compose up -d --build --wait
       - run: curl -fsS http://localhost:8080/health
+      # End-to-end: POST activities -> ledger -> outbox -> Redpanda -> PoolConsumer -> holdings route.
+      - name: End-to-end demo pipeline
+        run: |
+          bash scripts/demo.sh | tee demo-out.txt
+          grep -q 'SYN-AAA' demo-out.txt || { echo "::error::no holding reached the pools"; exit 1; }
       - if: failure()
         run: docker compose logs
       - if: always()
