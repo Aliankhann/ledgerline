@@ -1,6 +1,6 @@
 # L-05 Reliable event publication
 
-**Status:** Draft  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** Tests written  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 4 · **Branch:** `L-05-reliable-event-publication` · **Round:** 0 / 3
 
 ## Story
@@ -93,9 +93,30 @@ outbox or Kafka.
 
 ## Test map (QE fills)
 
+Written provisionally while the story is Draft (owner instruction). API contract (`OutboxRelay`, `OutboxStore`,
+`OutboxProducers`, `OutboxTopic`, `OutboxEvent`, `DrainResult` in `dev.ledgerline.ledger.outbox`) and the message
+shape are in the KDoc of `L05OutboxSpec`. Placeholders: C5 (append-only `ledger.outbox_delivery`), C25 (reversals and
+corrections write outbox events), C26 (at-least-once, key = taxpayer id, event id = outbox row id). Crashes are
+injected at the producer given to the relay, so production code needs no fault hook; AC4, AC5 and AC9 halt a real
+child JVM with `Runtime.halt`. AC6 "stop Redpanda" is `docker pause` (keeps the advertised port). Every test is
+Integration (Postgres 16 + `redpandadata/redpanda:v24.2.7`).
+`S` = `tests/spec/kotlin/dev/ledgerline/spec/L05OutboxSpec.kt`;
+`P` = `tests/property/kotlin/dev/ledgerline/property/OutboxDeliveryPropertyTest.kt`.
+
 | AC | Test |
 | --- | --- |
-| AC1 | `tests/spec/.../L05Spec.kt` › "L-05 AC1: …" |
+| AC1 | S "L-05 AC1: posting A1 commits exactly one entry and one outbox row referencing it, in one transaction" (same `xmin`) |
+| AC2 | S "L-05 AC2: a failure after the ledger insert and before commit writes neither; 5xx; the retry is 201" (deferred test trigger fails the commit) |
+| AC3 | S "L-05 AC3: within 10 s the default topic has one message: key TP-0001, header eventId, stable value shape" |
+| AC4 | S "L-05 AC4: a process halted after commit and before send loses nothing; after restart exactly one message" (two variants: halt right after the commit; halt inside the relay's first send). "201 or no response" is checked as the client's retry being a duplicate |
+| AC5 | S "L-05 AC5: a process halted after the broker ack and before marking leaves 1 or 2 identical copies; then marks" |
+| AC6 | S "L-05 AC6: with the broker down, 10 postings return 201; all 10 drain within 60 s of its return" |
+| AC7 | S "L-05 AC7: 50 postings for TP-0001 appear with key TP-0001 in strictly increasing ledger sequence order"; S "L-05 ordering: per taxpayer key, partition order follows outbox order (5 taxpayers posting concurrently)" |
+| AC8 | S "L-05 AC8: a reversal is published as ENTRY_REVERSED after ACTIVITY_POSTED, referencing the original entryId" |
+| AC9 | S "L-05 AC9: 200 activities across 5 taxpayers, drainer halted 5 times at random fault points: no loss" (child JVM halts, seed 20251120); P "C26 / L-05 AC9 (property): with injected crashes every outbox row is delivered and ids equal the outbox" (12 generated plans, in-process aborts, reversals mixed in) |
+| C5 | S "L-05 C5: delivery is appended to ledger.outbox_delivery; no other ledger row changes and it is append-only" |
+| C25 | S "L-05 C25: a correction publishes ENTRY_REVERSED and ACTIVITY_POSTED; repeats and refusals publish nothing" |
+| Contract | S "L-05 contract: drainOnce(max) sends at most max rows in outbox order and never re-sends delivered rows"; S "L-05 contract: start() drains in the background; after stop() new rows wait for the next relay" |
 
 ## Change notes (Dev fills)
 
