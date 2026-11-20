@@ -1,4 +1,4 @@
--- V4 (story L-04): corrections by reversal.
+-- V5 (story L-04): corrections by reversal.
 --
 -- ledger.reversal links a reversal entry to the entry it reverses. It is the only place a reversal is recorded, so the
 -- original entry's rows are never touched: "reversed" is derived by looking for a link row (ADR 0003, draft ADR 0005).

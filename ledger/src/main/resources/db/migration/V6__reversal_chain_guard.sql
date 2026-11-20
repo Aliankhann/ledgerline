@@ -1,10 +1,10 @@
--- V5 (story L-04, bug B-008): refuse a reversal chain whichever order the link rows are written in.
+-- V6 (story L-04, bug B-008): refuse a reversal chain whichever order the link rows are written in.
 --
--- V4 checked only that NEW.original_entry_id is not already a reversal. Linking R2 -> R before R -> A therefore
+-- V5 checked only that NEW.original_entry_id is not already a reversal. Linking R2 -> R before R -> A therefore
 -- slipped through: when R2 -> R was written R was not yet a reversal, and nothing checked, when R -> A was written,
 -- that R is already someone's original. Both directions are checked now, on every link row, so the second row of any
 -- chain A <- R <- R2 fails inside the same transaction, whichever was inserted first (OWNER-INPUT: C16).
--- V4 is not edited; the function is replaced and its trigger keeps pointing at it.
+-- V5 is not edited; the function is replaced and its trigger keeps pointing at it.
 
 CREATE OR REPLACE FUNCTION ledger.reversal_checks() RETURNS trigger
     LANGUAGE plpgsql

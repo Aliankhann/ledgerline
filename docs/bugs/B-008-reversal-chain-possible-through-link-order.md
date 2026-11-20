@@ -14,7 +14,7 @@
 
 ## Expected
 
-The database refuses the commit. `V4__reversals.sql` says "an entry that is itself a reversal cannot be reversed
+The database refuses the commit. `V5__reversals.sql` says "an entry that is itself a reversal cannot be reversed
 (C16, refused at the database too)", so no chain A <- R <- R2 may exist.
 
 ## Actual
@@ -31,9 +31,9 @@ is already someone's original.
 ## Notes
 
 `LedgerRepository` cannot produce this order, so it needs a caller that writes SQL directly with the app role. Minor
-for that reason, but the V4 header promises the database enforces C16. Fix: in `reversal_checks` also refuse when
+for that reason, but the V5 header promises the database enforces C16. Fix: in `reversal_checks` also refuse when
 `EXISTS (SELECT 1 FROM ledger.reversal r WHERE r.original_entry_id = NEW.reversal_entry_id)`.
 
 ## Fix (dev, round 2)
 
-V5 migration replaces reversal_checks to also refuse a reversal entry that is already someone's original, in either insert order.
+V6 migration replaces reversal_checks to also refuse a reversal entry that is already someone's original, in either insert order.

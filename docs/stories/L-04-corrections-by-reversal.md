@@ -118,7 +118,7 @@ reusable), reversals that would go negative are refused `NEGATIVE_SHARES`, `UNKN
 
 - 2026-11-19 · dev · Round 0 implementation, provisional on placeholders C16 (`REVERSAL_OF_REVERSAL`), C17 (reversal
   carries the original's effective date and source sequence), C18 (keys never reused), all marked `// OWNER-INPUT`
-  and listed in `docs/owner-inputs.md`; `NEGATIVE_SHARES` follows invariant 7. Flyway `V4__reversals.sql` adds the
+  and listed in `docs/owner-inputs.md`; `NEGATIVE_SHARES` follows invariant 7. Flyway `V5__reversals.sql` adds the
   append-only table `ledger.reversal` (reversal entry id, original entry id UNIQUE, reason); the original's rows are
   never touched and `REVERSED` is derived from the link. Triggers: the link must be written in the reversal entry's
   own transaction, the original cannot itself be a reversal, and at commit the reversal's lines must mirror the
