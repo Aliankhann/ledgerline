@@ -1,6 +1,6 @@
 # L-14 Second domain plugin
 
-**Status:** Tests written (provisional)  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 10 · **Branch:** `L-14-second-domain-plugin` · **Round:** 0 / 3
 
 ## Story
@@ -91,4 +91,10 @@ is not sourced (A-09).
 
 ## Change notes (Dev fills)
 
-- …
+- Plugin is a new module `plugins/` (package `dev.ledgerline.plugins.cash`), depending only on `core`. `:tests` cannot be
+  edited by Dev, so `calc` re-exports it with `api(project(":plugins"))`. `settings.gradle.kts` lists the module.
+- `dev.ledgerline.calc.PluginReplay` (canonicalOrder, replay skipping repeated keys, sha256Hex) is domain-neutral, no ACB
+  types. Owner decision: it arguably belongs in `core/` (it needs only core types); AC1 says `core/` stays unchanged.
+- Overdraft policy is placeholder C30 (refuse, `INSUFFICIENT_CASH`), added to `docs/owner-inputs.md`.
+- Not done (no tests, outside this round): AC1 git check, AC6 ledger agreement, AC7 reconcile coverage, reversal in AC2.
+- TRANSFER_IN has no cash effect; FX_CONVERSION without a counter side only debits.
