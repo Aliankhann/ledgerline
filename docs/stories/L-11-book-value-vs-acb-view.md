@@ -1,6 +1,6 @@
 # L-11 Book value versus true ACB view with reasons
 
-**Status:** Draft  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** Tests written (provisional)  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 10 · **Branch:** `L-11-book-value-vs-acb-view` · **Round:** 0 / 3
 
 ## Story
@@ -91,9 +91,19 @@ from vendor sources. That investors want a reason per difference is not sourced 
 
 ## Test map (QE fills)
 
+Provisional: owner input B2 (real book value export) is pending and the story is still Draft. Backend contract is in
+the KDoc of `L11BookValueSpec`; it uses a simple CSV `security_id,book_value` and `GET /v1/holdings/{taxpayer}/acb-vs-book`,
+not the story's proposed `/v1/taxpayers/{id}/holdings`. Reason amounts (story AC6 sum check) are not covered yet.
+
 | AC | Test |
 | --- | --- |
-| AC1 | `tests/spec/.../L11Spec.kt` › "L-11 AC1: …" |
+| AC1 | UI follow-up (stubbed API; no JS runner yet, owner to decide where UI tests live). Backend rows: `L11BookValueSpec` "L-11 AC6 backend: book value equal to ACB ..." |
+| AC2 | UI follow-up. Backend: `L11BookValueSpec` "L-11 AC2/AC6 backend: ... ROC-REDUCES-ACB" |
+| AC3 | UI follow-up (needs `GET /v1/entries/{id}` stub) |
+| AC4 | UI follow-up (needs reason amounts in the API) |
+| AC5 | UI follow-up; backend empty case in "L-11 API: ..." (`holdings: []`) |
+| AC6 | `L11BookValueSpec` "L-11 AC6 backend: ..." and "L-11 API: ..."; `L11BookValuePropertyTest` (2 tests). Real-stack seed-42 run not written |
+| AC7 | CI step `npm run typecheck && npm run build`, no Kotlin test |
 
 ## Change notes (Dev fills)
 
