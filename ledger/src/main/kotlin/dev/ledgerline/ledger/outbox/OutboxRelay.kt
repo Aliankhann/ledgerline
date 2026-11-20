@@ -79,6 +79,11 @@ class OutboxRelay(
             val recorded = HashSet<Long>(drain.acked.size).apply { drain.acked.forEach { add(it.first.eventId) } }
             val firstPending = batch.firstOrNull { it.eventId !in recorded }
             deliveredPrefix = firstPending?.let { it.eventId - 1 } ?: batch.last().eventId
+            log.log(
+                System.Logger.Level.INFO,
+                "outbox drain: ${drain.acked.size} published, ${drain.failed} failed, ${drain.parked.size} parked " +
+                    "of ${batch.size} pending to $topic",
+            )
             DrainResult(published = drain.acked.size, failed = drain.failed, parked = drain.parked.size)
         }
 
