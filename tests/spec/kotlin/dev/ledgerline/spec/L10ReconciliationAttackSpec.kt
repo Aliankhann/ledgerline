@@ -22,23 +22,21 @@ class L10ReconciliationAttackSpec : FunSpec({
     val reconciler = Reconciler(engine)
     val day = LocalDate.of(2025, 3, 1)
 
+    fun trade(
+        id: String,
+        off: Long,
+        sec: String,
+        qty: Long,
+        gross: Long,
+        seq: Long,
+        tp: String,
+    ) = L06Activities.trade(id, BUY, day.plusDays(off), sec, qty * SHARE, gross, 0, seq, taxpayerId = tp)
+
     fun history(bump: Int = -1): List<PostedActivity> =
         listOf(
-            L06Activities.trade("A-1", BUY, day, "SYN-AAA", 60 * SHARE, 600_000 + if (bump == 0) 1L else 0L, 995, 1, taxpayerId = "TP-0001"),
-            L06Activities.trade(
-                "A-2", BUY,
-                day.plusDays(
-                    1,
-                ),
-                "SYN-BBB", 10 * SHARE, 250_000 + if (bump == 1) 1L else 0L, 0, 2, taxpayerId = "TP-0001",
-            ),
-            L06Activities.trade(
-                "A-3", BUY,
-                day.plusDays(
-                    2,
-                ),
-                "SYN-AAA", 5 * SHARE, 55_000 + if (bump == 2) 1L else 0L, 995, 3, taxpayerId = "TP-0002",
-            ),
+            trade("A-1", 0, "SYN-AAA", 60, 600_000 + if (bump == 0) 1L else 0L, 1, "TP-0001"),
+            trade("A-2", 1, "SYN-BBB", 10, 250_000 + if (bump == 1) 1L else 0L, 2, "TP-0001"),
+            trade("A-3", 2, "SYN-AAA", 5, 55_000 + if (bump == 2) 1L else 0L, 3, "TP-0002"),
         )
     val base = engine.replay(history()).pools
 
