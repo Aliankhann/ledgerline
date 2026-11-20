@@ -99,6 +99,8 @@ object BookValueComparison {
         when {
             rule == "ROC-REDUCES-ACB" ->
                 "Returns of capital lower ACB by ${money(-cents)}; book value that ignores them is higher."
+            rule == "COST-BUY-COMMISSION" ->
+                "Buy commissions of ${money(cents)} are added to ACB; book value that omits them is lower."
             rule.startsWith("SL-") ->
                 "Denied superficial losses of ${money(cents)} are added back to ACB; book value without them is lower."
             else -> "$rule accounts for ${money(cents)}."

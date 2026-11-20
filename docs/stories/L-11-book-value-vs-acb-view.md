@@ -117,3 +117,7 @@ Reasons carry `amountMinor` and the AC6 sum check is covered. A book value with 
 - `PoolChange` has an additive `ruleAmounts` map (internal units a rule contributed). The superficial-loss add-back records `SL-ADDBACK-TARGET` with its amount, under the sale's entry ID.
 - `BookValueComparison` builds reasons from those amounts (and `ROC-REDUCES-ACB`), keeping only parts that point the same way as the difference and fit inside it. Any remainder is `UNEXPLAINED` with its amount; it is never given to `POOL-IDENTICAL`.
 - `UNEXPLAINED` is added to `CaIta2026v1.ruleIds` (marked OWNER-INPUT C29) only because the provisional L-11 tests require every reason ID to be in that set. It is not a tax rule; the owner may prefer to change the test instead.
+
+### Round 2 (B-022): buy commission reason
+
+- A buy records `COST-BUY-COMMISSION` with its commission (internal units) in `PoolChange.ruleAmounts`; the comparison reports it under that rule ID with the buy entry. FX has no reason: the pool takes CAD amounts, so there is no FX pool step yet.

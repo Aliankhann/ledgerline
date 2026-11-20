@@ -62,7 +62,8 @@ class AcbEngine(val ruleSet: TaxRuleSet) {
         val a = posted.activity
         val rules = setOf("DATE-BASIS", "POOL-IDENTICAL", "COST-BUY-COMMISSION", "ROUND-SCALE")
         val cost = Math.multiplyExact(Math.addExact(a.amountMinor, a.commissionMinor), ruleSet.acbUnitsPerCent)
-        return applied(pool, posted, a.quantity ?: 0L, cost, emptyList(), rules, "Buy added to the pool")
+        val amounts = mapOf("COST-BUY-COMMISSION" to Math.multiplyExact(a.commissionMinor, ruleSet.acbUnitsPerCent))
+        return applied(pool, posted, a.quantity ?: 0L, cost, emptyList(), rules, "Buy added to the pool", amounts)
     }
 
     private fun sell(
