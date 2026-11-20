@@ -9,30 +9,17 @@ change any row.
 | Agent | Model | Effort | Why |
 | --- | --- | --- | --- |
 | `ba` | sonnet | medium | Reading, sourcing and structured writing. The hard part is honesty about sources, which the rules enforce, not raw reasoning. |
-| `qe` | sonnet | high | Tests are the project's evidence; generators and edge cases need care. |
+| `qe` | sonnet | medium | Tests are the project's evidence; generators and edge cases need care. |
 | `dev` | sonnet | medium | Most stories are straightforward once QE's tests define them. |
 
-## Per-story overrides
+## Per-story overrides (owner rule 2026-11-20: cut usage)
 
-The rule of thumb is to escalate to **opus / high** where a subtle bug would silently break an invariant: concurrency,
-crash-safety, ordering, and money math that compounds. Use sonnet everywhere else.
+**Default for every story, all phases: sonnet / medium.** The tests and CI gates catch mistakes, so a cheaper pass that
+occasionally needs an extra fix round costs less than running high effort everywhere.
 
-| Story | QE phase A (spec tests) | Dev | QE phase B (attack) | Reason |
-| --- | --- | --- | --- | --- |
-| L-01 CSV import + generator | sonnet / medium | sonnet / medium | sonnet / medium | Parsing and seeded determinism; well-trodden |
-| L-02 Duplicate-safe ingestion | sonnet / high | sonnet / high | sonnet / high | Canonical payload hashing must be stable |
-| L-03 Balanced, immutable ledger + DomainPlugin | opus / high | opus / high | opus / high | Core schema and interface everything else builds on |
-| L-04 Corrections by reversal | sonnet / high | sonnet / high | sonnet / high | Builds directly on L-03 patterns |
-| L-05 Reliable publication (outbox) | opus / high | opus / high | opus / high | Crash windows between DB and Kafka |
-| L-06 Pooled ACB | opus / high | sonnet / high | opus / high | Expected values must match sourced examples to the cent |
-| L-07 Superficial loss | opus / high | opus / high | opus / high | Windowed, cross-account, proration |
-| L-08 USD→CAD FX | sonnet / medium | sonnet / medium | sonnet / high | Lookup rules plus a cache |
-| L-09 Late correction recompute | opus / high | opus / high | opus / high | Recompute-from-date must equal a full replay |
-| L-10 Reconciliation by replay | sonnet / high | opus / high | sonnet / high | Deterministic hashing across runs |
-| L-11 Book value vs ACB view | sonnet / medium | sonnet / medium | sonnet / medium | UI over existing data |
-| L-12 Crash recovery / chaos | opus / high | opus / high | opus / high | Inbox + offset atomicity under failure |
-| L-13 Burst benchmark | sonnet / medium | sonnet / medium | sonnet / medium | Harness and report |
-| L-14 Second plugin | sonnet / medium | sonnet / medium | sonnet / medium | Reuses the core contract |
+- **Escalate to opus / high only for round 3** of a story, and only if sonnet failed rounds 1–2 on a real defect.
+- BA stays sonnet / medium. Narrow test fixes and retests can use sonnet / low.
+- Keep prompts short and scoped. Agents report in a few lines.
 
 ## Other runs
 
@@ -42,9 +29,9 @@ crash-safety, ordering, and money math that compounds. Use sonnet everywhere els
 | Re-sourcing evidence after hosts are allowed | `ba` default |
 | Launch post drafts (step 12) | sonnet / low |
 | Mutation-testing triage | sonnet / medium |
-| Round 2–3 fixes after a QE bug | same as the story's Dev row; do not escalate unless round 3 |
+| Round 2 fixes after a QE bug | sonnet / medium |
 
-If a story hits round 3 on sonnet, the final round runs on opus before it goes to the owner.
+
 
 ## Orchestrator check-ins (owner rule, 2026-11-19)
 
