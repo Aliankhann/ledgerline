@@ -1,6 +1,7 @@
 package dev.ledgerline.app
 
 import dev.ledgerline.ledger.LedgerMigrations
+import dev.ledgerline.ledger.outbox.OutboxLimits
 
 /**
  * Runtime configuration, read from environment variables (see .env.example and docker-compose.yml).
@@ -16,8 +17,11 @@ data class AppConfig(
     val migrationUser: String,
     val migrationPassword: String,
     val kafkaBootstrap: String,
+    /** OWNER-INPUT: C27: the largest outbox message value; larger activities are refused with `EVENT_TOO_LARGE`. */
+    val maxEventBytes: Int = OutboxLimits.DEFAULT_MAX_EVENT_BYTES,
 ) {
     init {
+        OutboxLimits.requireValid(maxEventBytes)
         require(databaseUser != migrationUser) {
             "DATABASE_USER and DATABASE_MIGRATION_USER are both '$databaseUser'; the service must not run as the " +
                 "role that owns the ledger tables"
@@ -26,7 +30,7 @@ data class AppConfig(
 
     override fun toString(): String =
         "AppConfig(httpPort=$httpPort, databaseUrl=$databaseUrl, databaseUser=$databaseUser, " +
-            "migrationUser=$migrationUser, kafkaBootstrap=$kafkaBootstrap)"
+            "migrationUser=$migrationUser, kafkaBootstrap=$kafkaBootstrap, maxEventBytes=$maxEventBytes)"
 
     companion object {
         fun fromEnv(env: Map<String, String> = System.getenv()): AppConfig =
@@ -38,6 +42,7 @@ data class AppConfig(
                 migrationUser = env["DATABASE_MIGRATION_USER"] ?: "ledgerline",
                 migrationPassword = env["DATABASE_MIGRATION_PASSWORD"] ?: "ledgerline",
                 kafkaBootstrap = env["KAFKA_BOOTSTRAP"] ?: "localhost:19092",
+                maxEventBytes = env["OUTBOX_MAX_EVENT_BYTES"]?.toInt() ?: OutboxLimits.DEFAULT_MAX_EVENT_BYTES,
             )
     }
 }

@@ -7,6 +7,7 @@ import dev.ledgerline.ingest.Rejection
 import dev.ledgerline.ledger.LedgerRepository
 import dev.ledgerline.ledger.SubmitOutcome
 import dev.ledgerline.ledger.ZeroAmountException
+import dev.ledgerline.ledger.outbox.EventTooLargeException
 import java.time.Clock
 import java.time.Instant
 
@@ -52,6 +53,9 @@ class IngestionService(
             }
         } catch (e: ZeroAmountException) {
             SubmitResult.Invalid(e.code, "amount")
+        } catch (e: EventTooLargeException) {
+            // OWNER-INPUT: C27: the published event would be too large for the broker; no single field is to blame.
+            SubmitResult.Invalid(e.code, null)
         }
 
     /**
