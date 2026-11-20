@@ -20,7 +20,7 @@ Step 0.3 is the owner's. QE phase A for L-01 starts once the owner approves L-01
 | L-07 | Superficial-loss detection | QE passed, awaiting owner | 1 | main | CI green (run 44665217794); AC2 skipped pending sourced example (A2); SL-PARTIAL provisional |
 | L-08 | USD to CAD by trade date | QE passed, awaiting owner | 2 | main | CI green (run 44678105986); real BoC rates; B-019, B-020 fixed; AC10 skipped pending sourced example; scale 10^-4 provisional |
 | L-09 | Late correction recompute | QE passed, awaiting owner | 1 | main | CI green (run 44681018201); AC6–AC8 integration parts pending; outputHash still from full replay (follow-up) |
-| L-10 | Reconciliation by full replay | Draft | – | – | replay-hash format ADR |
+| L-10 | Reconciliation by full replay | QE passed (pure part), awaiting owner | 1 | main | CI green (run 44683743890); DB/CLI ACs pending; hash scope is owner decision C28 |
 | L-11 | Book value vs true ACB view | Draft | – | – | book value source |
 | L-12 | Crash recovery | Draft | – | – | proposed split L-12a/b |
 | L-13 | Burst benchmark and report | Draft | – | – | owner sets targets before first run |
