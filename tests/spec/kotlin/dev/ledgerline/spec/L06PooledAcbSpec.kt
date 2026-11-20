@@ -169,4 +169,37 @@ class L06PooledAcbSpec : FunSpec({
         expectPool(howto, "t4", steps[3].pool)
         steps[1].gains.single().ruleIds shouldContainAll setOf("ACB-SOLD", "PROCEEDS-SELL-COMMISSION")
     }
+
+    test("L-06 AC4 $rs: return of capital reduces ACB; shares unchanged; no gain (ACB-ROC, REF-UN.TO)") {
+        val steps = run(refUn.security, (1..2).map { L06Activities.row(refUn, "t$it", seq = it.toLong()) })
+        expectPool(refUn, "t2", steps[1].pool)
+        steps[1].gains.shouldBeEmpty()
+        steps[1].explanation.ruleIds shouldContainAll setOf("ROC-REDUCES-ACB")
+    }
+
+    test("L-06 AC5 $rs: ROC above ACB resets ACB to 0 and the excess is a deemed gain (ACB-NEG body)") {
+        val neg = L06Fixture.load("acb-neg-body")
+        val rows = (1..4).map { L06Activities.row(neg, "t$it", seq = it.toLong()) }
+        val steps = run(neg.security, rows)
+        steps.forEachIndexed { i, step ->
+            val prefix = "t${i + 1}"
+            expectPool(neg, prefix, step.pool)
+            if (i == 0) return@forEachIndexed
+            val expected = neg.long("$prefix.expected.gain.cents")
+            if (expected == 0L) {
+                step.gains.filter { it.gainCents != 0L }.shouldBeEmpty()
+            } else {
+                val line = step.gains.single()
+                line.kind shouldBe GainKind.DEEMED_GAIN_ROC
+                line.gainCents shouldBe expected
+                line.gain shouldBe Math.multiplyExact(expected, rules.acbUnitsPerCent)
+                line.acbSold shouldBe 0L
+                line.activityId shouldBe rows[i].activityId
+                // Story: "in the year of the ROC"; CA-ITA-2026.1 ROC-NEG-DATE stamps it with the ROC's tax date.
+                line.taxDate.year shouldBe 2025
+                line.taxDate shouldBe neg.date("$prefix.date")
+                step.explanation.ruleIds shouldContainAll setOf("ROC-NEG-GAIN", "ROC-NEG-RESET")
+            }
+        }
+    }
 })
