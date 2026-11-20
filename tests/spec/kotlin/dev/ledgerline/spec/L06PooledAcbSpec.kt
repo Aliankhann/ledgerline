@@ -4,17 +4,27 @@ import dev.ledgerline.calc.AcbEngine
 import dev.ledgerline.calc.AcbPool
 import dev.ledgerline.calc.CaIta2026v1
 import dev.ledgerline.calc.GainKind
+import dev.ledgerline.calc.PoolKey
 import dev.ledgerline.calc.PoolStep
 import dev.ledgerline.calc.PostedActivity
+import dev.ledgerline.calc.RejectionCode
 import dev.ledgerline.calc.TaxRuleSet
+import dev.ledgerline.core.AccountType
+import dev.ledgerline.core.ActivityType.BUY
+import dev.ledgerline.core.ActivityType.SELL
+import dev.ledgerline.testsupport.Activities.SHARE
 import dev.ledgerline.testsupport.L06Activities
 import dev.ledgerline.testsupport.L06Fixture
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
+import java.time.LocalDate
 
 /**
  * Story L-06 (docs/stories/L-06-pooled-acb.md), pure: no database. Every test assumes rule set `CA-ITA-2026.1`
@@ -201,5 +211,108 @@ class L06PooledAcbSpec : FunSpec({
                 step.explanation.ruleIds shouldContainAll setOf("ROC-NEG-GAIN", "ROC-NEG-RESET")
             }
         }
+    }
+
+    // AC6 and AC9 inputs are non-tax (story: "use any synthetic values"); prices are QE-chosen.
+    val ac6Buy =
+        L06Activities.trade(
+            "L06-AC6-buy",
+            BUY,
+            LocalDate.of(2025, 3, 3),
+            "SYN-A",
+            10 * SHARE,
+            10_000L,
+            0L,
+            seq = 1,
+        )
+    val ac6Sell =
+        L06Activities.trade(
+            "L06-AC6-sell",
+            SELL,
+            LocalDate.of(2025, 3, 4),
+            "SYN-A",
+            11 * SHARE,
+            11_000L,
+            0L,
+            seq = 2,
+        )
+
+    test("L-06 AC6 $rs: selling 11 when 10 are held is rejected (held 10, requested 11); pool unchanged") {
+        val before = run("SYN-A", listOf(ac6Buy)).single().pool
+        val gate = engine.check(before, ac6Sell.activity).shouldNotBeNull()
+        gate.code shouldBe RejectionCode.INSUFFICIENT_SHARES
+        gate.held shouldBe 10 * SHARE
+        gate.requested shouldBe 11 * SHARE
+        gate.message shouldContain "10"
+        gate.message shouldContain "11"
+        val step = engine.apply(before, ac6Sell).shouldBeInstanceOf<PoolStep.Rejected>()
+        step.rejection shouldBe gate
+        step.pool shouldBe before
+        engine.check(before, ac6Sell.activity.copy(quantity = 10 * SHARE)).shouldBeNull()
+
+        val replayed = engine.replay(listOf(ac6Sell, ac6Buy))
+        replayed.rejections.single() shouldBe gate
+        replayed.pools.getValue(before.key) shouldBe before
+        replayed.gains.shouldBeEmpty()
+    }
+
+    test("L-06 AC7 $rs: reverse arrival order gives the same pools, results and hash (ACB-HOWTO chain)") {
+        val forward = engine.replay(chain)
+        val reversed = engine.replay(chain.reversed())
+        reversed shouldBe forward
+        reversed.outputHash shouldBe forward.outputHash
+        forward.rejections.shouldBeEmpty()
+        forward.ruleSetId shouldBe rules.id
+        val p = forward.pools.getValue(PoolKey(L06Activities.TAXPAYER, howto.security))
+        p.shares shouldBe howto.long("t4.expected.shares.units")
+        rules.toReportedCents(p.totalAcb) shouldBe howto.long("t4.expected.acb.cents")
+        forward.gains.map { it.gainCents } shouldBe listOf("t2", "t4").map { howto.long("$it.expected.gain.cents") }
+    }
+
+    test("L-06 AC8 $rs: one pool across non-registered accounts; a TFSA buy never enters it (ACB-REG)") {
+        val reg = L06Fixture.load("acb-reg-pooling")
+        val tfsa =
+            L06Activities.buy(
+                reg,
+                "tfsa",
+                seq = 2,
+                accountId = L06Activities.TFSA,
+                accountType = AccountType.TFSA,
+            )
+        val runs =
+            listOf(
+                listOf(chain[0]),
+                listOf(
+                    L06Activities.buy(reg, "a", seq = 1),
+                    L06Activities.buy(reg, "b", seq = 2, accountId = L06Activities.NR_B),
+                ),
+                listOf(chain[0], tfsa),
+            ).map { engine.replay(it) }
+        runs.forEach { r ->
+            val pools = r.pools.filterKeys { it.securityId == reg.security }
+            pools.keys shouldBe setOf(PoolKey(L06Activities.TAXPAYER, reg.security))
+            val p = pools.values.single()
+            p.shares shouldBe reg.long("expected.shares.units")
+            rules.toReportedCents(p.totalAcb) shouldBe reg.long("expected.acb.cents")
+            p.totalAcb shouldBe Math.multiplyExact(reg.long("expected.acb.cents"), rules.acbUnitsPerCent)
+        }
+        runs[2].pools shouldBe runs[0].pools
+        val p1 = runs[0].pools.values.single()
+        val tfsaStep = applied(engine.apply(p1, tfsa))
+        tfsaStep.pool shouldBe p1
+        tfsaStep.explanation.ruleIds shouldContainAll setOf("POOL-REGISTERED-EXCL")
+    }
+
+    test("L-06 AC9 $rs: every pool change names the activity ID and ledger entry that caused it") {
+        val p = run("SYN-A", listOf(ac6Buy)).single().pool
+        val row = p.history.single()
+        row.activityId shouldBe ac6Buy.activityId
+        row.entryId shouldBe ac6Buy.entryId
+        row.sharesDelta shouldBe 10 * SHARE
+        row.acbDelta shouldBe p.totalAcb
+        engine.replay(listOf(ac6Buy)).pools.getValue(p.key).history shouldBe p.history
+
+        val full = engine.replay(chain).pools.values.single()
+        full.history.map { it.activityId to it.entryId } shouldBe chain.map { it.activityId to it.entryId }
     }
 })
