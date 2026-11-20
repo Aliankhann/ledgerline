@@ -1,6 +1,6 @@
 # L-10 Reconciliation by full replay
 
-**Status:** Tests written (provisional)  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 8 · **Branch:** `L-10-reconciliation-by-replay` · **Round:** 0 / 3
 
 ## Story
@@ -101,4 +101,6 @@ Property tests: `tests/property/.../L10ReconciliationPropertyTest.kt`.
 
 ## Change notes (Dev fills)
 
-- …
+- Added `calc/.../Reconciler.kt`: `Reconciler`, `ReconReport`, `PoolDiff`, `DriftKind`, `ReplayHash` per the spec KDoc. It reuses `AcbEngine.replay`, so canonical order applies.
+- Pure part only (AC1-AC3, AC4 pure, AC5-AC7 pure). CLI, `recon` schema, exit codes, AC8 and AC9 are not built.
+- Hash covers shares and totalAcb only; adjustments are not included. Open: `OWNER-INPUT: C28` in `docs/owner-inputs.md`. The ADR for the format is not written yet.
