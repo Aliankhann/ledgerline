@@ -15,6 +15,12 @@ data class Replay(
 
 private val POOL_TYPES = setOf(ActivityType.BUY, ActivityType.SELL, ActivityType.RETURN_OF_CAPITAL)
 
+/** True if the activity belongs in a pool: a non-registered buy, sell or return of capital on a security. */
+internal fun PostedActivity.inPool(): Boolean =
+    activity.securityId != null &&
+        activity.accountType == AccountType.NON_REGISTERED &&
+        activity.activityType in POOL_TYPES
+
 /** Activities on a security, in canonical order. */
 internal fun canonicalOrder(
     engine: AcbEngine,
