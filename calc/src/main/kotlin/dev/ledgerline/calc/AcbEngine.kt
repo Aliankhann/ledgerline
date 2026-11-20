@@ -68,6 +68,7 @@ class AcbEngine(val ruleSet: TaxRuleSet) {
     ): PoolStep {
         val a = posted.activity
         val sold = a.quantity ?: 0L
+        if (sold == 0L) return unchanged(pool, setOf("ACB-SOLD"), "Zero-quantity sell does not affect the pool")
         val acbSold = (big(pool.totalAcb) * big(sold) / big(pool.shares)).longValueExact()
         val net = Math.subtractExact(a.amountMinor, a.commissionMinor)
         val gain = Math.subtractExact(Math.multiplyExact(net, ruleSet.acbUnitsPerCent), acbSold)
