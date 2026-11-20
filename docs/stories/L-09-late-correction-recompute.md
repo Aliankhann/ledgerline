@@ -1,6 +1,6 @@
 # L-09 Late correction recompute
 
-**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** QE passed (round 1; local build green, CI pending), awaiting owner approval  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 8 · **Branch:** `L-09-late-correction-recompute` · **Round:** 0 / 3
 
 ## Story
