@@ -1,6 +1,6 @@
 # L-08 USD to CAD by trade date
 
-**Status:** Draft  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** Tests written (provisional)  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 7 · **Branch:** `L-08-usd-cad-fx` · **Round:** 0 / 3
 
 ## Story
@@ -226,9 +226,27 @@ Tax judgment and design (each goes into an ADR with its source once decided):
 
 ## Test map (QE fills)
 
-| AC | Test |
+Spec: `tests/spec/kotlin/dev/ledgerline/spec/L08FxSpec.kt` (API contract in its KDoc). Fixtures: `tests/fixtures/l08/`
+(README cites URLs). Property: `tests/property/.../L08FxPropertyTest.kt`. Status is provisional: the story is still Draft
+and the `[OD]` rules (FX-SCALE, FX-COVERAGE, FX-DAY) are not owner-accepted.
+
+| AC | Test (name starts with) |
 | --- | --- |
-| AC1 | `tests/spec/.../L08Spec.kt` › "L-08 AC1: …" |
+| AC1 | "L-08 AC1: ..." |
+| AC2 | "L-08 AC2: ..." |
+| AC3 | "L-08 AC3: ..." |
+| AC4 | "L-08 AC4: ..." (asserts the rate date 2025-10-10) |
+| AC5 | "L-08 AC5: ..." |
+| AC6 | "L-08 AC6: ..." |
+| AC7 | "L-08 AC7: ..." |
+| AC8 | "L-08 AC8: ..." |
+| AC9 | "L-08 AC9: ..." |
+| AC10 | disabled `xtest` "L-08 AC10: ..." (NEEDS SOURCED EXAMPLE); a structural exactness test is not a tax value |
+| AC11 | "L-08 AC11: ..." (3 tests; the "no ledger entry" half is not covered, needs the ledger) |
+| AC12 | "L-08 AC12: ..." |
+| AC13 | "L-08 AC13: ..." (determinism only; "no network call" not provable here) |
+| AC14 | "L-08 AC14: ..." (2 tests) |
+| FX-FALLBACK property | `L08FxPropertyTest` "L-08 [FX-FALLBACK]: ..." |
 
 ## Change notes (Dev fills)
 
