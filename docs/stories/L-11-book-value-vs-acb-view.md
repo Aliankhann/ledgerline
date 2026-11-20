@@ -1,6 +1,6 @@
 # L-11 Book value versus true ACB view with reasons
 
-**Status:** Tests written (provisional)  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 10 · **Branch:** `L-11-book-value-vs-acb-view` · **Round:** 0 / 3
 
 ## Story
@@ -108,4 +108,6 @@ Reasons carry `amountMinor` and the AC6 sum check is covered. A book value with 
 
 ## Change notes (Dev fills)
 
-- …
+- `calc/BookValueComparison.kt`: pure `BookValueComparison`, `BookValueCsv`, `HoldingDiff`, `Reason`. Reasons: return of capital (rule `ROC-REDUCES-ACB`, entry IDs from the pool history), then the remainder under `POOL-IDENTICAL` (pooled entries); a book value with no pool gets `NO-LEDGER-HISTORY`. Amounts always sum to the difference. Provisional choices marked `OWNER-INPUT` (B2, C29 in `docs/owner-inputs.md`).
+- `app/AcbVsBookRoutes.kt`: `acbVsBookModule` and `GET /v1/holdings/{taxpayer}/acb-vs-book`; a taxpayer with no pools gets `holdings: []`. Not wired into `Main` (needs a pool source and a book value file; follow-up).
+- Not done: UI table (`npm run typecheck` fails here with missing modules because `node_modules` is not installed); superficial loss, FX and commission reasons.
