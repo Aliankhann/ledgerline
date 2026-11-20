@@ -1,6 +1,6 @@
 # L-09 Late correction recompute
 
-**Status:** Draft  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** Tests written (provisional)  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 8 · **Branch:** `L-09-late-correction-recompute` · **Round:** 0 / 3
 
 ## Story
@@ -99,7 +99,14 @@ reduces ACB).
 
 | AC | Test |
 | --- | --- |
-| AC1 | `tests/spec/.../L09Spec.kt` › "L-09 AC1: …" |
+| AC1 | `tests/spec/.../L09RecomputeSpec.kt` › "L-09 AC1: a back-dated correction gives the same pool as a clean replay" |
+| AC2 | `L09RecomputeSpec` › "L-09 AC2: unaffected pools are not touched" (pools only; the `ledgerline_pool_recompute_total` counter needs the app, not written) |
+| AC3 | `L09RecomputeSpec` › "L-09 AC3: recompute starts at the earliest changed date" |
+| AC4 | `L09RecomputeSpec` › "L-09 AC4: a late new activity, not a correction, also recomputes" |
+| AC5 | `L09RecomputeSpec` › "L-09 AC5: a correction dated before every existing activity recomputes the whole pool" |
+| AC6 | `L09RecomputeSpec` › "L-09 AC6: ..." (calc side only: the sell is reported; funnel refusal and "nothing written" need the owner decision and the DB, not written) |
+| AC7 | `L09RecomputeSpec` › "L-09 AC7: redelivery of the correction changes nothing" (pools only; counter and consumer redelivery not written) |
+| AC8 | Not written (integration; needs L-01 generator, consumer and L-10). Pure equivalence is covered by `tests/property/.../L09RecomputePropertyTest.kt` (500 cases, pools and outputHash). |
 
 ## Change notes (Dev fills)
 
