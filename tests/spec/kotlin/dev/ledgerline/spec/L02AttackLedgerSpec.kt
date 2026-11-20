@@ -343,8 +343,14 @@ class L02AttackLedgerSpec : FunSpec({
             val last = "SELECT source_seq FROM ledger.entry WHERE idempotency_key = 'BIG-10000'"
             e.db.query(e.db.owner, last)[0][0] shouldBe "10001"
             val clue = "firstMs=$firstMs reuploadMs=$secondMs rows=$n"
-            withClue("first import too slow: $clue") { (firstMs < 180_000) shouldBe true }
-            withClue("re-upload too slow: $clue") { (secondMs < 180_000) shouldBe true }
+            // Relative bounds only: absolute throughput is measured in L-13, not in CI.
+            withClue(
+                "re-upload more than 2x slower than first import: $clue",
+            ) { (secondMs <= 2 * firstMs) shouldBe true }
+            withClue("per-row time above 60 ms ceiling: $clue") { (firstMs < 60L * n) shouldBe true }
+            println(
+                "L-02 attack bulk: per-row first=${firstMs.toDouble() / n} ms, re-upload=${secondMs.toDouble() / n} ms",
+            )
             e.db.shouldBeConsistent()
         }
 })
