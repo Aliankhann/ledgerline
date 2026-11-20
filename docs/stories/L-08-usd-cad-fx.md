@@ -1,6 +1,6 @@
 # L-08 USD to CAD by trade date
 
-**Status:** Tests written (provisional)  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 7 · **Branch:** `L-08-usd-cad-fx` · **Round:** 0 / 3
 
 ## Story
@@ -250,4 +250,5 @@ and the `[OD]` rules (FX-SCALE, FX-COVERAGE, FX-DAY) are not owner-accepted.
 
 ## Change notes (Dev fills)
 
-- …
+- Added `calc/.../fx/FxRateCache.kt`: Valet JSON parsed to 10^-4 integers by string arithmetic (kotlinx-serialization-json for the JSON only); `rateFor` uses the closest preceding rate day inside a declared range, else `FxRateUnavailableException` (message names `FXUSDCAD` and the date); CAD skips lookup; `toCadInternal` exact, `toCadCents` via `TaxRuleSet.toReportedCents`.
+- Placeholders marked `// OWNER-INPUT` (FX-SCALE, FX-FALLBACK, FX-COVERAGE). AC10 stays disabled. No network code.
