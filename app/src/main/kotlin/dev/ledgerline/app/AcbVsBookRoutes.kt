@@ -24,12 +24,19 @@ import kotlinx.serialization.json.put
 fun Application.acbVsBookModule(
     pools: Map<PoolKey, AcbPool>,
     bookValueCsv: String,
+) = acbVsBookModule({ pools }, bookValueCsv)
+
+/** Same route over a live pool source, read on every request (the service passes a read of `calc.pool`). */
+fun Application.acbVsBookModule(
+    poolSource: () -> Map<PoolKey, AcbPool>,
+    bookValueCsv: String,
 ) {
     // module() installs it too in the live service; a second install would fail.
     if (pluginOrNull(ContentNegotiation) == null) install(ContentNegotiation) { json() }
     routing {
         get("/v1/holdings/{taxpayer}/acb-vs-book") {
             val taxpayer = call.parameters["taxpayer"].orEmpty()
+            val pools = poolSource()
             // The CSV names no taxpayer, so it is applied only to a taxpayer the ledger knows (an unknown one gets none).
             val known = pools.keys.any { it.taxpayerId == taxpayer }
             val diffs =

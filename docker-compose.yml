@@ -78,6 +78,7 @@ services:
       DATABASE_USER: ledgerline_app
       DATABASE_PASSWORD: ledgerline_app
       KAFKA_BOOTSTRAP: redpanda:9092
+      KAFKA_GROUP_ID: ledgerline-calc
     ports:
       - "${APP_PORT:-8080}:8080"
 
