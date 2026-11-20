@@ -68,8 +68,12 @@ QE writes it under `tests/`.
   a ba commit touches anything outside `docs/`, or the trailer is missing. Run `make hooks` to check locally.
   Git only reads trailers from the **last paragraph** of the message, so put `Agent:` in the same block as any other
   trailers (`Co-Authored-By:` etc.), with no blank line between them.
-- Small commits: one logical change each (one story's tests, one story's implementation, one fix, one doc update).
-  Each commit compiles and passes `./gradlew build`. No "WIP" commits that bundle unrelated work.
+- **Small, individually revertable commits** (owner rule, 2026-11-20). Aim for **≤ 300 changed lines**; split anything bigger.
+  - One bug fix per commit (`L-05: fix B-015 ...`), never several bugs together.
+  - Migrations, production code and docs/status updates are separate commits.
+  - QE tests are committed per acceptance criterion or small AC group, not the whole spec at once.
+  - Each commit compiles; `git revert <sha>` of any one commit must leave a buildable tree.
+  - No "WIP" commits that bundle unrelated work.
 - Owner rule (2026-11-19): after each completed change or story, commit it and push it to `main` on GitHub. Work happens
   directly on `main`; no other branches are pushed. Story code is pushed only after its story's gates pass.
 
