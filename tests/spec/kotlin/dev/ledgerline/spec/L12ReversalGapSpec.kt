@@ -3,12 +3,9 @@ package dev.ledgerline.spec
 import dev.ledgerline.calc.AcbEngine
 import dev.ledgerline.calc.CaIta2026v1
 import dev.ledgerline.calc.CalcMigrations
-import dev.ledgerline.calc.InboxState
 import dev.ledgerline.calc.PoolConsumer
 import dev.ledgerline.calc.PoolStore
-import dev.ledgerline.calc.PostedActivity
 import dev.ledgerline.calc.Reconciler
-import dev.ledgerline.core.Activity
 import dev.ledgerline.core.ActivityType
 import dev.ledgerline.testsupport.Activities
 import dev.ledgerline.testsupport.Integration
@@ -26,6 +23,9 @@ import java.time.LocalDate
 /**
  * L-12 phase B round 1: reversal attack (bug B-024). Under C19 a replay skips a reversed pair, so after a reversal
  * the live pools must equal a replay of the history without the reversed entry. Source: CLAUDE.md invariants 4 and 5.
+ *
+ * The Integration test below (post, consume, reverse, consume, Reconciler zero drift) is the sole authority for B-024.
+ * There is no DB-free production entry point, so a pure case could only exercise a test helper and was removed.
  */
 class L12ReversalGapSpec : FunSpec({
     val pg = PostgresLedger()
@@ -58,25 +58,6 @@ class L12ReversalGapSpec : FunSpec({
             quantity = 40L * Activities.SHARE,
             sourceSeq = 2L,
         )
-
-    fun posted(
-        a: Activity,
-        entryId: Long,
-    ) = PostedActivity("act-${a.idempotencyKey}", entryId, a)
-
-    test(
-        "L-12 reversal (pure): after BUY, SELL and the SELL's ENTRY_REVERSED, live pools equal replay without the SELL",
-    ) {
-        // The consumer applies ACTIVITY_POSTED through applyToPool (InboxState) and, per PoolConsumer.handle, stores
-        // ENTRY_REVERSED in the inbox with no pool change (EventDecoder.decode returns null). So the live pools after
-        // the three events are exactly those of the two ACTIVITY_POSTED events.
-        val live = InboxState(engine)
-        live.deliver(1L, posted(buy(), 1L))
-        live.deliver(2L, posted(sell(), 2L))
-        // event 3 (ENTRY_REVERSED): decoded to null, so the consumer writes an inbox row and no pool change
-        val afterReversal = listOf(posted(buy(), 1L)) // C19 replay: the reversed SELL (and its reversal) are skipped
-        reconciler.reconcile(live.pools, afterReversal).drift.shouldBeEmpty()
-    }
 
     test("L-12 reversal (integration): consumer pools show zero drift after a reversal of the SELL")
         .config(tags = setOf(Integration)) {
