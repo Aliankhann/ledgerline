@@ -104,7 +104,13 @@ class L10ReconciliationSpec : FunSpec({
         report.ok shouldBe false
         report.drift shouldContainExactlyInAnyOrder
             listOf(
-                PoolDiff(aaa, DriftKind.FIELD_MISMATCH, "shares", live.getValue(aaa).shares - SHARE, live.getValue(aaa).shares),
+                PoolDiff(
+                    aaa,
+                    DriftKind.FIELD_MISMATCH,
+                    "shares",
+                    live.getValue(aaa).shares - SHARE,
+                    live.getValue(aaa).shares,
+                ),
             )
         report.liveHash shouldNotBe report.replayHash
     }
