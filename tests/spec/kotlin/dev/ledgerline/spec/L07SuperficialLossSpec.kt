@@ -139,4 +139,57 @@ class L07SuperficialLossSpec : FunSpec({
         result.sale(ex1, "t2").denied shouldBe 0L
         result.sale(ex1, "t2").outcome shouldBe SlOutcome.NONE
     }
+
+    val inKind = L07Fixture.load("acb-inkind-example2")
+    val ex2 = L07Fixture.load("acb-slr-example2")
+
+    test("L-07 AC4 $rs: repurchase in a TFSA is permanently lost, no add-back (ACB-INKIND #2)") {
+        val all = rows(inKind, "t1", "t2", "t3")
+        val result = engine.replaySuperficial(all)
+        val sale = result.sale(inKind, "t2")
+        sale.gainBeforeRule shouldBe -units(inKind.long("expected.t2.lossBeforeRule.cents"))
+        sale.denied shouldBe units(inKind.long("expected.t2.denied.cents"))
+        sale.reportedGain shouldBe -units(inKind.long("expected.t2.allowed.cents"))
+        sale.outcome shouldBe SlOutcome.valueOf(inKind.string("expected.outcome"))
+        val pool = result.pools.getValue(PoolKey(L06Activities.TAXPAYER, inKind.security))
+        pool.shares shouldBe inKind.long("expected.afterT3.shares.units")
+        pool.totalAcb shouldBe units(inKind.long("expected.afterT3.acb.cents"))
+    }
+
+    test("L-07 AC5 $rs: repurchase in an RRSP is permanently lost; pool stays 0 shares, 0 ACB (ACB-SLR #2)") {
+        val result = engine.replaySuperficial(rows(ex2, "t1", "t2", "t3", "t4"))
+        val sale = result.sale(ex2, "t2")
+        sale.gainBeforeRule shouldBe -units(ex2.long("expected.t2.lossBeforeRule.cents"))
+        sale.denied shouldBe units(ex2.long("expected.t2.denied.cents"))
+        sale.reportedGain shouldBe -units(ex2.long("expected.t2.allowed.cents"))
+        sale.outcome shouldBe SlOutcome.PERMANENTLY_LOST
+        val pool = result.pools.getValue(PoolKey(L06Activities.TAXPAYER, ex2.security))
+        pool.shares shouldBe ex2.long("expected.afterT2.shares.units")
+        pool.totalAcb shouldBe units(ex2.long("expected.afterT2.acb.cents"))
+    }
+
+    test("L-07 AC5 $rs: the RRSP sale of 2015-12-02 produces no gain or loss in the non-registered ledger") {
+        val result = engine.replaySuperficial(rows(ex2, "t1", "t2", "t3", "t4"))
+        result.sales.map { it.activityId } shouldBe listOf(L07Activities.id(ex2, "t2"))
+    }
+
+    test("L-07 AC11 $rs: a denied loss names the sale, the TFSA purchase with its account type, and the outcome") {
+        val sale = engine.replaySuperficial(rows(inKind, "t1", "t2", "t3")).sale(inKind, "t2")
+        sale.triggers.map { it.activityId } shouldBe listOf(L07Activities.id(inKind, "t3"))
+        sale.triggers.map { it.accountType } shouldBe listOf(AccountType.TFSA)
+        sale.reason shouldContain L07Activities.id(inKind, "t2")
+        sale.reason shouldContain L07Activities.id(inKind, "t3")
+        sale.reason shouldContain "TFSA"
+        sale.reason shouldContain inKind.string("expected.outcome")
+        sale.ruleIds shouldContainAll setOf("SL-DEFINITION", "SL-REGISTERED")
+    }
+
+    test("L-07 AC11 $rs: an add-to-ACB denial says ADDED_TO_ACB and names the non-registered purchase") {
+        val sale = engine.replaySuperficial(rows(ex1, "t1", "t2", "t3", "t4")).sale(ex1, "t2")
+        sale.triggers.map { it.activityId } shouldBe listOf(L07Activities.id(ex1, "t3"))
+        sale.triggers.map { it.accountType } shouldBe listOf(AccountType.NON_REGISTERED)
+        sale.reason shouldContain L07Activities.id(ex1, "t3")
+        sale.reason shouldContain "ADDED_TO_ACB"
+        sale.ruleIds shouldContainAll setOf("SL-DEFINITION", "SL-ADDBACK-TARGET")
+    }
 })
