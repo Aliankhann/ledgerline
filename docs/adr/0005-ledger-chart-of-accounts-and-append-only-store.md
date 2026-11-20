@@ -1,6 +1,6 @@
 # 0005 Ledger line layout, chart of accounts and append-only store
 
-**Status:** Draft · **Date:** 2026-11-19 (L-05 section 2026-11-20) · **Drafted by:** agent (dev, stories L-03, L-04, L-05)
+**Status:** Draft · **Date:** 2026-11-19 (L-05 section 2026-11-20, round 2) · **Drafted by:** agent (dev, stories L-03, L-04, L-05)
 
 ## Context
 
@@ -127,21 +127,35 @@ _Owner, in your own words._
     the ack and before the delivery row is written leaves the row pending, so it is sent again: two identical copies,
     deduplicated by the L-12 consumer on `eventId`. Producer: `acks=all`, idempotence on, at most 5 requests in
     flight, 30 s delivery timeout, no Kafka transactions (rejected in the build plan).
-  - **Relay cost per drain.** One query for up to 500 pending rows, all sends pipelined, one wait for the acks, then
-    one transaction that appends every delivery row as a JDBC batch. No lock or transaction per event. Each relay also
-    remembers the highest id below which everything is delivered and queries above it, so the anti-join does not
+  - **Relay cost per drain.** One query for up to 500 sendable pending rows, then rounds: each round sends the next
+    row of every taxpayer in the batch and waits for those acks; then one transaction appends every delivery (and
+    parked) row as a JDBC batch. No lock or transaction per event. Each relay also remembers the highest id below which
+    everything is delivered, parked or held back behind a parked row, and queries above it, so the anti-join does not
     rescan history. This relies on event ids increasing in commit order: every outbox insert happens under the append
     lock held to commit, and the identity has `CACHE 1`. Changing either breaks this and per-key order.
-  - **Per-taxpayer order.** Rows are sent in event-id order; the idempotent producer keeps per-partition order with
-    retries, and key = taxpayer id maps a taxpayer to one partition. If a send for a taxpayer fails, later rows of that
-    taxpayer in the same drain are not recorded even if acknowledged, so they are sent again after the failed one.
-    This is weaker than "never send past an unacknowledged row" (the spec KDoc's wording): sends are pipelined for
-    throughput, so after a broker failure mid-drain a later event's first copy can reach the topic before a retried
-    earlier event (the later event is then sent again after it). Strictly serial sends per taxpayer would close this
-    at the cost of one round trip per event; owner to choose.
+  - **Per-taxpayer order (B-015, round 2).** A taxpayer's next row is sent only after the broker acknowledged the
+    previous one (strictly serial per taxpayer, parallel across taxpayers). If a send fails, that taxpayer stops for
+    the rest of the drain and the next drain resends from the failed row, so no later event's first copy can reach the
+    topic before an earlier one, even across drains and across two relays. Cost: one round trip per event per
+    taxpayer (a single busy taxpayer drains at about one event per linger + round trip). Round 1 pipelined every send
+    and only held back *recording*, which let a later event reach the topic first; producer idempotence alone does not
+    prevent that once a batch has failed.
+  - **Poison events (B-016, B-017; OWNER-INPUT: C27, placeholder).** Ingestion refuses an activity, reversal or
+    correction whose message value would exceed the configured maximum (`OUTBOX_MAX_EVENT_BYTES`, default 900 KiB,
+    under the producer's explicit 1 MiB `max.request.size` and Redpanda's 1 MiB default): `EVENT_TOO_LARGE`, 422 on
+    `POST /v1/activities`, a per-line rejection in a CSV import, nothing written. In the relay, a row whose body cannot
+    be decoded, whose value is over the maximum, or that the producer or broker refuses as too large
+    (`RecordTooLargeException`) is appended to the append-only `ledger.outbox_parked` (V8: event id, taxpayer, reason
+    code, detail; SELECT/INSERT for the app role) and logged at ERROR; `OutboxStore.parkedEvents()` lists them. It is
+    never retried (no hot loop, no repeated copies) and other taxpayers keep flowing. It stays pending, and every later
+    row of the same taxpayer is held back (left out of the relay's query), because publishing past it would let the
+    consumer compute ACB without it. Nothing releases a parked row yet: the owner decides C27 (for example a release
+    or skip record, or raising limits and re-posting). A legacy pre-V7 row with no activity row is parked with no
+    taxpayer, so it blocks nothing.
   - **Broker errors never throw.** A send that throws (for example no metadata within 10 s while the broker is down)
-    stops the drain; unacknowledged rows stay pending and count as `failed`. Database errors do throw. `start()` runs a
-    daemon thread that polls every 100 ms, backs off 1 s after a failure, and survives both kinds of outage.
+    or is not acknowledged stops that taxpayer for the drain; the row stays pending and counts as `failed`. Database
+    errors do throw. `start()` runs a daemon thread that polls every 100 ms, backs off 1 s after a failure, and
+    survives both kinds of outage.
   - **Drainer placement.** The relay runs inside the service process (`Main` starts it as the app role and stops it on
     shutdown). Simplest; a separate process can reuse `OutboxRelay` unchanged. No fault hook in production code: the
     L-05 tests inject crashes at the producer they hand to the relay.

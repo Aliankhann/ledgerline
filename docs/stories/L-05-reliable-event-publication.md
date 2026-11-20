@@ -151,4 +151,15 @@ Phase B, round 1 (QE attack tests, all Integration). `D` = `tests/spec/kotlin/de
   program (not committed) against a local Postgres 16 with Kafka's `MockProducer` checked the migrations, the event rows
   for post/reverse/correct, drain batching and resume, held-back rows after a failed ack, byte-identical re-sends, the
   append-only and sealing refusals, and a pre-V7 outbox row draining after V7. Redpanda behaviour is unverified until CI.
-
+- 2026-11-20 (dev, round 2: B-015, B-016, B-017). `OutboxRelay` sends strictly serially per taxpayer and in parallel
+  across taxpayers; a failed send stops that taxpayer for the drain and the next drain resends from it (B-015).
+  OWNER-INPUT: C27 (placeholder): ingestion refuses an event whose message value would exceed
+  `OUTBOX_MAX_EVENT_BYTES` (default 900 KiB) with `EVENT_TOO_LARGE` (422; per-line CSV rejection), nothing written
+  (B-016). Migration V8 adds the append-only `ledger.outbox_parked` (SELECT/INSERT for the app role): the relay parks an
+  event it can never publish (undecodable body, over the max, or `RecordTooLargeException`) with a reason, logs it,
+  never retries it, and holds back only that taxpayer's later events (B-016, B-017). `DrainResult` gains
+  `parked` (default 0); `OutboxStore.parkedEvents()` lists parked rows; parked rows stay in `pendingEventIds()`.
+  Draft ADR 0005 and `docs/owner-inputs.md` (C27) updated.
+- Ran `./gradlew --init-script <scratchpad>/mirror.init.gradle.kts ktlintFormat build --rerun-tasks`: BUILD SUCCESSFUL;
+  193 tests, 67 passed, 126 skipped (Integration), 0 failed. All L-05 tests, including the six new attack tests, are
+  Integration and did not run here (no Docker); CI on `l-05` is the authority.

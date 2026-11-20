@@ -23,7 +23,16 @@ data class OutboxEvent(
 
 /**
  * The outcome of one [OutboxRelay.drainOnce]. [published]: rows acknowledged by the broker and recorded as delivered.
- * [failed]: rows sent in this call that stay pending (not acknowledged, or held back behind an earlier failure of the
- * same taxpayer so that per-key order is kept).
+ * [failed]: rows sent in this call that were not acknowledged (they stay pending, and later rows of the same taxpayer
+ * were not sent). [parked]: rows recorded in `ledger.outbox_parked` in this call (OWNER-INPUT: C27).
  */
-data class DrainResult(val published: Int, val failed: Int)
+data class DrainResult(val published: Int, val failed: Int, val parked: Int = 0)
+
+/** OWNER-INPUT: C27: why an event was parked (V8 `reason_code`). */
+enum class ParkReason { PAYLOAD_UNREADABLE, LEGACY_UNREADABLE, EVENT_TOO_LARGE, RECORD_TOO_LARGE }
+
+/**
+ * A `ledger.outbox_parked` row: event [eventId] can never be published as stored. It stays pending and holds back every
+ * later event of [taxpayerId] (null if the row's key could not be read) until the owner decides C27.
+ */
+data class ParkedEvent(val eventId: Long, val taxpayerId: String?, val reason: ParkReason, val detail: String)

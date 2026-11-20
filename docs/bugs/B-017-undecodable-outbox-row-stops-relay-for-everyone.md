@@ -1,6 +1,6 @@
 # B-017 One undecodable outbox row stops the relay for every taxpayer and re-sends the rows before it
 
-**Story:** L-05 · **Severity:** minor · **Status:** Open · **Round:** 1
+**Story:** L-05 · **Severity:** minor · **Status:** Fixed (pending CI) · **Round:** 1
 
 ## Reproduction
 
@@ -34,3 +34,12 @@ direct database write or a future encoder bug. The blast radius is the whole str
 body at insert (a stricter CHECK, or `payload::jsonb IS NOT NULL` in `outbox_checks`), and/or treat an unencodable row
 like a failed send (hold back only its taxpayer, record what was acknowledged before it). The same applies to a
 legacy pre-V7 row whose activity row is missing: `pendingBatch` throws `checkNotNull` and blocks every drain.
+
+## Fix (dev, round 2)
+
+Fixed (pending CI): decoding is per event. `OutboxStore.pendingBatch` returns a legacy row it cannot build as an
+unreadable row instead of throwing, and `OutboxRelay` builds each message value inside a `try`. An undecodable row is
+parked in `ledger.outbox_parked` (V8) with reason `PAYLOAD_UNREADABLE` (or `LEGACY_UNREADABLE`), in the same
+transaction that records the drain's deliveries, so event 1 is recorded once and TP-0002's event 3 is published. Its
+own taxpayer stays blocked (event 4 stays pending, unsent) to keep per-key order until the owner decides C27. A legacy
+row whose taxpayer is unknown blocks nothing. Not run locally (no Docker).

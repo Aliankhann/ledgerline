@@ -6,7 +6,8 @@ import java.sql.Connection
 
 /**
  * Appends outbox rows inside the caller's ledger transaction, which holds the append lock, so event ids increase in
- * commit order (V7). Never commits.
+ * commit order (V7). Never commits. Refuses an event over [maxEventBytes] with [EventTooLargeException]
+ * (OWNER-INPUT: C27), so the caller's transaction rolls back and nothing unpublishable is stored (B-016).
  */
 internal object OutboxWrites {
     /** ACTIVITY_POSTED for [entry], posted from [activity]; [activityId] is its `ledger.activity` row, if any. */
@@ -15,9 +16,12 @@ internal object OutboxWrites {
         entry: PostedEntry,
         activityId: String?,
         activity: Activity,
+        maxEventBytes: Int,
     ) {
         insert(
             c,
+            maxEventBytes,
+            activity.idempotencyKey,
             entry.sequence,
             activityId,
             OutboxEventType.ACTIVITY_POSTED,
@@ -36,10 +40,13 @@ internal object OutboxWrites {
         reversal: PostedEntry,
         originalSequence: Long,
         reason: String,
+        maxEventBytes: Int,
     ) {
         val taxpayer = taxpayerOf(c, originalSequence) ?: return
         insert(
             c,
+            maxEventBytes,
+            reversal.idempotencyKey,
             reversal.sequence,
             null,
             OutboxEventType.ENTRY_REVERSED,
@@ -71,12 +78,16 @@ internal object OutboxWrites {
 
     private fun insert(
         c: Connection,
+        maxEventBytes: Int,
+        idempotencyKey: String,
         entryId: Long,
         activityId: String?,
         type: OutboxEventType,
         taxpayerId: String,
         payload: String,
     ) {
+        val bytes = OutboxLimits.messageBytesUpperBound(payload)
+        if (bytes > maxEventBytes) throw EventTooLargeException(idempotencyKey, bytes, maxEventBytes)
         c.prepareStatement(
             "INSERT INTO ledger.outbox (entry_id, activity_id, event_type, taxpayer_id, payload) " +
                 "VALUES (?, ?, ?, ?, ?)",
