@@ -61,10 +61,11 @@ class L11AttackSpec : FunSpec({
         d.reasons.filter { it.ruleId == "POOL-IDENTICAL" }.sumOf { it.amountMinor } shouldBe 0L
     }
 
-    test("L-11 attack: the acb-vs-book route is wired into the service entrypoint (Main.kt)") {
+    test("L-11 attack: the acb-vs-book route is wired into Main.kt") {
         var dir: File? = File(System.getProperty("user.dir")).absoluteFile
-        while (dir != null && !File(dir, "app/src/main/kotlin/dev/ledgerline/app/Main.kt").exists()) dir = dir.parentFile
-        val main = File(requireNotNull(dir) { "repo root not found" }, "app/src/main/kotlin/dev/ledgerline/app/Main.kt")
+        val rel = "app/src/main/kotlin/dev/ledgerline/app/Main.kt"
+        while (dir != null && !File(dir, rel).exists()) dir = dir.parentFile
+        val main = File(requireNotNull(dir) { "repo root not found" }, rel)
         main.readText() shouldContain "acbVsBookModule"
     }
 })
