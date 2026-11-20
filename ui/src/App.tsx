@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
+import { AcbVsBook } from "./AcbVsBook";
 
 type Health = { status: string; modules: string[] };
 
-// Placeholder shell. Story L-11 replaces this with the book value vs true ACB view.
 export function App() {
   const [health, setHealth] = useState<Health | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -15,7 +15,7 @@ export function App() {
   }, []);
 
   return (
-    <main style={{ fontFamily: "system-ui, sans-serif", maxWidth: 720, margin: "2rem auto", padding: "0 1rem" }}>
+    <main style={{ fontFamily: "system-ui, sans-serif", maxWidth: 960, margin: "2rem auto", padding: "0 1rem" }}>
       <h1>Ledgerline</h1>
       <p>Book value vs. true adjusted cost base, with a reason for every difference.</p>
       <section>
@@ -28,6 +28,7 @@ export function App() {
         )}
         {!error && !health && <p>Checking…</p>}
       </section>
+      <AcbVsBook />
     </main>
   );
 }
