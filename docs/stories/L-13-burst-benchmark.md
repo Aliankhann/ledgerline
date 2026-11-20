@@ -1,6 +1,6 @@
 # L-13 Burst benchmark and report
 
-**Status:** Draft  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** Tests written (provisional)  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 9 · **Branch:** `L-13-burst-benchmark` · **Round:** 0 / 3
 
 ## Story
@@ -88,7 +88,9 @@ not sourced (A-08, A-09).
 
 | AC | Test |
 | --- | --- |
-| AC1 | `tests/spec/.../L13Spec.kt` › "L-13 AC1: …" |
+| AC1 (smoke only) | `tests/spec/.../L13BenchReportSpec.kt` › "L-13 AC1: a tiny burst runs end to end ..." (Integration) |
+| AC2 (seed, hardware, commit only), AC3 (percentiles, throughput), AC6 (determinism of the renderer) | `L13BenchReportSpec.kt`, pure tests |
+| AC1 (exit code, files), AC3 (lag, drain, replay rows, Target/Met), AC4, AC5, AC7, AC8, AC9 | not covered: script and CI behaviour, needs owner inputs C10/B3; to add after Dev's harness exists |
 
 ## Change notes (Dev fills)
 
