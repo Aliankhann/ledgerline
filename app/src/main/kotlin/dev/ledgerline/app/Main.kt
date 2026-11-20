@@ -3,10 +3,10 @@ package dev.ledgerline.app
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import dev.ledgerline.calc.AcbEngine
+import dev.ledgerline.calc.ActivityStore
 import dev.ledgerline.calc.CaIta2026v1
 import dev.ledgerline.calc.CalcMigrations
 import dev.ledgerline.calc.PoolConsumer
-import dev.ledgerline.calc.PoolStore
 import dev.ledgerline.ledger.LedgerMigrations
 import dev.ledgerline.ledger.LedgerRepository
 import dev.ledgerline.ledger.outbox.OutboxProducers
@@ -79,9 +79,12 @@ fun main() {
     embeddedServer(Netty, port = config.httpPort) {
         module()
         ingestionModule(ingestion)
-        // Pools are read from calc state on every request; book values come from the optional file named by
-        // BOOK_VALUE_CSV (header security_id,book_value). OWNER-INPUT: C29.
-        acbVsBookModule(PoolStore(dataSource)::pools, bookValueCsv())
+        // Read-only, per request: the taxpayer's stored activities (not reversed, C19) are replayed to pools WITH step
+        // history, so reasons can be explained. calc.pool stays the consumer's state; reconciliation compares the two.
+        // Book values come from the optional file named by BOOK_VALUE_CSV (header security_id,book_value). OWNER-INPUT: C29.
+        val activities = ActivityStore(dataSource)
+        val engine = AcbEngine(CaIta2026v1)
+        acbVsBookModule({ taxpayer -> engine.replay(activities.effectiveActivities(taxpayer)).pools }, bookValueCsv())
     }.start(wait = true)
 }
 
