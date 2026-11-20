@@ -1,6 +1,6 @@
 # B-020 A rate of 0 ("0" or "0.0000") is accepted and converts every USD amount to 0 CAD
 
-**Story:** L-08 · **Severity:** major · **Status:** Open · **Round:** 1
+**Story:** L-08 · **Severity:** major · **Status:** Fixed · **Round:** 1
 
 ## Reproduction
 
