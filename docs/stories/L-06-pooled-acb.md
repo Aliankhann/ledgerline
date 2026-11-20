@@ -1,6 +1,6 @@
 # L-06 Pooled ACB for buy, sell, return of capital and fees
 
-**Status:** In QE (provisional: the story is not owner-approved; owner instruction 2026-11-19)  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** QE passed (round 2; local build green, CI pending), awaiting owner approval  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 5 · **Branch:** `L-06-pooled-acb` · **Round:** 0 / 3
 
 ## Story
