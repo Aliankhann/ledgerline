@@ -1,6 +1,6 @@
 # L-09 Late correction recompute
 
-**Status:** Tests written (provisional)  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** 8 · **Branch:** `L-09-late-correction-recompute` · **Round:** 0 / 3
 
 ## Story
@@ -111,3 +111,5 @@ reduces ACB).
 ## Change notes (Dev fills)
 
 - …
+
+- **Dev (round 1):** added `calc/.../PoolRecomputer.kt` (`PoolRecomputer`, `Correction`, `RecomputeResult`). Effective set = history minus reversed ids plus added (C19). Only touched (taxpayer, security) pools are re-applied via `AcbEngine.apply`, from the earliest touched tax date, with the earlier prefix rebuilt from kept history rows; untouched pools are returned as passed. Redelivery (reversed ids absent, added ids present) is a no-op. Counter/endpoint (AC2/AC7 counter, AC6 funnel refusal, AC8) not implemented: out of the pure scope. Follow-up: `outputHash` and `rejections` come from one full `engine.replay` because gains are not stored per pool; persisting gains per pool would remove it. Not run: L09 tests cannot compile because of a test import bug (see `docs/status.md` Open questions).
