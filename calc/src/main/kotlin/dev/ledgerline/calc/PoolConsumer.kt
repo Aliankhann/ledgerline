@@ -1,5 +1,9 @@
 package dev.ledgerline.calc
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.TopicPartition
@@ -134,12 +138,14 @@ class PoolConsumer(
             record.headers().lastHeader("eventId")?.value()?.toString(Charsets.UTF_8)?.toLong()
                 ?: error("record ${record.partition()}@${record.offset()} has no eventId header")
         val posted = EventDecoder.decode(record.value())
+        val reversed = EventDecoder.reversedEntryId(record.value())
         dataSource.connection.use { c ->
             c.autoCommit = false
             try {
                 c.createStatement().use { it.execute("SELECT pg_advisory_xact_lock($LOCK_KEY)") }
                 if (!inInbox(c, eventId)) {
                     posted?.let { applyAndStore(c, it) }
+                    reversed?.let { ReversalRecompute(engine).apply(c, it, eventEntryId(record.value())) }
                     c.prepareStatement("INSERT INTO calc.inbox (event_id) VALUES (?) ON CONFLICT DO NOTHING").use {
                         it.setLong(1, eventId)
                         it.executeUpdate()
@@ -155,6 +161,9 @@ class PoolConsumer(
             }
         }
     }
+
+    private fun eventEntryId(value: ByteArray): Long =
+        Json.parseToJsonElement(value.toString(Charsets.UTF_8)).jsonObject.getValue("entryId").jsonPrimitive.long
 
     private fun inInbox(
         c: Connection,
