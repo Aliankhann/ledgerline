@@ -25,7 +25,7 @@ Step 0.3 is the owner's. QE phase A for L-01 starts once the owner approves L-01
 | L-12 | Crash recovery | L-12a QE passed, awaiting owner | 2 | main | CI green incl. crash + reversal integration (run 44697235379); B-024 fixed; follow-ups: Toxiproxy AC5, AC8, AC9, wire consumer into app/compose; ADR 0006 draft |
 | L-13 | Burst benchmark and report | Harness done, awaiting owner | 1 | main | CI green incl. smoke (run 44700919782); targets C10 and hardware B3 are owner inputs; uncovered ACs listed in story |
 | L-14 | Second domain plugin | QE passed (pure), awaiting owner | 1 | main | CI green (run 44701421807); cash-balance plugin in plugins/; C30 overdraft; PluginReplay location (calc vs core) owner call; AC1/6/7 untested |
-| L-15 | Differential ACB check against tsiemens/acb | Draft (provisional, owner to approve) | 0 | main | Extra story beyond the 14-story cap, needs owner approval to exist; acb commit not pinned; SL-PARTIAL may differ; CI must install acb |
+| L-15 | Differential ACB check against tsiemens/acb | Tests written + exporter built; differential test red on tax-rule differences (owner) | 1 | l-15 | Extra story beyond the 14-story cap (owner approval); oracle pinned to acb ee4afc7 (0.26.06); SL-PARTIAL agrees; see Open questions |
 
 ## Owner instruction (2026-11-19)
 
@@ -59,6 +59,15 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
 - [ ] Approve (or not) the proposed splits L-01a/b and L-12a/b.
 
 ## Open questions
+
+- **L-15 differential check vs tsiemens/acb disagrees on tax rules (owner decision; not patched).** On seeds 1..200
+  (branch `l-15`, `:tests:propertyTest --tests '*L15Diff*' -PincludeIntegration`): AC2 final ACB differs in 11 histories,
+  AC3 gain per sell in 56 (mostly 1 cent), AC4 superficial-loss denial in 24. Known causes: (1) **rounding order**: acb
+  rounds the net gain after the denial; our `ROUND-BOUNDARY` rounds loss and denial separately (seed 6: -59.11 vs -59.10);
+  (2) **`SL-MULTI`**: acb lets the same repurchased shares deny two loss sales; we match each share to one sale (seed 22);
+  (3) **`SL-ADDBACK-TIMING`**: acb adds the denied loss on the sale date. Remaining larger AC4 gaps are not root-caused.
+  Partial proration (`SL-PARTIAL`, least(S,P,B)/S) agrees. Decide per rule: keep ours (then L-15 records an accepted
+  difference list), or change the rule set (new version, never edit CA-ITA-2026.1). Sources requested from the owner.
 
 - **Live holdings use `replay`, not `replaySuperficial`**, so totals match the consumer's calc.pool but superficial-loss reasons don't appear live. Align consumer and route on one engine path (owner decision).
 
