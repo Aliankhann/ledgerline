@@ -18,11 +18,23 @@ internal class ReversalRecompute(private val engine: AcbEngine) {
         reversalEntryId: Long,
     ) {
         val (taxpayer, security) = reversedKey(c, reversedEntryId) ?: return
-        val history = effectiveHistory(c, taxpayer, security, reversalEntryId)
-        val replay = engine.replay(history)
+        val replay = rebuild(c, taxpayer, security, reversalEntryId)
         check(replay.rejections.isEmpty()) {
             "reversal of entry $reversedEntryId makes the replay of $taxpayer/$security reject: ${replay.rejections}"
         }
+    }
+
+    /**
+     * Rebuilds the stored pool of (taxpayer, security) by replaying, in canonical order, the stored non-reversed
+     * activities of entries before [beforeEntryId]. Rejections stay in the returned replay (never clipped, never thrown).
+     */
+    fun rebuild(
+        c: Connection,
+        taxpayer: String,
+        security: String,
+        beforeEntryId: Long,
+    ): Replay {
+        val replay = engine.replay(effectiveHistory(c, taxpayer, security, beforeEntryId))
         val pool = replay.pools[PoolKey(taxpayer, security)]
         if (pool == null) {
             c.prepareStatement("DELETE FROM calc.pool WHERE taxpayer_id = ? AND security_id = ?").use {
@@ -43,6 +55,7 @@ internal class ReversalRecompute(private val engine: AcbEngine) {
                 it.executeUpdate()
             }
         }
+        return replay
     }
 
     /** The (taxpayer, security) of a reversed pool activity, or null if it has none (nothing to recompute). */
