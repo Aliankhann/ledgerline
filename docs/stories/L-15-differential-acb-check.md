@@ -104,4 +104,11 @@ CAD only; one taxpayer; one account; Buy and Sell with commissions; histories in
 
 ## Change notes (Dev fills)
 
-- …
+- Added `AcbCsvExporter` (`ingest/.../AcbCsvExporter.kt`): BUY/SELL only, canonical order (tax date, sourceSeq, key),
+  integer-only formatting; unit price computed as `amountCents * 10^6 / units` and rejected (IllegalArgumentException)
+  unless exact.
+- CI integration job installs acb pinned to ee4afc7c68747a3027ade65599ad9d5836c70807 (cargo cache keyed on the rev)
+  and sets `ACB_REQUIRED=1` for the integration test step.
+- Result with the pinned acb: spec tests (AC1, AC5, AC6) pass. The property test fails as expected on known
+  tax-rule differences, not patched (AC5): AC2 11/200 histories differ, AC3 56/200 (80 differences), AC4 24/200
+  (87 differences); the non-vacuity check passes. calc/ untouched; differences are for the owner and QE to triage.

@@ -55,7 +55,24 @@ jobs:
           distribution: temurin
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v4
+      # Oracle for L-15 (differential ACB check), pinned to an exact commit.
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-acb-ee4afc7c68747a3027ade65599ad9d5836c70807
+      - name: Install acb (pinned)
+        run: |
+          if ! command -v acb >/dev/null 2>&1; then
+            cargo install --git https://github.com/tsiemens/acb.git --rev ee4afc7c68747a3027ade65599ad9d5836c70807 --locked acb
+          fi
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
       - run: ./gradlew :tests:test -PincludeIntegration --no-daemon
+        env:
+          ACB_REQUIRED: "1"
 
   ui:
     name: UI typecheck and build
