@@ -86,10 +86,11 @@ fun main() {
         ingestionModule(ingestion)
         // Read-only, per request: the taxpayer's stored activities (not reversed, C19) are replayed to pools WITH step
         // history, so reasons can be explained. calc.pool stays the consumer's state; reconciliation compares the two.
+        // acbVsBookFromActivities wraps acbVsBookModule with the superficial-loss replay.
+        // OWNER-INPUT: C31 holdings list every pool (NO_BROKER_VALUE / DATA_GAP placeholders).
         // Book values come from the optional file named by BOOK_VALUE_CSV (header security_id,book_value). OWNER-INPUT: C29.
         val activities = ActivityStore(dataSource)
-        val engine = AcbEngine(CaIta2026v1)
-        acbVsBookModule({ taxpayer -> engine.replay(activities.effectiveActivities(taxpayer)).pools }, bookValueCsv())
+        acbVsBookFromActivities(activities::effectiveActivities, bookValueCsv())
     }.start(wait = true)
 }
 
