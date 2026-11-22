@@ -1,5 +1,5 @@
 # Common commands. Everything here is also runnable directly; see CLAUDE.md.
-.PHONY: help up down logs build test spec property chaos integration lint format ui-dev ui-build roles hooks clean
+.PHONY: help up down logs build test spec property chaos integration lint format ui-dev ui-build roles hooks clean reconcile
 
 help:            ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
@@ -30,6 +30,9 @@ chaos:           ## Chaos scenarios (needs Docker)
 
 integration:     ## Every test, including Testcontainers (needs Docker)
 	./gradlew :tests:test -PincludeIntegration
+
+reconcile:       ## Replay the ledger and diff against calc.pool in the running stack
+	docker compose exec -T app java -cp '/opt/ledgerline/lib/*' dev.ledgerline.app.MainKt reconcile
 
 lint:            ## ktlint check
 	./gradlew ktlintCheck

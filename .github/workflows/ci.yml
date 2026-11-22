@@ -87,6 +87,18 @@ jobs:
         run: |
           bash scripts/demo.sh | tee demo-out.txt
           grep -q 'SYN-AAA' demo-out.txt || { echo "::error::no holding reached the pools"; exit 1; }
+      # L-10: replay every activity and diff against calc.pool; exit 1 on drift fails the job.
+      - name: Reconcile by replay
+        run: docker compose exec -T app java -cp '/opt/ledgerline/lib/*' dev.ledgerline.app.MainKt reconcile
+      - if: always()
+        run: |
+          mkdir -p reconciliation
+          docker compose cp app:/opt/ledgerline/build/reconciliation/report.json reconciliation/report.json
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reconciliation-report
+          path: reconciliation/report.json
       - if: failure()
         run: docker compose logs
       - if: always()

@@ -24,14 +24,29 @@ import io.ktor.server.routing.routing
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import org.slf4j.bridge.SLF4JBridgeHandler
+import java.nio.file.Path
 import java.time.Duration
+import kotlin.system.exitProcess
 
 private val log = LoggerFactory.getLogger("dev.ledgerline.app")
 
 @Serializable
 data class Health(val status: String, val modules: List<String>)
 
-fun main() {
+fun main(args: Array<String>) {
+    if (args.firstOrNull() == "reconcile") exitProcess(reconcileFromEnv())
+    serve()
+}
+
+/** The `reconcile` command: read-only, no migrations, no Ktor, no relay, consumer or Kafka. */
+private fun reconcileFromEnv(): Int {
+    val config = AppConfig.fromEnv()
+    return pool(config.databaseUrl, config.databaseUser, config.databasePassword, size = 2).use {
+        ReconcileCommand.run(it, System.out, Path.of("build/reconciliation/report.json"))
+    }
+}
+
+private fun serve() {
     // Route java.util.logging and System.Logger (used by ledger/ and calc/) through logback.
     SLF4JBridgeHandler.removeHandlersForRootLogger()
     SLF4JBridgeHandler.install()
