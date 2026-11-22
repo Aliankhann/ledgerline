@@ -23,4 +23,5 @@ dependencies {
     implementation(libs.postgres)
     implementation(libs.hikari)
     implementation(libs.logback)
+    implementation(libs.jul.to.slf4j)
 }

@@ -23,6 +23,7 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
+import org.slf4j.bridge.SLF4JBridgeHandler
 import java.time.Duration
 
 private val log = LoggerFactory.getLogger("dev.ledgerline.app")
@@ -31,6 +32,10 @@ private val log = LoggerFactory.getLogger("dev.ledgerline.app")
 data class Health(val status: String, val modules: List<String>)
 
 fun main() {
+    // Route java.util.logging and System.Logger (used by ledger/ and calc/) through logback.
+    SLF4JBridgeHandler.removeHandlersForRootLogger()
+    SLF4JBridgeHandler.install()
+
     val config = AppConfig.fromEnv()
 
     // Migrate as the owner login, then close that pool; the service only ever holds the app role's connections.

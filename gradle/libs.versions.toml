@@ -8,6 +8,7 @@ hikari = "6.2.1"
 kafka = "3.9.0"
 testcontainers = "1.21.3"
 logback = "1.5.12"
+slf4j = "2.0.16"
 kotlinx-serialization = "1.7.3"
 
 [libraries]
@@ -24,6 +25,7 @@ postgres = { module = "org.postgresql:postgresql", version.ref = "postgres" }
 hikari = { module = "com.zaxxer:HikariCP", version.ref = "hikari" }
 kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka" }
 logback = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+jul-to-slf4j = { module = "org.slf4j:jul-to-slf4j", version.ref = "slf4j" }
 
 kotest-runner = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
 kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
