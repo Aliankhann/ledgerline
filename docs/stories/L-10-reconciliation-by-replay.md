@@ -104,3 +104,6 @@ Property tests: `tests/property/.../L10ReconciliationPropertyTest.kt`.
 - Added `calc/.../Reconciler.kt`: `Reconciler`, `ReconReport`, `PoolDiff`, `DriftKind`, `ReplayHash` per the spec KDoc. It reuses `AcbEngine.replay`, so canonical order applies.
 - Pure part only (AC1-AC3, AC4 pure, AC5-AC7 pure). CLI, `recon` schema, exit codes, AC8 and AC9 are not built.
 - Hash covers shares and totalAcb only; adjustments are not included. Open: `OWNER-INPUT: C28` in `docs/owner-inputs.md`. The ADR for the format is not written yet.
+- L-10 CLI: added `app/.../ReconcileCommand.kt` (replay of every taxpayer's non-reversed activities via `ActivityStore`, diff via `Reconciler`, live pools via `PoolStore`; SELECT-only; exit 0/1/2, never throws) and `main(args)` where `reconcile` runs it with report `build/reconciliation/report.json`; no args serves as before.
+- CI compose job runs the command in the app container, copies the report out and uploads it as an artifact; `make reconcile` and `scripts/verify.sh` (two runs must print identical summaries with drift=0) added.
+- Not run here: Integration tests (no Docker). AC6-AC8 not built.
