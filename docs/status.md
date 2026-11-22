@@ -60,6 +60,11 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
 
 ## Open questions
 
+- **CRA mutual-fund redemption differs by 13 cents (rounding rule, owner decision).** `CraFixtureSpec` (CRA tax-treatment-mutual-funds page):
+  CRA multiplies 200 units by the per-unit ACB rounded to the cent ($15.20) → ACB sold $3,040.00, gain $374.00. Ledgerline pools unrounded
+  and rounds only at reporting (`ROUND-BOUNDARY`) → ACB sold $3,039.87, gain $374.13. The test asserts our value and bounds the gap.
+  Keep ours (more precise; CRA's figure is an illustration) or round per-unit ACB to the cent before multiplying (new rule-set version).
+
 - **Owner research arrived 2026-11-22** (`docs/problem/sources-2026-11-22.md`; quotes as reported by the owner's LLM, not
   re-fetched by the BA). It informs three open owner decisions: (1) `SL-MULTI`: TI 2004-0073011E5 computes the loss per
   disposition with P = all identical items acquired in the 61-day window, with no one-to-one matching, and tsiemens/acb
