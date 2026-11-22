@@ -69,7 +69,7 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
   Partial proration (`SL-PARTIAL`, least(S,P,B)/S) agrees. Decide per rule: keep ours (then L-15 records an accepted
   difference list), or change the rule set (new version, never edit CA-ITA-2026.1). Sources requested from the owner.
 
-- **Live holdings use `replay`, not `replaySuperficial`**, so totals match the consumer's calc.pool but superficial-loss reasons don't appear live. Align consumer and route on one engine path (owner decision).
+- **Live holdings now use `replaySuperficial`; the consumer's `calc.pool` and `Reconciler` still use plain `replay`** (L-11 follow-up, C31). On a superficial-loss fixture the route's ACB differs from the reconciler's by the denied loss. Owner: move consumer + reconciler to `replaySuperficial` too (recommended, makes all three agree), or revert the route.
 
 - **Holdings route lists only securities in the book-value CSV.** Pools without a book value are hidden. Should it list all pools (book value shown as missing)? (owner)
 - **New relay/consumer logs use System.Logger (JUL), not logback.** Add an slf4j/JUL bridge so all logs share one format. (Dev follow-up)
