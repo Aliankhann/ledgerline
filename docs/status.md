@@ -25,6 +25,7 @@ Step 0.3 is the owner's. QE phase A for L-01 starts once the owner approves L-01
 | L-12 | Crash recovery | L-12a QE passed, awaiting owner | 2 | main | CI green incl. crash + reversal integration (run 44697235379); B-024 fixed; follow-ups: Toxiproxy AC5, AC8, AC9, wire consumer into app/compose; ADR 0006 draft |
 | L-13 | Burst benchmark and report | Harness done, awaiting owner | 1 | main | CI green incl. smoke (run 44700919782); targets C10 and hardware B3 are owner inputs; uncovered ACs listed in story |
 | L-14 | Second domain plugin | QE passed (pure), awaiting owner | 1 | main | CI green (run 44701421807); cash-balance plugin in plugins/; C30 overdraft; PluginReplay location (calc vs core) owner call; AC1/6/7 untested |
+| L-15 | Differential ACB check against tsiemens/acb | Draft (provisional, owner to approve) | 0 | main | Extra story beyond the 14-story cap, needs owner approval to exist; acb commit not pinned; SL-PARTIAL may differ; CI must install acb |
 
 ## Owner instruction (2026-11-19)
 
