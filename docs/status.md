@@ -60,6 +60,17 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
 
 ## Open questions
 
+- **Owner research arrived 2026-11-22** (`docs/problem/sources-2026-11-22.md`; quotes as reported by the owner's LLM, not
+  re-fetched by the BA). It informs three open owner decisions: (1) `SL-MULTI`: TI 2004-0073011E5 computes the loss per
+  disposition with P = all identical items acquired in the 61-day window, with no one-to-one matching, and tsiemens/acb
+  reuses repurchases (L-15 seed 22), so our one-sale-per-share convention differs from both; (2) rounding order
+  (`ROUND-BOUNDARY`): CRA examples do not settle it, tsiemens/acb rounds the net gain after the denial; (3)
+  registered-account denial (`SL-REGISTERED`): CRA says nothing about a TFSA/RRSP repurchase, so it stays on secondary
+  sources, and tsiemens/acb goes beyond the TI. `DATE-BASIS` stays an owner choice (CRA silent; tsiemens/acb uses
+  settlement date). CRA-sourced fixtures are now available for QE: STU (identical properties), XYZ (gain with
+  commission), mutual fund redemption, ROC to zero ACB, and TI 2004-0073011E5 (S=50, P=20, B=20; no prices, so QE must
+  state the prices as an assumption). Citations are in `docs/tax-model.md`.
+
 - **L-10 `reconcile` command merged** (CI run 45061631621 green incl. 11 Docker tests and the compose reconcile step). AC6 (two JVMs), AC7 (three stacks) and AC8 (watermark, owner decision) remain uncovered.
 
 - **L-15 differential check vs tsiemens/acb disagrees on tax rules (owner decision; not patched).** On seeds 1..200
