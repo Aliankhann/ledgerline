@@ -18,9 +18,16 @@ internal class ReversalRecompute(private val engine: AcbEngine) {
         reversalEntryId: Long,
     ) {
         val (taxpayer, security) = reversedKey(c, reversedEntryId) ?: return
+        // Rejections already present with the reversed activity still in are not the reversal's doing (B-026).
+        val before =
+            engine.replay(
+                effectiveHistory(c, taxpayer, security, reversalEntryId, includeReversed = reversedEntryId),
+            )
         val replay = rebuild(c, taxpayer, security, reversalEntryId)
-        check(replay.rejections.isEmpty()) {
-            "reversal of entry $reversedEntryId makes the replay of $taxpayer/$security reject: ${replay.rejections}"
+        val existing = before.rejections.map { it.idempotencyKey to it.code }.toSet()
+        val introduced = replay.rejections.filter { (it.idempotencyKey to it.code) !in existing }
+        check(introduced.isEmpty()) {
+            "reversal of entry $reversedEntryId makes the replay of $taxpayer/$security reject: $introduced"
         }
     }
 
@@ -75,18 +82,21 @@ internal class ReversalRecompute(private val engine: AcbEngine) {
         taxpayer: String,
         security: String,
         beforeEntryId: Long,
+        includeReversed: Long? = null,
     ): List<PostedActivity> =
         c.prepareStatement(
             "SELECT a.activity_id, a.entry_id, a.idempotency_key, a.taxpayer_id, a.account_id, a.account_type, " +
                 "a.activity_type, a.effective_date, a.settlement_date, a.security_id, a.quantity, a.currency, " +
                 "a.amount, a.commission, a.counter_currency, a.counter_amount, a.description, a.source_seq " +
                 "FROM ledger.activity a WHERE a.taxpayer_id = ? AND a.security_id = ? AND a.entry_id < ? " +
-                "AND NOT EXISTS (SELECT 1 FROM ledger.reversal r WHERE r.original_entry_id = a.entry_id) " +
+                "AND NOT EXISTS (SELECT 1 FROM ledger.reversal r WHERE r.original_entry_id = a.entry_id " +
+                (if (includeReversed != null) "AND r.original_entry_id <> ?) " else ") ") +
                 "ORDER BY a.entry_id",
         ).use {
             it.setString(1, taxpayer)
             it.setString(2, security)
             it.setLong(3, beforeEntryId)
+            if (includeReversed != null) it.setLong(4, includeReversed)
             it.executeQuery().use { rs -> buildList { while (rs.next()) add(rs.posted()) } }
         }
 }

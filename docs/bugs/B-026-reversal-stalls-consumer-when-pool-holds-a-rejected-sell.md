@@ -68,3 +68,10 @@ decide it.
   pool holds a rejected sell" (fails now, observed) and the Integration test of the same spec (not run locally).
 - The reflection call into the `internal` class is test-side only; if `ReversalRecompute` is renamed the test fails
   with a reflection error, not a false pass.
+
+## Change notes
+
+Dev: `ReversalRecompute.apply` now also replays the history before the reversal with the reversed activity still in
+(same query, reversed entry not excluded) and throws only for rejections (key + code) that the post-reversal replay
+has and the pre-reversal replay does not. Rejections that already existed are carried as in a normal replay. B-024
+behaviour (a reversal that newly causes a rejection) is unchanged. Only `calc/.../ReversalRecompute.kt` changed.
