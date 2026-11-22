@@ -1,6 +1,6 @@
 # B-025 Live pool is built in arrival order, replay in tax-date order: seeded data drifts (TP-0001 SYN-CCC)
 
-**Story:** L-12 (consumer) with L-10 (reconcile), found through the seed-on-start feature (C32) · **Severity:** major · **Status:** Open · **Round:** 1
+**Story:** L-12 (consumer) with L-10 (reconcile), found through the seed-on-start feature (C32) · **Severity:** major · **Status:** Fixed (QE verified, CI run 45078057691) · **Round:** 1
 
 ## Reproduction
 
@@ -98,3 +98,13 @@ tax rule set is needed: replay is the reference.
   owner decision; it is in `docs/status.md` Open questions territory, not for QE to settle.
 - Regression test file: `tests/spec/kotlin/dev/ledgerline/spec/B025ConsumerArrivalOrderSpec.kt` (4 pure tests, one
   of which passes by design as a check that the reference orders by tax date; 1 Integration test).
+
+## Verification (QE, phase B, fix commit 24c78a0)
+
+CI run 45078057691 is green including the Docker tests (reported by the owner's agent; not re-read by QE). Locally, no
+Docker: `B025ConsumerArrivalOrderSpec` pure tests and the new attack tests in `B025FixAttackSpec` (rejected sell leaves
+the pool as it was and later events apply; a late BUY turns an earlier rejected SELL into an applied one; redelivery
+is a no-op whatever the payload; another security or taxpayer never alters a pool), plus the property test
+`B025ArrivalOrderPropertyTest` (every permutation of short histories and shuffled long ones with redeliveries equal
+`AcbEngine.replay`) pass. One new defect found beside the fix: see B-026 (a reversal stalls the consumer when the pool
+holds a rejected sell). It does not reopen B-025.
