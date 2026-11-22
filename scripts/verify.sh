@@ -3,7 +3,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 run() { docker compose exec -T app java -cp '/opt/ledgerline/lib/*' dev.ledgerline.app.MainKt reconcile; }
-first="$(run | grep '^reconcile: ')"
+# The consumer applies seeded events asynchronously, so a first run right after startup can show drift: retry (~60 s).
+for _ in $(seq 1 30); do
+  first="$(run | grep '^reconcile: ' || true)"
+  [[ "$first" == *" drift=0 "* ]] && break
+  sleep 2
+done
 second="$(run | grep '^reconcile: ')"
 echo "$first"
 echo "$second"

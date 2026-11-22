@@ -67,6 +67,12 @@ private fun serve() {
     val dataSource = pool(config.databaseUrl, config.databaseUser, config.databasePassword, size = 10)
     log.info("Serving as database role {}", config.databaseUser)
 
+    // OWNER-INPUT: C32. Seed on start only when SEED_YEAR is set (its value is the generator seed). The outbox rows the
+    // seeding writes are relayed once the relay below starts.
+    System.getenv("SEED_YEAR")?.let { seed ->
+        log.info("Seed load finished: {}", SeedLoader.load(dataSource, seed.toLong()))
+    }
+
     // Draft ADR 0005 (L-05): the outbox relay runs in the service process, as the app role. OWNER-INPUT: C26.
     val producer = OutboxProducers.create(config.kafkaBootstrap)
     val relay = OutboxRelay(dataSource, producer, OutboxTopic.NAME, config.maxEventBytes)

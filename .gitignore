@@ -20,3 +20,4 @@ chaos/out/
 
 # Claude Code: local settings are per-machine; shared agent files in .claude/agents/ are committed
 .claude/settings.local.json
+.kotlin/

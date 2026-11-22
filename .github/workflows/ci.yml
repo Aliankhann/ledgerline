@@ -89,7 +89,13 @@ jobs:
           grep -q 'SYN-AAA' demo-out.txt || { echo "::error::no holding reached the pools"; exit 1; }
       # L-10: replay every activity and diff against calc.pool; exit 1 on drift fails the job.
       - name: Reconcile by replay
-        run: docker compose exec -T app java -cp '/opt/ledgerline/lib/*' dev.ledgerline.app.MainKt reconcile
+        # Seeded events reach calc.pool asynchronously: retry until the consumer has caught up (~60 s), then fail.
+        run: |
+          for _ in $(seq 1 30); do
+            docker compose exec -T app java -cp '/opt/ledgerline/lib/*' dev.ledgerline.app.MainKt reconcile && exit 0
+            sleep 2
+          done
+          exit 1
       - if: always()
         run: |
           mkdir -p reconciliation

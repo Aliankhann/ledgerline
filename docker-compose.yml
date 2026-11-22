@@ -80,6 +80,8 @@ services:
       KAFKA_BOOTSTRAP: redpanda:9092
       KAFKA_GROUP_ID: ledgerline-calc
       # The holdings route lists only securities that have a book value, so the demo supplies one (synthetic).
+      # OWNER-INPUT: C32. Seed on start: the generator's seed (5 taxpayers, year 2025).
+      SEED_YEAR: ${SEED_YEAR:-42}
       BOOK_VALUE_CSV: /opt/ledgerline/demo/book-values.csv
     volumes:
       - ./demo/book-values.csv:/opt/ledgerline/demo/book-values.csv:ro
