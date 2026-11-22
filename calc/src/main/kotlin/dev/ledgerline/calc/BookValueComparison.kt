@@ -12,6 +12,15 @@ data class HoldingDiff(
     val reasons: List<Reason>,
 )
 
+/** One row of the full holdings list; a null book value or difference means the broker gave no value (C31). */
+data class HoldingRow(
+    val key: PoolKey,
+    val bookValueCents: Long?,
+    val acbCents: Long,
+    val differenceCents: Long?,
+    val reasons: List<Reason>,
+)
+
 /** Pure comparison of broker book value with pool ACB (L-11). Rule IDs and entry IDs come from real pool steps. */
 object BookValueComparison {
     private val rules = CaIta2026v1
@@ -19,6 +28,52 @@ object BookValueComparison {
     // OWNER-INPUT: C29 a book value with no pool is shown with this pseudo rule ID (not a rule-set ID).
     const val NO_LEDGER_HISTORY = "NO-LEDGER-HISTORY"
     const val UNEXPLAINED = "UNEXPLAINED"
+
+    // OWNER-INPUT: C31 placeholder pseudo rule IDs for the full holdings list; overlap with NO_LEDGER_HISTORY is open.
+    const val NO_BROKER_VALUE = "NO_BROKER_VALUE"
+    const val DATA_GAP = "DATA_GAP"
+
+    /** Every key in either input, sorted; pools without a book value and book values without a pool are explained. */
+    fun compareAll(
+        pools: Map<PoolKey, AcbPool>,
+        bookValues: Map<PoolKey, Long>,
+    ): List<HoldingRow> =
+        (pools.keys + bookValues.keys)
+            .sortedWith(compareBy({ it.taxpayerId }, { it.securityId }))
+            .map { key -> row(key, pools[key], bookValues[key]) }
+
+    private fun row(
+        key: PoolKey,
+        pool: AcbPool?,
+        book: Long?,
+    ): HoldingRow {
+        if (book != null) {
+            val d = diff(key, pool, book)
+            val reasons =
+                if (pool == null && d.differenceCents != 0L) {
+                    listOf(
+                        Reason(
+                            DATA_GAP,
+                            "The book value has no matching activity in the ledger.",
+                            emptyList(),
+                            d.differenceCents,
+                        ),
+                    )
+                } else {
+                    d.reasons
+                }
+            return HoldingRow(key, book, d.acbCents, d.differenceCents, reasons)
+        }
+        val acb = rules.toReportedCents(checkNotNull(pool).totalAcb)
+        val text = "No broker book value was given for this holding, so ACB cannot be compared."
+        return HoldingRow(
+            key,
+            null,
+            acb,
+            null,
+            listOf(Reason(NO_BROKER_VALUE, text, pool.history.map { it.entryId }, 0L)),
+        )
+    }
 
     fun compare(
         pools: Map<PoolKey, AcbPool>,

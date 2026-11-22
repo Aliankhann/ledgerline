@@ -1,10 +1,13 @@
 package dev.ledgerline.app
 
+import dev.ledgerline.calc.AcbEngine
 import dev.ledgerline.calc.AcbPool
 import dev.ledgerline.calc.BookValueComparison
 import dev.ledgerline.calc.BookValueCsv
-import dev.ledgerline.calc.HoldingDiff
+import dev.ledgerline.calc.CaIta2026v1
+import dev.ledgerline.calc.HoldingRow
 import dev.ledgerline.calc.PoolKey
+import dev.ledgerline.calc.PostedActivity
 import io.ktor.http.ContentType
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
@@ -26,6 +29,15 @@ fun Application.acbVsBookModule(
     bookValueCsv: String,
 ) = acbVsBookModule({ _ -> pools }, bookValueCsv)
 
+/** Same route over stored activities: pools come from the superficial-loss replay, so those reasons show. */
+fun Application.acbVsBookFromActivities(
+    activities: (taxpayer: String) -> List<PostedActivity>,
+    bookValueCsv: String,
+) {
+    val engine = AcbEngine(CaIta2026v1)
+    acbVsBookModule({ taxpayer -> engine.replaySuperficial(activities(taxpayer)).pools }, bookValueCsv)
+}
+
 /** Same route over a live pool source, called per request with the taxpayer (the service replays stored activities). */
 fun Application.acbVsBookModule(
     poolSource: (taxpayer: String) -> Map<PoolKey, AcbPool>,
@@ -36,12 +48,12 @@ fun Application.acbVsBookModule(
     routing {
         get("/v1/holdings/{taxpayer}/acb-vs-book") {
             val taxpayer = call.parameters["taxpayer"].orEmpty()
-            val pools = poolSource(taxpayer)
+            val pools = poolSource(taxpayer).filterKeys { it.taxpayerId == taxpayer }
             // The CSV names no taxpayer, so it is applied only to a taxpayer the ledger knows (an unknown one gets none).
             val known = pools.keys.any { it.taxpayerId == taxpayer }
             val diffs =
                 if (known) {
-                    BookValueComparison.compare(
+                    BookValueComparison.compareAll(
                         pools,
                         BookValueCsv.parse(taxpayer, bookValueCsv),
                     )
@@ -59,12 +71,12 @@ fun Application.acbVsBookModule(
     }
 }
 
-private fun holdingJson(d: HoldingDiff): JsonObject =
+private fun holdingJson(d: HoldingRow): JsonObject =
     buildJsonObject {
         put("securityId", d.key.securityId)
-        put("bookValueCents", d.bookValueCents)
+        put("bookValueCents", JsonPrimitive(d.bookValueCents))
         put("acbCents", d.acbCents)
-        put("differenceCents", d.differenceCents)
+        put("differenceCents", JsonPrimitive(d.differenceCents))
         put(
             "reasons",
             buildJsonArray {

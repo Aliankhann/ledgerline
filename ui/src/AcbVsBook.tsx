@@ -3,9 +3,9 @@ import { useState } from "react";
 type Reason = { ruleId: string; text: string; entryIds: number[]; amountMinor: number };
 type Holding = {
   securityId: string;
-  bookValueCents: number;
+  bookValueCents: number | null;
   acbCents: number;
-  differenceCents: number;
+  differenceCents: number | null;
   reasons: Reason[];
 };
 type View = { taxpayerId: string; currency: string; holdings: Holding[] };
@@ -18,6 +18,11 @@ export function formatMoney(cents: number): string {
   const rest = abs - dollars * 100;
   const grouped = String(dollars).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   return `${sign}${grouped}.${rest < 10 ? "0" : ""}${rest}`;
+}
+
+/** A missing value (no broker book value) is shown as a dash. */
+function formatOptional(cents: number | null): string {
+  return cents === null ? "\u2014" : formatMoney(cents);
 }
 
 export function AcbVsBook() {
@@ -60,9 +65,9 @@ export function AcbVsBook() {
             {view.holdings.map((h) => (
               <tr key={h.securityId}>
                 <td>{h.securityId}</td>
-                <td style={{ textAlign: "right" }}>{formatMoney(h.bookValueCents)}</td>
+                <td style={{ textAlign: "right" }}>{formatOptional(h.bookValueCents)}</td>
                 <td style={{ textAlign: "right" }}>{formatMoney(h.acbCents)}</td>
-                <td style={{ textAlign: "right" }}>{formatMoney(h.differenceCents)}</td>
+                <td style={{ textAlign: "right" }}>{formatOptional(h.differenceCents)}</td>
                 <td>
                   {h.reasons.length === 0 ? (
                     "No difference"
@@ -70,7 +75,8 @@ export function AcbVsBook() {
                     <ul>
                       {h.reasons.map((r) => (
                         <li key={r.ruleId}>
-                          <code>{r.ruleId}</code> {formatMoney(r.amountMinor)}: {r.text}
+                          <small className="badge" style={{ border: "1px solid gray", borderRadius: 4, padding: "0 4px" }}>{r.ruleId}</small>{" "}
+                          {formatMoney(r.amountMinor)}: {r.text}
                         </li>
                       ))}
                     </ul>
