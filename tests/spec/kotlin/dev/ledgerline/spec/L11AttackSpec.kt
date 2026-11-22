@@ -8,11 +8,10 @@ import dev.ledgerline.core.ActivityType
 import dev.ledgerline.testsupport.L06Activities
 import dev.ledgerline.testsupport.L07Activities
 import dev.ledgerline.testsupport.L07Fixture
+import dev.ledgerline.testsupport.SourceText
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldContain
-import java.io.File
 import java.time.LocalDate
 
 /**
@@ -61,11 +60,19 @@ class L11AttackSpec : FunSpec({
         d.reasons.filter { it.ruleId == "POOL-IDENTICAL" }.sumOf { it.amountMinor } shouldBe 0L
     }
 
-    test("L-11 attack: the acb-vs-book route is wired into Main.kt") {
-        var dir: File? = File(System.getProperty("user.dir")).absoluteFile
-        val rel = "app/src/main/kotlin/dev/ledgerline/app/Main.kt"
-        while (dir != null && !File(dir, rel).exists()) dir = dir.parentFile
-        val main = File(requireNotNull(dir) { "repo root not found" }, rel)
-        main.readText() shouldContain "acbVsBookModule"
+    test("L-11 attack: the acb-vs-book route is wired into Main.kt by a real call, not a comment") {
+        val code = SourceText.withoutComments(SourceText.read("app/src/main/kotlin/dev/ledgerline/app/Main.kt"))
+        // A call, not the declaration (`fun acbVsBookFromActivities(`) and not text inside a comment.
+        Regex("""(?<!fun )\bacbVsBookFromActivities\(""").containsMatchIn(code) shouldBe true
+    }
+
+    test("L-11 attack: the comment stripper ignores comments and keeps strings (guards the wiring check)") {
+        val src =
+            "// acbVsBookFromActivities(x)\n/* a /* nested acbVsBookFromActivities( */ b */\n" +
+                "val u = \"http://x\" // tail\nfoo()\n"
+        val code = SourceText.withoutComments(src)
+        code.contains("acbVsBookFromActivities") shouldBe false
+        code.contains("\"http://x\"") shouldBe true
+        code.contains("foo()") shouldBe true
     }
 })
