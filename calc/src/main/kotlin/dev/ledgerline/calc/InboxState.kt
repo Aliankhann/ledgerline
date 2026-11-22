@@ -1,23 +1,9 @@
 package dev.ledgerline.calc
 
-/**
- * Applies one activity to its pool, as the replay does. Returns the key and the new pool, or null if the activity
- * belongs in no pool. A rejected sell leaves the pool as it was (invariant 7).
- */
-internal fun applyToPool(
-    engine: AcbEngine,
-    pools: Map<PoolKey, AcbPool>,
-    posted: PostedActivity,
-): Pair<PoolKey, AcbPool>? {
-    if (!posted.inPool()) return null
-    val key = PoolKey(posted.activity.taxpayerId, requireNotNull(posted.activity.securityId))
-    val before = pools[key] ?: AcbPool.empty(key.taxpayerId, key.securityId)
-    return key to engine.apply(before, posted).pool
-}
-
 /** In-memory model of the consumer's inbox: an event id is applied once, however often it is delivered. */
 class InboxState(private val engine: AcbEngine) {
     private val live = mutableMapOf<PoolKey, AcbPool>()
+    private val history = mutableMapOf<PoolKey, MutableList<PostedActivity>>()
     private val seenIds = mutableSetOf<Long>()
 
     val pools: Map<PoolKey, AcbPool> get() = live.toMap()
@@ -29,7 +15,11 @@ class InboxState(private val engine: AcbEngine) {
         activity: PostedActivity,
     ): Boolean {
         if (!seenIds.add(eventId)) return false
-        applyToPool(engine, live, activity)?.let { (key, pool) -> live[key] = pool }
+        if (!activity.inPool()) return true
+        // Same as the consumer (B-025): rebuild the touched pool in canonical order, not in arrival order.
+        val key = PoolKey(activity.activity.taxpayerId, requireNotNull(activity.activity.securityId))
+        val all = history.getOrPut(key) { mutableListOf() }.also { it += activity }
+        engine.replay(all).pools[key]?.let { live[key] = it }
         return true
     }
 }

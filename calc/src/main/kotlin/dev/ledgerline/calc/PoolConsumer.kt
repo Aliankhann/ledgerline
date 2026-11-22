@@ -188,33 +188,14 @@ class PoolConsumer(
         posted: PostedActivity,
     ) {
         if (!posted.inPool()) return
-        val taxpayer = posted.activity.taxpayerId
-        val security = requireNotNull(posted.activity.securityId)
-        val current =
-            c.prepareStatement(
-                "SELECT shares, total_acb FROM calc.pool WHERE taxpayer_id = ? AND security_id = ?",
-            ).use {
-                it.setString(1, taxpayer)
-                it.setString(2, security)
-                it.executeQuery().use { rs ->
-                    val key = PoolKey(taxpayer, security)
-                    if (rs.next()) AcbPool(key, rs.getLong(1), rs.getLong(2), emptyList()) else null
-                }
-            }
-        val pools = listOfNotNull(current).associateBy { it.key }
-        val (_, updated) = requireNotNull(applyToPool(engine, pools, posted))
-        // Derived state: updated in place (the calc schema is not append-only; see V1__calc_state.sql).
-        c.prepareStatement(
-            "INSERT INTO calc.pool (taxpayer_id, security_id, shares, total_acb) VALUES (?, ?, ?, ?) " +
-                "ON CONFLICT (taxpayer_id, security_id) DO UPDATE SET shares = EXCLUDED.shares, " +
-                "total_acb = EXCLUDED.total_acb",
-        ).use {
-            it.setString(1, taxpayer)
-            it.setString(2, security)
-            it.setLong(3, updated.shares)
-            it.setLong(4, updated.totalAcb)
-            it.executeUpdate()
-        }
+        // B-025: rebuild in canonical order (tax date, sourceSeq, key), not by folding in arrival order. A sell the
+        // replay rejects is recorded in the replay, as the reference does; it never aborts the consumer.
+        ReversalRecompute(engine).rebuild(
+            c,
+            posted.activity.taxpayerId,
+            requireNotNull(posted.activity.securityId),
+            posted.entryId + 1,
+        )
     }
 
     private fun storeOffset(
