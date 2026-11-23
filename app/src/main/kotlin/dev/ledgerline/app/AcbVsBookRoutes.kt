@@ -65,13 +65,14 @@ private fun Application.acbVsBookRoute(
             val taxpayer = call.parameters["taxpayer"].orEmpty()
             val pools = poolSource(taxpayer).filterKeys { it.taxpayerId == taxpayer }
             // The CSV names no taxpayer, so it is applied only to a taxpayer the ledger knows (an unknown one gets none).
-            val known = pools.keys.any { it.taxpayerId == taxpayer }
+            val warnings = warningSource(taxpayer).filterKeys { it.taxpayerId == taxpayer }
+            val known = pools.isNotEmpty() || warnings.isNotEmpty()
             val diffs =
                 if (known) {
                     BookValueComparison.compareAll(
                         pools,
                         BookValueCsv.parse(taxpayer, bookValueCsv),
-                        warningSource(taxpayer),
+                        warnings,
                     )
                 } else {
                     emptyList()

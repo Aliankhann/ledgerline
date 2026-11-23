@@ -23,8 +23,12 @@ object DataGapWarnings {
                     it.activity.accountType == AccountType.NON_REGISTERED &&
                     it.activity.activityType == ActivityType.TRANSFER_IN
             }
-        val rejected = replay.rejections.map { it.idempotencyKey }.toSet()
-        val oversells = activities.filter { it.activity.securityId != null && it.activity.idempotencyKey in rejected }
+        val rejected = replay.rejections.map { Triple(it.taxpayerId, it.securityId, it.idempotencyKey) }.toSet()
+        val oversells =
+            activities.filter {
+                it.activity.securityId != null &&
+                    Triple(it.activity.taxpayerId, it.activity.securityId, it.activity.idempotencyKey) in rejected
+            }
         val byRule =
             listOf(TRANSFER_NO_COST to transfers, OVERSELL to oversells).flatMap { (rule, found) ->
                 found.groupBy { PoolKey(it.activity.taxpayerId, requireNotNull(it.activity.securityId)) }
