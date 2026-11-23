@@ -82,3 +82,13 @@ Chosen: a link row, no new event shape (draft ADR 0007). Migration `V9__correcti
 `ledger.correction`; `LedgerRepository.correct` inserts the (reversal, replacement) pair in its transaction;
 `ReversalRecompute.apply` rebuilds up to the replacement when a link exists, so the introduced-rejection check sees the
 state after the whole correction. Reversals without a link behave as in B-026. Not run: L09GapSpec (needs Docker; CI).
+
+### Fix note, round 2 (dev)
+
+CI run 45238579331 still failed with `held=0`: the V9 link was fine, but `LedgerRepository.correct` wrote the
+replacement's entry and outbox row without a `ledger.activity` row (V7 comment: "correction replacements have no
+ledger.activity row"). The consumer replays from `ledger.activity` (`ReversalRecompute.effectiveHistory`,
+`applyAndStore`), so the replacement was never visible to any replay, linked or not. It also means the replacement's own
+ACTIVITY_POSTED event could never add it to a pool. Fix: `correct` now inserts the replacement's `ledger.activity` row
+(same transaction, `PayloadHash.of`, `recordedAt = Instant.now()`) and passes its id to the outbox event. The V9 link
+and `correctionOf` query stay. Build: `./gradlew build` BUILD SUCCESSFUL; Docker tests not run here (CI).
