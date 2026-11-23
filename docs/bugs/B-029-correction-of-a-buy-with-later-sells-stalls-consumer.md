@@ -1,6 +1,6 @@
 # B-029 A correction of a BUY that a later SELL depends on stalls the consumer for good
 
-**Story:** L-09 (AC7, AC8) via L-12 consumer reversal path · **Severity:** major (reachable through `LedgerRepository.correct`; stalls every taxpayer on the consumer) · **Status:** Fixed (pending CI) · **Round:** 1
+**Story:** L-09 (AC7, AC8) via L-12 consumer reversal path · **Severity:** major (reachable through `LedgerRepository.correct`; stalls every taxpayer on the consumer) · **Status:** Fixed (QE verified, CI run 45248906888) · **Round:** 1
 
 ## Reproduction
 

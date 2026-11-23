@@ -1,6 +1,6 @@
 # B-030 Correcting a correction's replacement stalls a consumer that has not yet read the first reversal
 
-**Story:** L-09 (AC1, AC7, AC8) via L-12 consumer reversal path; follow-on to B-029 · **Severity:** major (reachable through `LedgerRepository.correct` twice; stalls every taxpayer on the consumer; no reconcile possible while stalled) · **Status:** Fixed (pending CI) · **Round:** 1
+**Story:** L-09 (AC1, AC7, AC8) via L-12 consumer reversal path; follow-on to B-029 · **Severity:** major (reachable through `LedgerRepository.correct` twice; stalls every taxpayer on the consumer; no reconcile possible while stalled) · **Status:** Fixed (QE verified, CI run 45248906888) · **Round:** 1
 
 ## Reproduction
 
