@@ -4,7 +4,8 @@ An event-sourced double-entry ledger with a streaming Canadian adjusted-cost-bas
 
 <!-- TODO: 10-second GIF of the replay-hash demo (not recorded yet). -->
 
-> **Status:** all 14 stories (L-01 to L-14) are built provisionally and await owner approval. See
+> **Status:** stories L-01 to L-14 and L-16 are built provisionally and await owner approval; L-15 (differential check
+> against [tsiemens/acb](https://github.com/tsiemens/acb)) is on branch `l-15` pending rule decisions. See
 > [`docs/status.md`](docs/status.md). Tax values are provisional ([`docs/tax-model.md`](docs/tax-model.md)).
 
 ## Quickstart
@@ -17,8 +18,10 @@ curl localhost:8080/health            # health check
 ./gradlew build                       # compile, ktlint, spec and property tests
 ```
 
-The end-to-end demo (replay-hash walkthrough from a fresh clone) is **coming soon**. `./gradlew :tests:test
--PincludeIntegration` runs the Docker-backed tests. `make help` lists the shortcuts.
+On start the app loads a seeded synthetic year (`SEED_YEAR`, default 42). `scripts/demo.sh` posts a few activities and
+shows the ACB-vs-book view; `scripts/verify.sh` runs the reconcile command twice (replay vs live pools) and fails unless both
+summaries match and drift is 0; `make reconcile` runs it once. `./gradlew :tests:test -PincludeIntegration` runs the Docker-backed tests, `make mutation`
+the Pitest report. `make help` lists the shortcuts.
 
 ## What it proves
 
@@ -30,9 +33,17 @@ Only claims backed by an existing test are listed. Tests tagged `Integration` ne
 | Duplicate submits change nothing; a changed payload under the same key is rejected | [`L02IngestionSpec`](tests/spec/kotlin/dev/ledgerline/spec/L02IngestionSpec.kt), [`IdempotencyInvariantPropertyTest`](tests/property/kotlin/dev/ledgerline/property/IdempotencyInvariantPropertyTest.kt) |
 | A consumer crash mid-stream is recovered with zero drift against a replay (Integration) | [`L12CrashRecoverySpec`](tests/spec/kotlin/dev/ledgerline/spec/L12CrashRecoverySpec.kt), [`L12InboxPropertyTest`](tests/property/kotlin/dev/ledgerline/property/L12InboxPropertyTest.kt) |
 | A back-dated correction gives the same pool as a clean replay | [`L09RecomputeSpec`](tests/spec/kotlin/dev/ledgerline/spec/L09RecomputeSpec.kt), [`L09RecomputePropertyTest`](tests/property/kotlin/dev/ledgerline/property/L09RecomputePropertyTest.kt) |
+| A full seeded year posted through the ledger and consumer reconciles with zero drift (Integration) | [`SeedLoaderSpec`](tests/spec/kotlin/dev/ledgerline/spec/SeedLoaderSpec.kt), [`L10ReconcileCommandSpec`](tests/spec/kotlin/dev/ledgerline/spec/L10ReconcileCommandSpec.kt) |
+| ACB matches published CRA worked examples (identical properties, gain, mutual fund, return of capital, partial superficial loss) | [`CraFixtureSpec`](tests/spec/kotlin/dev/ledgerline/spec/CraFixtureSpec.kt), fixtures in [`tests/fixtures/cra/`](tests/fixtures/cra/) |
+| Every holding is listed against broker book value, with reasons for each difference and warnings for missing history | [`L11FollowUpSpec`](tests/spec/kotlin/dev/ledgerline/spec/L11FollowUpSpec.kt), [`L16MissingDataSpec`](tests/spec/kotlin/dev/ledgerline/spec/L16MissingDataSpec.kt) |
 | Applying an activity then its reversal restores prior balances | [`ReversalSymmetryPropertyTest`](tests/property/kotlin/dev/ledgerline/property/ReversalSymmetryPropertyTest.kt), [`L04ReversalSpec`](tests/spec/kotlin/dev/ledgerline/spec/L04ReversalSpec.kt) |
 
-Not yet proven: throughput under a burst (harness exists, nothing measured), and Toxiproxy network-fault scenarios.
+Why compare with book value: CRA notes that the cost in box 20 of a T5008 slip "may or may not reflect your adjusted cost
+base (ACB)" ([CRA, T5008](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/tax-slips/understand-your-tax-slips/t5-slips/t5008-statement-securities-transactions-slip-information-individuals.html);
+see [`docs/problem/evidence.md`](docs/problem/evidence.md) E-36, E-37).
+
+Not yet proven: throughput under a burst (harness exists, nothing measured, no targets set). Mutation score is
+report-only (first run 42%; threshold not set).
 
 ## Modules
 
