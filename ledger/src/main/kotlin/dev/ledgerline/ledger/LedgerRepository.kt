@@ -219,7 +219,18 @@ class LedgerRepository(
                         it.executeUpdate()
                     }
                     // OWNER-INPUT: C25: the replacement is published like any posted activity.
-                    OutboxWrites.activityPosted(c, posted, null, replacement, maxEventBytes)
+                    // B-029: the replacement also gets its ledger.activity row, like any submitted activity. The calc
+                    // consumer replays from that table, so without the row the replacement never reaches a pool.
+                    val activityId = UUID.randomUUID().toString()
+                    insertActivity(
+                        c,
+                        activityId,
+                        posted.sequence,
+                        PayloadHash.of(replacement),
+                        Instant.now(),
+                        replacement,
+                    )
+                    OutboxWrites.activityPosted(c, posted, activityId, replacement, maxEventBytes)
                     CorrectionResult(reversal, posted)
                 }
             }
