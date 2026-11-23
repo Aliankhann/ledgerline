@@ -21,12 +21,27 @@ internal class ReversalRecompute(private val engine: AcbEngine) {
         // Rejections already present with the reversed activity still in are not the reversal's doing (B-026).
         val before =
             engine.replay(
-                effectiveHistory(c, taxpayer, security, reversalEntryId, includeReversed = reversedEntryId),
+                effectiveHistory(
+                    c,
+                    taxpayer,
+                    security,
+                    reversalEntryId,
+                    reversalEntryId,
+                    includeReversed = reversedEntryId,
+                ),
             )
         // B-029: a correction's replacement (linked in ledger.correction, same transaction) is part of the same unit,
         // so the check runs on the state after both. A reversal posted alone has no link and is checked as before.
         // The link is read inside the history query (correctionOf), not as a separate lookup.
-        val replay = rebuild(c, taxpayer, security, reversalEntryId, correctionOf = reversalEntryId)
+        val replay =
+            rebuild(
+                c,
+                taxpayer,
+                security,
+                reversalEntryId,
+                reversalsUpTo = reversalEntryId,
+                correctionOf = reversalEntryId,
+            )
         val existing = before.rejections.map { it.idempotencyKey to it.code }.toSet()
         val introduced = replay.rejections.filter { (it.idempotencyKey to it.code) !in existing }
         check(introduced.isEmpty()) {
@@ -43,9 +58,13 @@ internal class ReversalRecompute(private val engine: AcbEngine) {
         taxpayer: String,
         security: String,
         beforeEntryId: Long,
+        reversalsUpTo: Long = beforeEntryId - 1,
         correctionOf: Long? = null,
     ): Replay {
-        val replay = engine.replay(effectiveHistory(c, taxpayer, security, beforeEntryId, correctionOf = correctionOf))
+        val replay =
+            engine.replay(
+                effectiveHistory(c, taxpayer, security, beforeEntryId, reversalsUpTo, correctionOf = correctionOf),
+            )
         val pool = replay.pools[PoolKey(taxpayer, security)]
         if (pool == null) {
             c.prepareStatement("DELETE FROM calc.pool WHERE taxpayer_id = ? AND security_id = ?").use {
@@ -81,11 +100,16 @@ internal class ReversalRecompute(private val engine: AcbEngine) {
             }
         }
 
+    /**
+     * B-030: an entry is excluded only by a reversal that existed at the event being applied (reversal entry id up to
+     * [reversalsUpTo], extended to the replacement of a correction unit). Reversals posted later belong to later events.
+     */
     private fun effectiveHistory(
         c: Connection,
         taxpayer: String,
         security: String,
         beforeEntryId: Long,
+        reversalsUpTo: Long,
         includeReversed: Long? = null,
         correctionOf: Long? = null,
     ): List<PostedActivity> =
@@ -103,6 +127,14 @@ internal class ReversalRecompute(private val engine: AcbEngine) {
                     }
                 ) +
                 "AND NOT EXISTS (SELECT 1 FROM ledger.reversal r WHERE r.original_entry_id = a.entry_id " +
+                (
+                    if (correctionOf != null) {
+                        "AND r.reversal_entry_id <= GREATEST(?, COALESCE((SELECT MAX(k.replacement_entry_id) " +
+                            "FROM ledger.correction k WHERE k.reversal_entry_id = ?), 0)) "
+                    } else {
+                        "AND r.reversal_entry_id <= ? "
+                    }
+                ) +
                 (if (includeReversed != null) "AND r.original_entry_id <> ?) " else ") ") +
                 "ORDER BY a.entry_id",
         ).use {
@@ -110,6 +142,8 @@ internal class ReversalRecompute(private val engine: AcbEngine) {
             it.setString(2, security)
             it.setLong(3, beforeEntryId)
             var next = 4
+            if (correctionOf != null) it.setLong(next++, correctionOf)
+            it.setLong(next++, reversalsUpTo)
             if (correctionOf != null) it.setLong(next++, correctionOf)
             if (includeReversed != null) it.setLong(next, includeReversed)
             it.executeQuery().use { rs -> buildList { while (rs.next()) add(rs.posted()) } }

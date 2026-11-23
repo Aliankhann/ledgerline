@@ -14,7 +14,9 @@ replacement. Entry-id adjacency is ambiguous, and transaction xmin is unreliable
 A new append-only table `ledger.correction (reversal_entry_id, replacement_entry_id)` (migration V9, same trigger and
 grants as `ledger.reversal`) is written by `correct` in the same transaction. When the consumer applies an
 `ENTRY_REVERSED` event that has a row there, the "newly rejected" check runs on the state after the whole correction
-(entries up to the replacement). A reversal with no row is checked exactly as before (B-026). No event shape changes.
+(entries up to the replacement). A reversal with no row is checked exactly as before (B-026). Each event is judged against reversals that existed at
+that event only (B-030): a reversal row excludes an entry only if its reversal entry id is at most the event's own
+entry (or the correction's replacement), so a later reversal of the replacement does not hide it. No event shape changes.
 
 ## Alternatives not taken
 
