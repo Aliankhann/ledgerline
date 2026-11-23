@@ -1,6 +1,6 @@
 # B-028 DataGapWarnings.detect matches rejected sells by idempotency key only
 
-**Story:** L-16 · **Severity:** minor (latent) · **Status:** Fixed (pending CI) · **Round:** 1
+**Story:** L-16 · **Severity:** minor (latent) · **Status:** Fixed (QE verified, CI run 45117734937) · **Round:** 1
 
 ## Reproduction
 
