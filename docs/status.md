@@ -60,6 +60,16 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
 
 ## Open questions
 
+- **Seed on start, B-025 and B-026 merged** (l-seed CI run 45088600142 all green; reconcile drift=0 on the seed-42 year). Owner decisions raised:
+  - **C33 transfers and registered accounts:** the ledger counts TRANSFER_IN and registered-account shares as held, but the ACB pool
+    (`Replay.POOL_TYPES`, NON_REGISTERED only) ignores them, so seed-42 SELL `TP-0001-2025-0027` (176 shares) is rejected by the
+    pool. Should TRANSFER_IN enter the pool, and at what cost (unknown cost is a missing-data case)?
+  - **B-026 follow-up:** a reversal that *newly* causes a rejected sell still throws and stops the consumer (B-024 behaviour).
+    Keep, or park the event (outbox_parked style) and keep consuming?
+  - **Over-sells:** the ledger accepts a SELL above holdings (only reversals are checked). If real data never over-sells, B-026
+    drops to minor; otherwise consider refusing over-sells at posting (C30).
+  - **C32 seeding default:** `SEED_YEAR` defaults to 42 in docker-compose and cannot be turned off from compose alone.
+
 - **CRA mutual-fund redemption differs by 13 cents (rounding rule, owner decision).** `CraFixtureSpec` (CRA tax-treatment-mutual-funds page):
   CRA multiplies 200 units by the per-unit ACB rounded to the cent ($15.20) → ACB sold $3,040.00, gain $374.00. Ledgerline pools unrounded
   and rounds only at reporting (`ROUND-BOUNDARY`) → ACB sold $3,039.87, gain $374.13. The test asserts our value and bounds the gap.
