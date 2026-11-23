@@ -23,7 +23,10 @@ internal class ReversalRecompute(private val engine: AcbEngine) {
             engine.replay(
                 effectiveHistory(c, taxpayer, security, reversalEntryId, includeReversed = reversedEntryId),
             )
-        val replay = rebuild(c, taxpayer, security, reversalEntryId)
+        // B-029: a correction's replacement (linked in ledger.correction, same transaction) is part of the same unit,
+        // so the check runs on the state after both. A reversal posted alone has no link and is checked as before.
+        // The link is read inside the history query (correctionOf), not as a separate lookup.
+        val replay = rebuild(c, taxpayer, security, reversalEntryId, correctionOf = reversalEntryId)
         val existing = before.rejections.map { it.idempotencyKey to it.code }.toSet()
         val introduced = replay.rejections.filter { (it.idempotencyKey to it.code) !in existing }
         check(introduced.isEmpty()) {
@@ -40,8 +43,9 @@ internal class ReversalRecompute(private val engine: AcbEngine) {
         taxpayer: String,
         security: String,
         beforeEntryId: Long,
+        correctionOf: Long? = null,
     ): Replay {
-        val replay = engine.replay(effectiveHistory(c, taxpayer, security, beforeEntryId))
+        val replay = engine.replay(effectiveHistory(c, taxpayer, security, beforeEntryId, correctionOf = correctionOf))
         val pool = replay.pools[PoolKey(taxpayer, security)]
         if (pool == null) {
             c.prepareStatement("DELETE FROM calc.pool WHERE taxpayer_id = ? AND security_id = ?").use {
@@ -83,12 +87,21 @@ internal class ReversalRecompute(private val engine: AcbEngine) {
         security: String,
         beforeEntryId: Long,
         includeReversed: Long? = null,
+        correctionOf: Long? = null,
     ): List<PostedActivity> =
         c.prepareStatement(
             "SELECT a.activity_id, a.entry_id, a.idempotency_key, a.taxpayer_id, a.account_id, a.account_type, " +
                 "a.activity_type, a.effective_date, a.settlement_date, a.security_id, a.quantity, a.currency, " +
                 "a.amount, a.commission, a.counter_currency, a.counter_amount, a.description, a.source_seq " +
-                "FROM ledger.activity a WHERE a.taxpayer_id = ? AND a.security_id = ? AND a.entry_id < ? " +
+                "FROM ledger.activity a WHERE a.taxpayer_id = ? AND a.security_id = ? AND (a.entry_id < ?" +
+                (
+                    if (correctionOf != null) {
+                        " OR a.entry_id IN (SELECT replacement_entry_id FROM ledger.correction " +
+                            "WHERE reversal_entry_id = ?)) "
+                    } else {
+                        ") "
+                    }
+                ) +
                 "AND NOT EXISTS (SELECT 1 FROM ledger.reversal r WHERE r.original_entry_id = a.entry_id " +
                 (if (includeReversed != null) "AND r.original_entry_id <> ?) " else ") ") +
                 "ORDER BY a.entry_id",
@@ -96,7 +109,9 @@ internal class ReversalRecompute(private val engine: AcbEngine) {
             it.setString(1, taxpayer)
             it.setString(2, security)
             it.setLong(3, beforeEntryId)
-            if (includeReversed != null) it.setLong(4, includeReversed)
+            var next = 4
+            if (correctionOf != null) it.setLong(next++, correctionOf)
+            if (includeReversed != null) it.setLong(next, includeReversed)
             it.executeQuery().use { rs -> buildList { while (rs.next()) add(rs.posted()) } }
         }
 }
