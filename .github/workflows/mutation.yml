@@ -1,0 +1,26 @@
+name: Mutation
+
+# Pitest on ledger/ and calc/. Report-only (no threshold; owner gate C9 is still PROPOSED). Slow, so weekly and on demand.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1"
+
+jobs:
+  mutation:
+    name: Mutation testing (Pitest, report-only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew :tests:pitest --no-daemon
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pitest-report
+          path: tests/build/reports/pitest
