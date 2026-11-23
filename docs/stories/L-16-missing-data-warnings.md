@@ -1,6 +1,6 @@
 # L-16 Missing-data warnings on the ACB-vs-book list
 
-**Status:** Draft (provisional, owner to approve; OWNER-INPUT)  <!-- Only the owner sets Approved. -->
+**Status:** In QE: QE passed, awaiting owner (provisional; OWNER-INPUT; CI run 45117734937)  <!-- Only the owner sets Approved. -->
 **Day:** N · **Branch:** `l-16` · **Round:** 0 / 3
 
 ## Story
