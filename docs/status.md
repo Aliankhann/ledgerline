@@ -4,8 +4,23 @@ Running log for the story loop. Every agent updates this at the end of its turn.
 
 ## Current step
 
-**0.4 → 2: waiting on owner approval.** Steps 0.1, 0.2 (first pass) and 0.4 (all 14 stories drafted) are done.
-Step 0.3 is the owner's. QE phase A for L-01 starts once the owner approves L-01.
+**Everything that doesn't need the owner is done (2026-11-23).** All stories L-01 to L-14 and L-16 are on `main`, built
+provisionally and waiting for owner approval; L-15 waits on branch `l-15` for tax-rule decisions. CI on `main` is green
+(last full run on the same code: 45248906888).
+
+### Owner review checklist (suggested order)
+
+1. **Read** `README.md`, then `docs/owner-inputs.md` (every OWNER-INPUT placeholder, with its proposed default).
+2. **Tax rules** (blocking): C6/C7 rule acceptance; L-15 differences vs tsiemens/acb (rounding order, SL-MULTI,
+   SL-ADDBACK-TIMING); CRA mutual-fund 13-cent rounding; C33 transfers in and registered-account shares.
+3. **Approve or reject stories** L-01 to L-16 (each has "Needs owner decision"); L-15 and L-16 are beyond the 14-story cap.
+4. **Rewrite ADRs 0001 to 0007** in your own words (0007 is the correction-as-one-unit design from B-029/B-030).
+5. **Thresholds**: mutation score C9 (first report 42%; ledger code is mostly Docker-only), file length, performance
+   tolerance C10, benchmark hardware B3 (L-13 bench targets wait on these).
+6. **Open questions below**: untestable ACs, settlement-date check in the ledger, reversal parking (B-026), over-sells,
+   seeding default C32, L-16 warning ids, B-028 `Rejection` fields.
+7. **Housekeeping**: branch protection, license (C12), delete stale branches (`l-02` … `l-wire`, `ac-gaps`,
+   `l-ac-gaps`, `l-16`, `l-seed`, `pitest`; keep `backup/pre-author-rewrite` until you're satisfied), real CSV header (B1/B2).
 
 ## Stories
 
