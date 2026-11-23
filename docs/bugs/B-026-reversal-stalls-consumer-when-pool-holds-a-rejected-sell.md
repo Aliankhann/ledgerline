@@ -1,6 +1,6 @@
 # B-026 A reversal in a pool that holds any rejected sell stalls the consumer for good
 
-**Story:** L-12 (consumer, reversal path) after the B-025 fix · **Severity:** major (reachable through the ledger, see Reachability) · **Status:** Open (calc fix in dbd3d9b; awaiting CI on the reworked integration tests) · **Round:** 2
+**Story:** L-12 (consumer, reversal path) after the B-025 fix · **Severity:** major (reachable through the ledger, see Reachability) · **Status:** Fixed (calc fix dbd3d9b; QE verified, CI run 45088600142) · **Round:** 2
 
 ## Reproduction
 
