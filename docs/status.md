@@ -132,6 +132,11 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
 - **Docker API pin in `tests/build.gradle.kts` (dev, L-03, for QE).** Testcontainers is now 1.21.3, which negotiates
   the Docker API version. The `api.version`/`DOCKER_API_VERSION` 1.44 pin says to remove it then; it is QE-owned, so
   dev left it. L-03 integration tests pass with it in place.
+- **Mutation score vs proposed C9 70% (owner, 2026-11-23).** First Pitest run (`./gradlew :tests:pitest`, report-only,
+  non-Docker spec + property tests): total 516 of 1241 mutants killed (42%), test strength 79%. `calc/` 62.5% (398/637),
+  `ledger/` 19.5% (118/604, 467 with no coverage: Postgres-backed code is only exercised by Integration tests, which
+  Pitest skips). 70% on `ledger/` is not reachable without running Pitest against Docker tests. Options: gate `calc/` only,
+  gate on test strength, or run Pitest with integration tests in CI (slow). Weekly workflow `mutation.yml` uploads the report.
 
 ## Log
 
