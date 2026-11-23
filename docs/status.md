@@ -61,6 +61,16 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
 
 ## Open questions
 
+- **B-029 and B-030 fixed (owner review, 2026-11-23).** Found by the L-09 gap tests and QE's attack. A correction's
+  replacement had no `ledger.activity` row, so corrections never reached ACB pools, and the consumer stalled on a correction
+  of a buy with later sells. Fix: the replacement now gets its activity row (its key counts as submitted; its outbox event
+  carries the activity id), a new append-only table `ledger.correction` (V9) links reversal and replacement, and the consumer
+  checks a correction as one unit and only against reversals that existed at each event. Corrections stored before V9 have
+  no link and are treated as standalone reversals. Draft ADR 0007 needs your wording. CI run 45248906888 all green.
+  Open: the ledger checks holdings at the end of history, the calculator by settlement date, so a replacement that settles
+  after a later sell is accepted by the ledger and then stops the consumer (B-026 behaviour). Should the ledger check by
+  settlement date?
+
 - **Acceptance criteria with no test, because the feature or a decision is missing (owner, 2026-11-23).** Gap tests were
   added for L-09 AC6–AC8, L-10 AC6–AC7, L-12 AC5/AC8/AC9, L-13 AC6 and L-14 AC1/AC6 (`*GapSpec`). Still untestable:
   - L-09 AC2/AC7: no `ledgerline_pool_recompute_total` counter exists. L-09 AC3/AC4: no pool history endpoint.
