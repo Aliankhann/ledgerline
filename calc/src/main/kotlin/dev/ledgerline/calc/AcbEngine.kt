@@ -23,6 +23,8 @@ class AcbEngine(val ruleSet: TaxRuleSet) {
             held = pool.shares,
             requested = requested,
             message = "Sell rejected: ${pool.shares} shares held, $requested requested (10^-${Scale.SHARE_DECIMALS})",
+            taxpayerId = activity.taxpayerId,
+            securityId = activity.securityId.orEmpty(),
         )
     }
 

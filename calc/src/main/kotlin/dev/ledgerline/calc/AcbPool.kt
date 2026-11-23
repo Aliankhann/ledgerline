@@ -55,6 +55,9 @@ data class Rejection(
     val held: Long,
     val requested: Long,
     val message: String,
+    /** Which pool the sell belonged to; defaulted so older callers still compile (B-028). */
+    val taxpayerId: String = "",
+    val securityId: String = "",
 )
 
 sealed interface PoolStep {

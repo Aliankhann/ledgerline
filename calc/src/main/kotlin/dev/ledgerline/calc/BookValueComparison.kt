@@ -39,7 +39,7 @@ object BookValueComparison {
         bookValues: Map<PoolKey, Long>,
         warnings: Map<PoolKey, List<Reason>> = emptyMap(),
     ): List<HoldingRow> =
-        (pools.keys + bookValues.keys)
+        (pools.keys + bookValues.keys + warnings.keys)
             .sortedWith(compareBy({ it.taxpayerId }, { it.securityId }))
             .map { key ->
                 val r = row(key, pools[key], bookValues[key])
@@ -68,7 +68,11 @@ object BookValueComparison {
                 }
             return HoldingRow(key, book, d.acbCents, d.differenceCents, reasons)
         }
-        val acb = rules.toReportedCents(checkNotNull(pool).totalAcb)
+        if (pool == null) {
+            // Warning-only holding (e.g. transfers with no cost): no pool, no broker value (B-027).
+            return HoldingRow(key, null, 0L, null, emptyList())
+        }
+        val acb = rules.toReportedCents(pool.totalAcb)
         val text = "No broker book value was given for this holding, so ACB cannot be compared."
         return HoldingRow(
             key,

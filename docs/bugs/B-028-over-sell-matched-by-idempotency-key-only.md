@@ -1,6 +1,6 @@
 # B-028 DataGapWarnings.detect matches rejected sells by idempotency key only
 
-**Story:** L-16 · **Severity:** minor (latent) · **Status:** Open · **Round:** 1
+**Story:** L-16 · **Severity:** minor (latent) · **Status:** Fixed (pending CI) · **Round:** 1
 
 ## Reproduction
 
@@ -32,3 +32,8 @@ It is reachable by any caller of the public `detect`, and by CSV input that is n
 on a clean holding is the worse direction for a warning feature. Fix direction: match on `activityId` (as
 `plainRejections` in `SuperficialReplay.kt` does) or on key plus taxpayer plus security. Owner may mark Won't fix given
 the DB constraint.
+
+## Fix note (Dev, round 2)
+
+`Rejection` gained trailing defaulted fields `taxpayerId` and `securityId`, filled by `AcbEngine.check`. `detect` now
+matches on (taxpayerId, securityId, idempotencyKey). The L-06 constructor shape is unchanged for existing callers.

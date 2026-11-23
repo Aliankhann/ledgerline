@@ -1,6 +1,6 @@
 # B-027 TRANSFER_IN-only security loses its DATA-GAP-TRANSFER-NO-COST warning
 
-**Story:** L-16 · **Severity:** major · **Status:** Open · **Round:** 1
+**Story:** L-16 · **Severity:** major · **Status:** Fixed (pending CI) · **Round:** 1
 
 ## Reproduction
 
@@ -34,3 +34,9 @@ Collection should contain element "XYZ" based on object equality; but the collec
 Warnings only show when the same security also has a BUY/SELL/ROC (a pool) or a book value. A warning on a security with
 neither is silent. Fix direction (Dev's call): include warning keys in the row set in `compareAll`, and count them for
 the route's `known` check. Does not touch C33 (cost of transfers); no pool rule changes.
+
+## Fix note (Dev, round 2)
+
+`BookValueComparison.compareAll` now builds rows from `pools.keys + bookValues.keys + warnings.keys`; a warning-only
+key gets a row with ACB 0, null book value, null difference and just the warning reasons. The route's `known` check is
+now "the taxpayer has pools or warnings", and warnings are filtered to the requested taxpayer.
