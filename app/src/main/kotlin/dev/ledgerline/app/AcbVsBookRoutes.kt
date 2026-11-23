@@ -5,9 +5,11 @@ import dev.ledgerline.calc.AcbPool
 import dev.ledgerline.calc.BookValueComparison
 import dev.ledgerline.calc.BookValueCsv
 import dev.ledgerline.calc.CaIta2026v1
+import dev.ledgerline.calc.DataGapWarnings
 import dev.ledgerline.calc.HoldingRow
 import dev.ledgerline.calc.PoolKey
 import dev.ledgerline.calc.PostedActivity
+import dev.ledgerline.calc.Reason
 import io.ktor.http.ContentType
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
@@ -27,7 +29,7 @@ import kotlinx.serialization.json.put
 fun Application.acbVsBookModule(
     pools: Map<PoolKey, AcbPool>,
     bookValueCsv: String,
-) = acbVsBookModule({ _ -> pools }, bookValueCsv)
+) = acbVsBookRoute({ _ -> pools }, { _ -> emptyMap() }, bookValueCsv)
 
 /** Same route over stored activities: pools come from the superficial-loss replay, so those reasons show. */
 fun Application.acbVsBookFromActivities(
@@ -35,12 +37,25 @@ fun Application.acbVsBookFromActivities(
     bookValueCsv: String,
 ) {
     val engine = AcbEngine(CaIta2026v1)
-    acbVsBookModule({ taxpayer -> engine.replaySuperficial(activities(taxpayer)).pools }, bookValueCsv)
+    acbVsBookRoute(
+        { taxpayer -> engine.replaySuperficial(activities(taxpayer)).pools },
+        { taxpayer ->
+            val acts = activities(taxpayer)
+            DataGapWarnings.detect(acts, engine.replay(acts))
+        },
+        bookValueCsv,
+    )
 }
 
 /** Same route over a live pool source, called per request with the taxpayer (the service replays stored activities). */
 fun Application.acbVsBookModule(
     poolSource: (taxpayer: String) -> Map<PoolKey, AcbPool>,
+    bookValueCsv: String,
+) = acbVsBookRoute(poolSource, { _ -> emptyMap() }, bookValueCsv)
+
+private fun Application.acbVsBookRoute(
+    poolSource: (taxpayer: String) -> Map<PoolKey, AcbPool>,
+    warningSource: (taxpayer: String) -> Map<PoolKey, List<Reason>>,
     bookValueCsv: String,
 ) {
     // module() installs it too in the live service; a second install would fail.
@@ -56,6 +71,7 @@ fun Application.acbVsBookModule(
                     BookValueComparison.compareAll(
                         pools,
                         BookValueCsv.parse(taxpayer, bookValueCsv),
+                        warningSource(taxpayer),
                     )
                 } else {
                     emptyList()

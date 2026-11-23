@@ -37,10 +37,14 @@ object BookValueComparison {
     fun compareAll(
         pools: Map<PoolKey, AcbPool>,
         bookValues: Map<PoolKey, Long>,
+        warnings: Map<PoolKey, List<Reason>> = emptyMap(),
     ): List<HoldingRow> =
         (pools.keys + bookValues.keys)
             .sortedWith(compareBy({ it.taxpayerId }, { it.securityId }))
-            .map { key -> row(key, pools[key], bookValues[key]) }
+            .map { key ->
+                val r = row(key, pools[key], bookValues[key])
+                r.copy(reasons = r.reasons + warnings[key].orEmpty())
+            }
 
     private fun row(
         key: PoolKey,
