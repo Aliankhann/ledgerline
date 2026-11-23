@@ -26,6 +26,7 @@ Step 0.3 is the owner's. QE phase A for L-01 starts once the owner approves L-01
 | L-13 | Burst benchmark and report | Harness done, awaiting owner | 1 | main | CI green incl. smoke (run 44700919782); targets C10 and hardware B3 are owner inputs; uncovered ACs listed in story |
 | L-14 | Second domain plugin | QE passed (pure), awaiting owner | 1 | main | CI green (run 44701421807); cash-balance plugin in plugins/; C30 overdraft; PluginReplay location (calc vs core) owner call; AC1/6/7 untested |
 | L-15 | Differential ACB check against tsiemens/acb | Tests written + exporter built; CI run 45060148937: 371 tests, only the 3 L15Diff tests red (tax-rule differences, owner) | 1 | l-15 | Extra story beyond the 14-story cap (owner approval); oracle pinned to acb ee4afc7 (0.26.06); SL-PARTIAL agrees; see Open questions |
+| L-16 | Missing-data warnings on the ACB-vs-book list | Draft, provisional | 1 | l-16 | Extra story beyond the 14-story cap (owner approval); sub-rule IDs and shape are OWNER-INPUT; depends on C33 only for out-of-scope cost |
 
 ## Owner instruction (2026-11-19)
 
