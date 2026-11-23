@@ -61,6 +61,21 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
 
 ## Open questions
 
+- **Acceptance criteria with no test, because the feature or a decision is missing (owner, 2026-11-23).** Gap tests were
+  added for L-09 AC6–AC8, L-10 AC6–AC7, L-12 AC5/AC8/AC9, L-13 AC6 and L-14 AC1/AC6 (`*GapSpec`). Still untestable:
+  - L-09 AC2/AC7: no `ledgerline_pool_recompute_total` counter exists. L-09 AC3/AC4: no pool history endpoint.
+  - L-09 AC6: the refusal doesn't name the blocking sell (`ReversalRefusedException` has code and entry only).
+  - L-09 AC8: "1 to 10 months back" has no base date; test assumes back from 2025-12-31, floored at 2025-01-01.
+  - L-10 AC8: watermark decision still open.
+  - L-12 AC9: `:tests:chaosTest` runs only `dev.ledgerline.chaos`, so AC3/AC4/AC6/AC7 (in `spec/`) are not part of it;
+    move the tests or change the AC. AC5 "reset every 2 s" is a 300 ms `reset_peer` toxic every 2 s (QE judgement).
+  - L-13 AC1–AC5, AC7–AC9: no `make bench`/`bench-smoke`, no `bench/targets.yml`, no CI step, no `workloadSha256` (C10, B3).
+  - L-14 AC1 literal branch diff can't run after merge (structural proxy test instead); AC7: reconciliation compares ACB
+    pools only, plugin output format undecided.
+- **Authorship rewrite (owner request, 2026-11-23).** All branches rewritten so commits are authored by the owner; trees
+  unchanged; old `main` kept as `backup/pre-author-rewrite`. The first CI run after the force-push (main 48ea368) has a red
+  role check only because the push range spanned the GitHub-created "Initial commit" (no `Agent:` trailer); expected once.
+
 - **L-16 merged (owner, 2026-11-23).** Warnings `DATA-GAP-TRANSFER-NO-COST` and `DATA-GAP-OVERSELL` (ids, texts and the choice
   to put the sub-rule id in `Reason.ruleId` are OWNER-INPUT placeholders). A transfer-only security now gets a row with ACB 0.
   B-028 fix added `taxpayerId`/`securityId` to `calc.Rejection` (L-06 contract; defaulted fields, not in any hash). ADR wanted?
