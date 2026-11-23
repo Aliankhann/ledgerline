@@ -8,6 +8,10 @@
 //   tests/support   shared generators, builders, Testcontainers helpers
 //   tests/fixtures  data files; tax fixtures must cite their published source
 
+plugins {
+    alias(libs.plugins.pitest)
+}
+
 sourceSets {
     test {
         kotlin.srcDirs("spec/kotlin", "property/kotlin", "chaos/kotlin", "support/kotlin")
@@ -64,4 +68,30 @@ tasks.withType<Test>().configureEach {
         showStandardStreams = true
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
     }
+}
+
+// Mutation testing (report-only, separate from `build`): run `./gradlew :tests:pitest` (make mutation).
+// Mutates ledger/ and calc/ using the non-Docker spec and property tests. No mutationThreshold: owner gate C9 is
+// still PROPOSED (70%).
+pitest {
+    pitestVersion.set("1.17.1")
+    junit5PluginVersion.set(libs.versions.pitest.junit5)
+    // -PpitestTargets=dev.ledgerline.calc.Acb* narrows a run while iterating.
+    val defaultTargets = listOf("dev.ledgerline.ledger.*", "dev.ledgerline.calc.*")
+    targetClasses.set((findProperty("pitestTargets") as String?)?.split(",") ?: defaultTargets)
+    targetTests.set(listOf("dev.ledgerline.spec.*", "dev.ledgerline.property.*"))
+    mainSourceSets.set(listOf(project(":ledger").sourceSets["main"], project(":calc").sourceSets["main"]))
+    // Kotest tags are Kotest-level, not JUnit tags: skip Integration (Docker) specs the same way `test` does.
+    // Disable Kotest's per-run classpath autoscan (ClassGraph): it takes seconds per mutant and trips Pitest timeouts.
+    // The tests project has no ProjectConfig, so nothing is lost.
+    jvmArgs.set(
+        listOf(
+            "-Dkotest.tags=!Integration",
+            "-Dkotest.framework.classpath.scanning.autoscan.disable=true",
+            "-Dkotest.framework.classpath.scanning.config.disable=true",
+        ),
+    )
+    outputFormats.set(listOf("XML", "HTML"))
+    timestampedReports.set(false)
+    threads.set(2)
 }
