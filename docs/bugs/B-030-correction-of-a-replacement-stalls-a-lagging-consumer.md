@@ -1,6 +1,6 @@
 # B-030 Correcting a correction's replacement stalls a consumer that has not yet read the first reversal
 
-**Story:** L-09 (AC1, AC7, AC8) via L-12 consumer reversal path; follow-on to B-029 · **Severity:** major (reachable through `LedgerRepository.correct` twice; stalls every taxpayer on the consumer; no reconcile possible while stalled) · **Status:** Open · **Round:** 1
+**Story:** L-09 (AC1, AC7, AC8) via L-12 consumer reversal path; follow-on to B-029 · **Severity:** major (reachable through `LedgerRepository.correct` twice; stalls every taxpayer on the consumer; no reconcile possible while stalled) · **Status:** Fixed (pending CI) · **Round:** 1
 
 ## Reproduction
 
@@ -62,3 +62,14 @@ entry 11. The consumer only sees that state once it has applied event 10.
   date) and the consumer then stalls on the reversal event with the same `INSUFFICIENT_SHARES` rejection. That is the
   B-026 behaviour, nothing is clipped, and the brief allows it. Whether the ledger should check tax dates is an owner
   question. Attack 4(b) in `B029FixAttackSpec` accepts either outcome (refused, or stall with the pool unchanged).
+
+## Fix note (dev)
+
+`ReversalRecompute.effectiveHistory` takes a `reversalsUpTo` bound: the `NOT EXISTS (... ledger.reversal ...)` filter now
+only counts reversal rows with `reversal_entry_id <= bound`. `apply` passes the event's own reversal entry id (extended
+to the correction's replacement entry id via `ledger.correction`); `rebuild` defaults to `beforeEntryId - 1`, so
+`PoolConsumer.applyAndStore` (B-025) sees reversals up to the posted entry only. Event 8 now sees entry 9 (reversal 10 is
+later) and not entry 2; event 10 sees entries 2 and 9 excluded and 11 included.
+The final pool equals a full replay: the last event of a taxpayer/security rebuilds with a bound at or above every
+reversal that exists by then, and each rebuild is a full canonical-order replay of the history, so only the
+reversal-visibility rule differs mid-stream. Draft ADR 0007 extended with one sentence.
