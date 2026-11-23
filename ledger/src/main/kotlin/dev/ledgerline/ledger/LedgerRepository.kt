@@ -210,6 +210,14 @@ class LedgerRepository(
                     val reversal =
                         appendReversal(c, entrySequence, correctionKey, reason, ShareHoldings.Replacement(request))
                     val posted = insert(c, request)
+                    // B-029: record the pair so the consumer judges the correction as one unit.
+                    c.prepareStatement(
+                        "INSERT INTO ledger.correction (reversal_entry_id, replacement_entry_id) VALUES (?, ?)",
+                    ).use {
+                        it.setLong(1, reversal.sequence)
+                        it.setLong(2, posted.sequence)
+                        it.executeUpdate()
+                    }
                     // OWNER-INPUT: C25: the replacement is published like any posted activity.
                     OutboxWrites.activityPosted(c, posted, null, replacement, maxEventBytes)
                     CorrectionResult(reversal, posted)

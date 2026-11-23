@@ -1,6 +1,6 @@
 # B-029 A correction of a BUY that a later SELL depends on stalls the consumer for good
 
-**Story:** L-09 (AC7, AC8) via L-12 consumer reversal path · **Severity:** major (reachable through `LedgerRepository.correct`; stalls every taxpayer on the consumer) · **Status:** Open · **Round:** 1
+**Story:** L-09 (AC7, AC8) via L-12 consumer reversal path · **Severity:** major (reachable through `LedgerRepository.correct`; stalls every taxpayer on the consumer) · **Status:** Fixed (pending CI) · **Round:** 1
 
 ## Reproduction
 
@@ -75,3 +75,10 @@ event shape or consumer semantics change. A standalone reversal that introduces 
 
 - Not run locally: all of L09GapSpec (Integration, needs Docker). CI log: integ.log lines 5809 and 5885.
 - AC6 passes (refused correction writes nothing).
+
+## Fix note (dev)
+
+Chosen: a link row, no new event shape (draft ADR 0007). Migration `V9__correction_link.sql` adds append-only
+`ledger.correction`; `LedgerRepository.correct` inserts the (reversal, replacement) pair in its transaction;
+`ReversalRecompute.apply` rebuilds up to the replacement when a link exists, so the introduced-rejection check sees the
+state after the whole correction. Reversals without a link behave as in B-026. Not run: L09GapSpec (needs Docker; CI).
