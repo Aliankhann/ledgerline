@@ -73,3 +73,9 @@ OWNER-INPUT: placeholder names), `amountMinor = 0`, `entryIds` = the ledger entr
 - BA code facts for Dev: `Replay.kt:16,47` drops activities outside BUY/SELL/ROC before the engine, so `TRANSFER_IN`
   never reaches a pool or its history. `AcbEngine.kt:12-27` rejects an over-sell; `Replay.kt:59-62` records a
   `Rejection` that has only `idempotencyKey` (`AcbPool.kt:52-58`), no entry id, so map key to `PostedActivity.entryId`.
+- Dev (L-16): added `calc/.../DataGapWarnings.kt` (`detect(activities, replay)`: one reason per rule id per key, entry
+  ids ascending; TRANSFER_IN entries for `DATA-GAP-TRANSFER-NO-COST`, rejected sells mapped from
+  `Rejection.idempotencyKey` for `DATA-GAP-OVERSELL`; amount 0, pools untouched). `BookValueComparison.compareAll` has a
+  third parameter `warnings` (default empty) appended after each row's reasons, all row kinds. `acbVsBookFromActivities`
+  computes and passes the warnings; its signature and the `acbVsBookModule` overloads are unchanged. The ids were not
+  added to `CaIta2026v1.ruleIds` (no L-11 test needs it). Placeholders marked `OWNER-INPUT: L-16`.
