@@ -1,6 +1,6 @@
 # B-026 A reversal in a pool that holds any rejected sell stalls the consumer for good
 
-**Story:** L-12 (consumer, reversal path) after the B-025 fix · **Severity:** major · **Status:** Open · **Round:** 1
+**Story:** L-12 (consumer, reversal path) after the B-025 fix · **Severity:** major (reachable through the ledger, see Reachability) · **Status:** Open (calc fix in dbd3d9b; awaiting CI on the reworked integration tests) · **Round:** 2
 
 ## Reproduction
 
@@ -8,8 +8,10 @@
    ```
    ./gradlew --init-script <mirror.init.gradle.kts> :tests:specTest --tests 'dev.ledgerline.spec.B025FixAttackSpec' --offline
    ```
-   Not run: the Integration test in the same spec (`B-025 attack 1+2 (integration)`; needs Docker, CI has it). It
-   exercises the same path end to end and is expected to fail in CI for the same reason.
+   Not run locally: the Integration tests in the same spec (need Docker; CI has it). Round 1's integration test
+   (reverse a later BUY beside the rejected SELL) never reached the consumer: in CI run 45080884765 the ledger itself
+   refused the reversal (`ReversalRefusedException: NEGATIVE_SHARES: entry 3`, test setup). That was my scenario error,
+   not a calc defect; see Reachability for which reversals the ledger does accept.
 2. One taxpayer and security (TP-0001 / SYN-AAA), activities posted to the ledger in this order:
 
    | entry | key | type | date | quantity | note |
@@ -46,6 +48,32 @@ In the real consumer the exception rolls the transaction back, `pollOnce` re-see
 taxpayer on that consumer is stuck behind it (no pool changes, reconcile drift grows). Nothing in the log except the
 repeated WARNING.
 
+## Reachability through the ledger (round 2; from reading `ledger/` and `calc/`, not observed: no Docker locally)
+
+`LedgerRepository.reverse` runs `ShareHoldings.requireNonNegativeWithout` (C30). It walks the reversing account's own
+holdings of each `SEC:` unit in the reversed entry (and a correction's replacement), in canonical order, with the
+reversed entry and already-reversed pairs left out, and refuses with `NEGATIVE_SHARES` if the running total ever goes
+below 0. Posting a SELL is not checked. The calc pool counts only BUY, SELL and RETURN_OF_CAPITAL on NON_REGISTERED
+accounts (`Replay.POOL_TYPES`, `inPool()`), per taxpayer and security across accounts. So the two views of holdings differ,
+and the stall is reachable in production. Two concrete sequences, both for TP-0001 / SYN-AAA, account TP-0001-NR1:
+
+1. **ROC reversal.** BUY 10 (03-03), SELL 50 (03-04, over-sell: the ledger posts it, every calc replay rejects it),
+   RETURN_OF_CAPITAL 10000 cents (03-05), then `reverse(ROC)`. A ROC has only cash lines, so the ledger's walk has no
+   share unit to check and accepts the reversal, although the account's own holdings are already 10 - 50 = -40. The
+   consumer then reaches `ReversalRecompute.apply` for a pool holding a rejected SELL. (Before the dbd3d9b fix: throw, retry forever.)
+2. **TRANSFER_IN covers the ledger, not the pool** (the seed-42 shape). TRANSFER_IN 50 (03-02), BUY 10 (03-03), SELL 50
+   (03-04), BUY 5 (03-05), then `reverse(BUY 5)`. Ledger holdings without the reversed entry: 50, 60, 10, never below 0,
+   so it accepts. The pool ignores TRANSFER_IN, holds 10, and rejects the SELL both before and after the reversal.
+
+Not reachable: with an over-sell and no other source of shares in the account, reversing any BUY or SELL of that account
+and security is refused by the ledger (this is what CI run 45080884765 hit). A third route, not tested: shares bought in a
+registered account of the same taxpayer are not in the NON_REGISTERED pool, and the ledger's walk is per account, so it
+differs again.
+
+Severity stays major: a legitimate reversal (sequence 1 needs nothing unusual beyond one data-entry over-sell, which the
+generator and the ledger both allow) stops every later event on the consumer. If the owner treats over-sells as
+"never in production data", this drops to minor, with the calc fix kept as defence in depth; that is the owner's call.
+
 ## Root cause
 
 `calc/src/main/kotlin/dev/ledgerline/calc/ReversalRecompute.kt:19-23` (`apply`) throws if `replay.rejections` is not
@@ -75,3 +103,18 @@ Dev: `ReversalRecompute.apply` now also replays the history before the reversal 
 (same query, reversed entry not excluded) and throws only for rejections (key + code) that the post-reversal replay
 has and the pre-reversal replay does not. Rejections that already existed are carried as in a normal replay. B-024
 behaviour (a reversal that newly causes a rejection) is unchanged. Only `calc/.../ReversalRecompute.kt` changed.
+
+## Round 2 tests (QE)
+
+`B025FixAttackSpec` reworked: the Integration test that tried to reverse a BUY beside an over-sell (refused by the
+ledger) is replaced by two that follow the sequences above, each asserting zero drift against `Reconciler` over the
+remaining activities, the exact inbox count, and (sequence 2) that one more event after the reversal is applied:
+
+- `B-025 attack 1+2 (integration): TRANSFER_IN covers the ledger, not the pool; reverse a BUY; zero drift`
+- `B-025 attack 1+2 (integration): ROC has no share line; reverse it beside a rejected SELL; zero drift`
+- plus a scripted-JDBC test with a TRANSFER_IN in the history (passes at dbd3d9b; guards the calc side without Docker).
+
+Ran at dbd3d9b with the mirror init script and `--offline`: `:tests:ktlintCheck`, `:tests:compileTestKotlin`,
+`:tests:specTest` all BUILD SUCCESSFUL; the B-025 spec shows 7 PASSED and the 2 integration tests SKIPPED (no
+`-PincludeIntegration`). Not run: the two integration tests (Docker). Their ledger-side acceptance is derived from
+reading `ShareHoldings`, not observed.
