@@ -1,10 +1,10 @@
 # B-026 A reversal in a pool that holds any rejected sell stalls the consumer for good
 
-**Story:** L-12 (consumer, reversal path) after the B-025 fix · **Severity:** major (reachable through the ledger, see Reachability) · **Status:** Fixed (calc fix dbd3d9b; QE verified, CI run 45088600142) · **Round:** 2
+**Story:** L-12 (consumer, reversal path) after the B-025 fix · **Severity:** major (reachable through the ledger, see Reachability) · **Status:** Fixed (calc fix 52e863a; QE verified, CI run 45088600142) · **Round:** 2
 
 ## Reproduction
 
-1. Exact command(s) run (worktree at commit 24c78a0, branch `l-seed`; no Docker):
+1. Exact command(s) run (worktree at commit 1a4389c, branch `l-seed`; no Docker):
    ```
    ./gradlew --init-script <mirror.init.gradle.kts> :tests:specTest --tests 'dev.ledgerline.spec.B025FixAttackSpec' --offline
    ```
@@ -60,7 +60,7 @@ and the stall is reachable in production. Two concrete sequences, both for TP-00
 1. **ROC reversal.** BUY 10 (03-03), SELL 50 (03-04, over-sell: the ledger posts it, every calc replay rejects it),
    RETURN_OF_CAPITAL 10000 cents (03-05), then `reverse(ROC)`. A ROC has only cash lines, so the ledger's walk has no
    share unit to check and accepts the reversal, although the account's own holdings are already 10 - 50 = -40. The
-   consumer then reaches `ReversalRecompute.apply` for a pool holding a rejected SELL. (Before the dbd3d9b fix: throw, retry forever.)
+   consumer then reaches `ReversalRecompute.apply` for a pool holding a rejected SELL. (Before the 52e863a fix: throw, retry forever.)
 2. **TRANSFER_IN covers the ledger, not the pool** (the seed-42 shape). TRANSFER_IN 50 (03-02), BUY 10 (03-03), SELL 50
    (03-04), BUY 5 (03-05), then `reverse(BUY 5)`. Ledger holdings without the reversed entry: 50, 60, 10, never below 0,
    so it accepts. The pool ignores TRANSFER_IN, holds 10, and rejects the SELL both before and after the reversal.
@@ -112,9 +112,9 @@ remaining activities, the exact inbox count, and (sequence 2) that one more even
 
 - `B-025 attack 1+2 (integration): TRANSFER_IN covers the ledger, not the pool; reverse a BUY; zero drift`
 - `B-025 attack 1+2 (integration): ROC has no share line; reverse it beside a rejected SELL; zero drift`
-- plus a scripted-JDBC test with a TRANSFER_IN in the history (passes at dbd3d9b; guards the calc side without Docker).
+- plus a scripted-JDBC test with a TRANSFER_IN in the history (passes at 52e863a; guards the calc side without Docker).
 
-Ran at dbd3d9b with the mirror init script and `--offline`: `:tests:ktlintCheck`, `:tests:compileTestKotlin`,
+Ran at 52e863a with the mirror init script and `--offline`: `:tests:ktlintCheck`, `:tests:compileTestKotlin`,
 `:tests:specTest` all BUILD SUCCESSFUL; the B-025 spec shows 7 PASSED and the 2 integration tests SKIPPED (no
 `-PincludeIntegration`). Not run: the two integration tests (Docker). Their ledger-side acceptance is derived from
 reading `ShareHoldings`, not observed.

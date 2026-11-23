@@ -23,7 +23,7 @@ AC7: a taxpayer's events appear in strictly increasing ledger sequence order. Th
 
 ## Actual
 
-Not observed yet: derived from reading `OutboxRelay.drainOnce` at 68c7b78; the test is expected to fail in CI and
+Not observed yet: derived from reading `OutboxRelay.drainOnce` at 31db15a; the test is expected to fail in CI and
 this section will be replaced with the CI output. All sends of a batch are pipelined before any ack is awaited, so
 events 5, 7 and 9 are written to the partition while event 3 has failed. The relay then holds 5, 7 and 9 back (not
 recorded) and the next drain sends 3, 5, 7, 9 again. Expected `TP-0001` partition order: `1, 5, 7, 9, 3, 5, 7, 9`,

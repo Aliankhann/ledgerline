@@ -22,7 +22,7 @@ no event should be sent more than once.
 
 ## Actual
 
-Not observed yet: derived from reading the code at 68c7b78 (kafka-clients 3.9.0); the test is expected to fail in CI
+Not observed yet: derived from reading the code at 31db15a (kafka-clients 3.9.0); the test is expected to fail in CI
 and this section will be replaced with the CI output. The POST answers 201. The message value is about 1.5 MB, over the
 producer's default `max.request.size` of 1 MiB (and Redpanda's default batch limit), so `KafkaProducer.send` returns a
 future failed with `RecordTooLargeException` (it does not throw). `drainOnce` counts it as failed and holds back every

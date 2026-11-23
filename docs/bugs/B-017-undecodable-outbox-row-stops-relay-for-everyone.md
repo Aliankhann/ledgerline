@@ -21,7 +21,7 @@ recorded once, and TP-0002's event 3 is published.
 
 ## Actual
 
-Not observed yet: derived from reading `OutboxRelay.send` at 68c7b78; the test is expected to fail in CI and this
+Not observed yet: derived from reading `OutboxRelay.send` at 31db15a; the test is expected to fail in CI and this
 section will be replaced with the CI output. `OutboxPayloads.messageValue` is called outside the `try` that guards
 `producer.send`, so the JSON decoding exception escapes `drainOnce` after event 1 has been handed to the producer and
 before any ack is recorded. The loop logs, waits 1 s and repeats: event 1 is re-sent about once a second without bound

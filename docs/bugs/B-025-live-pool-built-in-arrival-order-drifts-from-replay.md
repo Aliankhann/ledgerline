@@ -4,7 +4,7 @@
 
 ## Reproduction
 
-1. Exact command(s) run (worktree at commit 0834d48, branch `l-seed`; no Docker):
+1. Exact command(s) run (worktree at commit 7d93aa5, branch `l-seed`; no Docker):
    ```
    ./gradlew --init-script <mirror.init.gradle.kts> :tests:ktlintCheck --offline
    ./gradlew --init-script <mirror.init.gradle.kts> :tests:specTest --tests 'dev.ledgerline.spec.B025ConsumerArrivalOrderSpec' --offline
@@ -99,7 +99,7 @@ tax rule set is needed: replay is the reference.
 - Regression test file: `tests/spec/kotlin/dev/ledgerline/spec/B025ConsumerArrivalOrderSpec.kt` (4 pure tests, one
   of which passes by design as a check that the reference orders by tax date; 1 Integration test).
 
-## Verification (QE, phase B, fix commit 24c78a0)
+## Verification (QE, phase B, fix commit 1a4389c)
 
 CI run 45078057691 is green including the Docker tests (reported by the owner's agent; not re-read by QE). Locally, no
 Docker: `B025ConsumerArrivalOrderSpec` pure tests and the new attack tests in `B025FixAttackSpec` (rejected sell leaves
