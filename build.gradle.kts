@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.ktor) apply false
     alias(libs.plugins.ktlint) apply false
+    alias(libs.plugins.pitest) apply false
 }
 
 subprojects {

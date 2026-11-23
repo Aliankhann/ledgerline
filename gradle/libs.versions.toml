@@ -11,6 +11,9 @@ logback = "1.5.12"
 slf4j = "2.0.16"
 kotlinx-serialization = "1.7.3"
 
+pitest-plugin = "1.15.0"
+pitest-junit5 = "1.2.1"
+
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
 ktor-server-netty = { module = "io.ktor:ktor-server-netty", version.ref = "ktor" }
@@ -42,3 +45,4 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version = "12.1.2" }
+pitest = { id = "info.solidsoft.pitest", version.ref = "pitest-plugin" }
