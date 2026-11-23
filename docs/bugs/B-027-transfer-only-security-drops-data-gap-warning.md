@@ -1,6 +1,6 @@
 # B-027 TRANSFER_IN-only security loses its DATA-GAP-TRANSFER-NO-COST warning
 
-**Story:** L-16 · **Severity:** major · **Status:** Fixed (pending CI) · **Round:** 1
+**Story:** L-16 · **Severity:** major · **Status:** Fixed (QE verified, CI run 45117734937) · **Round:** 1
 
 ## Reproduction
 
