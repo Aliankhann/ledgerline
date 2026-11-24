@@ -1,6 +1,6 @@
 # B-038 Preview throws (500) on a row whose account_id starts with `SYS:`; confirm and import post part of the file, then 500
 
-**Story:** L-20 (AC3 "rejected rows carry line and reason", AC6 confirm, AC5 preview) · **Severity:** major · **Status:** Open · **Round:** 1
+**Story:** L-20 (AC3 "rejected rows carry line and reason", AC6 confirm, AC5 preview) · **Severity:** major · **Status:** Fixed (QE verified, round 2, CI 790ac99 green) · **Round:** 1
 
 ## Reproduction
 

@@ -1,6 +1,6 @@
 # B-039 Preview throws ArithmeticException (500) for a valid row whose amount the ACB engine cannot scale
 
-**Story:** L-20 (AC4 warnings, AC1/AC2 preview of a file the import accepts) · **Severity:** minor · **Status:** Open · **Round:** 1
+**Story:** L-20 (AC4 warnings, AC1/AC2 preview of a file the import accepts) · **Severity:** minor · **Status:** Fixed (QE verified, round 2, CI 790ac99 green) · **Round:** 1
 
 ## Reproduction
 
