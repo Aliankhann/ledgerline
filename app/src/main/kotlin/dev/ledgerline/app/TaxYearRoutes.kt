@@ -4,6 +4,7 @@ import dev.ledgerline.calc.PostedActivity
 import dev.ledgerline.calc.TaxYear
 import dev.ledgerline.calc.TaxYearReport
 import dev.ledgerline.calc.TaxYearRow
+import dev.ledgerline.core.Currency
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
@@ -147,7 +148,7 @@ private fun csvOf(r: TaxYear): String {
             csvLine(
                 it.taxDate.toString(), safe(it.securityId), it.sharesUnits.toString(), it.proceedsCents.toString(),
                 it.acbSoldCents.toString(), it.outlaysCents.toString(), it.gainCents.toString(),
-                it.superficialLossDeniedCents.toString(), safe(it.notes.joinToString("; ")),
+                it.superficialLossDeniedCents.toString(), safe(csvNotes(it)),
             )
     }
     val t = r.totals
@@ -161,6 +162,19 @@ private fun csvOf(r: TaxYear): String {
 
 /** A cell a spreadsheet could run as a formula gets a leading apostrophe. */
 private fun safe(cell: String): String = if (cell.firstOrNull() in setOf('=', '+', '-', '@')) "'$cell" else cell
+
+// OWNER-INPUT: L-18 B-036 wording; a non-CAD row is marked in the notes cell because FX is not converted yet.
+private fun csvNotes(row: TaxYearRow): String {
+    val fx =
+        if (row.currency != Currency.CAD) {
+            listOf(
+                "NOT-CONVERTED ${row.currency}; excluded from totals",
+            )
+        } else {
+            emptyList()
+        }
+    return (fx + row.notes).joinToString("; ")
+}
 
 private fun csvLine(vararg cells: String): String = cells.joinToString(",") { quote(it) }
 
