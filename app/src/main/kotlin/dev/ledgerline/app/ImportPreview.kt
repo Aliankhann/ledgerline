@@ -110,7 +110,7 @@ object ImportPreview {
                     else -> conflictRow(activity, line)
                 }
         }
-        val warnings = if (parsed.fileErrors.isEmpty()) warningsCaused(existing, fresh) else emptyList()
+        val warnings = if (parsed.fileErrors.isEmpty()) guardedWarnings(existing, fresh) else emptyList()
         return PreviewReport.of(rows.sortedBy { it.line }, warnings, parsed.fileErrors, fileSha256)
     }
 
@@ -157,13 +157,53 @@ object ImportPreview {
     internal fun rejectedRow(r: Rejection) =
         PreviewRow(r.line, null, null, null, PreviewStatus.REJECTED, r.code, r.field, r.message)
 
-    /** OWNER-INPUT: L-20 refused rows classify as importCsv treats them. The refusal before the key is read (zero amount, C15), or null. */
+    const val ACCOUNT_ID_RESERVED = "ACCOUNT_ID_RESERVED"
+    const val ACCOUNT_ID_BLANK = "ACCOUNT_ID_BLANK"
+    const val AMOUNT_OUT_OF_RANGE = "AMOUNT_OUT_OF_RANGE"
+
+    /**
+     * B-038: the account id checks [Posting.linesFor] enforces with `require`, made up front so a bad id is a refused
+     * row (never an exception) in preview, confirm and `POST /v1/imports` alike. Null when the id is acceptable.
+     */
+    internal fun accountRefusal(a: Activity): SubmitResult.Invalid? =
+        when {
+            a.accountId.isBlank() -> SubmitResult.Invalid(ACCOUNT_ID_BLANK, "account_id")
+            a.accountId.startsWith(
+                Posting.SYSTEM_ACCOUNT_PREFIX,
+            ) -> SubmitResult.Invalid(ACCOUNT_ID_RESERVED, "account_id")
+            else -> null
+        }
+
+    /** OWNER-INPUT: L-20 refused rows classify as importCsv treats them. The refusal before the key is read (account id, zero amount C15), or null. */
     private fun refusal(a: Activity): SubmitResult.Invalid? =
-        try {
+        accountRefusal(a) ?: try {
             Posting.linesFor(a)
             null
         } catch (e: ZeroAmountException) {
             SubmitResult.Invalid(e.code, "amount")
+        }
+
+    /**
+     * B-039: an amount too large for the ACB engine's integer range makes the in-memory replay throw
+     * [ArithmeticException] (the engine failing loudly is right, B-007). Rows are still classified; the preview adds one
+     * warning, [AMOUNT_OUT_OF_RANGE], naming the cause and every NEW line, so no data-gap check is claimed for the file.
+     */
+    private fun guardedWarnings(
+        existing: List<PostedActivity>,
+        fresh: List<PostedActivity>,
+    ): List<PreviewWarning> =
+        try {
+            warningsCaused(existing, fresh)
+        } catch (e: ArithmeticException) {
+            listOf(
+                PreviewWarning(
+                    AMOUNT_OUT_OF_RANGE,
+                    "",
+                    "An amount is too large to calculate (${e.message}); data-gap warnings could not be checked.",
+                    fresh.map { (-it.entryId).toInt() }.sorted(),
+                    0L,
+                ),
+            )
         }
 
     /**

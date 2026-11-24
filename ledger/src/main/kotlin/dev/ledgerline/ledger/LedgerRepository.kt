@@ -57,6 +57,13 @@ class LedgerRepository(
     fun submit(
         activity: Activity,
         recordedAt: Instant,
+    ): SubmitOutcome = dataSource.connection.use { c -> submitOn(c, activity, recordedAt) }
+
+    /** [submit] on the caller's connection, one transaction per call (and one retry on a unique violation). */
+    private fun submitOn(
+        c: Connection,
+        activity: Activity,
+        recordedAt: Instant,
     ): SubmitOutcome {
         val request =
             EntryRequest(
@@ -68,10 +75,7 @@ class LedgerRepository(
         Posting.requireBalanced(request.lines)
         val hash = PayloadHash.of(activity)
 
-        fun attempt() =
-            dataSource.connection.use { c ->
-                inTransaction(c) { submitOnce(c, activity, request, hash, recordedAt) }
-            }
+        fun attempt() = inTransaction(c) { submitOnce(c, activity, request, hash, recordedAt) }
         return try {
             attempt()
         } catch (e: SQLException) {
@@ -109,18 +113,28 @@ class LedgerRepository(
         }
 
     /**
-     * Runs [block] while holding a transaction-scoped advisory lock that every [withImportLock] caller shares (L-20),
-     * so two imports of a file never interleave. It is a different lock from the append lock that [submit] takes, and
-     * the lock connection writes nothing. Released on commit, rollback or a dropped connection.
+     * Runs [block] while holding a session-level advisory lock that every [withImportLock] caller shares (L-20), so two
+     * imports of a file never interleave. It is a different lock from the append lock that [submit] takes. The lock
+     * holder never needs a second connection: [block] submits rows through the [Submitter] it is given, which runs on
+     * the lock's own connection, one transaction (and one append-lock acquisition) per row, exactly as [submit] does.
+     * Lock order is import lock, then append lock, everywhere. The lock is released in `finally`, and by the database if
+     * the connection drops.
      */
-    fun <T> withImportLock(block: () -> T): T =
+    fun <T> withImportLock(block: (Submitter) -> T): T =
         dataSource.connection.use { c ->
-            inTransaction(c) {
-                c.prepareStatement("SELECT pg_advisory_xact_lock(?)").use {
+            c.autoCommit = true
+            c.prepareStatement("SELECT pg_advisory_lock(?)").use {
+                it.setLong(1, IMPORT_LOCK)
+                it.execute()
+            }
+            try {
+                block(Submitter { activity, at -> submitOn(c, activity, at) })
+            } finally {
+                c.autoCommit = true
+                c.prepareStatement("SELECT pg_advisory_unlock(?)").use {
                     it.setLong(1, IMPORT_LOCK)
                     it.execute()
                 }
-                block()
             }
         }
 

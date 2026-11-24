@@ -8,6 +8,7 @@ import dev.ledgerline.ingest.ParseResult
 import dev.ledgerline.ingest.Rejection
 import dev.ledgerline.ledger.LedgerRepository
 import dev.ledgerline.ledger.SubmitOutcome
+import dev.ledgerline.ledger.Submitter
 import dev.ledgerline.ledger.ZeroAmountException
 import dev.ledgerline.ledger.outbox.EventTooLargeException
 import java.time.Clock
@@ -46,9 +47,16 @@ class IngestionService(
     private val ledger: LedgerRepository,
     private val clock: Clock = Clock.systemUTC(),
 ) {
-    fun submit(activity: Activity): SubmitResult =
-        try {
-            when (val outcome = ledger.submit(activity, clock.instant())) {
+    fun submit(activity: Activity): SubmitResult = submitWith(activity) { a, at -> ledger.submit(a, at) }
+
+    /** B-038: account ids the ledger refuses are checked first, so they are an [SubmitResult.Invalid], not an exception. */
+    private fun submitWith(
+        activity: Activity,
+        submitter: Submitter,
+    ): SubmitResult {
+        ImportPreview.accountRefusal(activity)?.let { return it }
+        return try {
+            when (val outcome = submitter.submit(activity, clock.instant())) {
                 is SubmitOutcome.Posted -> SubmitResult.Accepted(outcome.activityId, outcome.entryId, false)
                 is SubmitOutcome.Duplicate -> SubmitResult.Accepted(outcome.activityId, outcome.entryId, true)
                 SubmitOutcome.Mismatch -> SubmitResult.KeyMismatch(activity.idempotencyKey)
@@ -59,6 +67,7 @@ class IngestionService(
             // OWNER-INPUT: C27: the published event would be too large for the broker; no single field is to blame.
             SubmitResult.Invalid(e.code, null)
         }
+    }
 
     /**
      * Parses [text] and submits each good row in file order. OWNER-INPUT: C23 partial import: good rows post, bad rows
@@ -68,7 +77,7 @@ class IngestionService(
      */
     fun importCsv(text: String): ImportReport {
         val parsed = CanonicalCsv.parse(text)
-        val rows = submitRows(parsed)
+        val rows = submitRows(parsed, ::submit)
         return ImportReport(
             rows.count { it.status == PreviewStatus.NEW },
             rows.count { it.status == PreviewStatus.DUPLICATE },
@@ -85,7 +94,7 @@ class IngestionService(
      */
     fun confirm(text: String): PreviewReport {
         val parsed = CanonicalCsv.parse(text)
-        val rows = ledger.withImportLock { submitRows(parsed) }
+        val rows = ledger.withImportLock { submitter -> submitRows(parsed) { submitWith(it, submitter) } }
         return PreviewReport.of(rows, emptyList(), parsed.fileErrors, ImportPreview.sha256(text))
     }
 
@@ -109,10 +118,13 @@ class IngestionService(
     }
 
     /** One result row per file row (good rows submitted in file order, parse rejections as they are), by line. */
-    private fun submitRows(parsed: ParseResult): List<PreviewRow> {
+    private fun submitRows(
+        parsed: ParseResult,
+        submitOne: (Activity) -> SubmitResult,
+    ): List<PreviewRow> {
         val rows = parsed.rejections.map { ImportPreview.rejectedRow(it) }.toMutableList()
         parsed.activities.zip(parsed.activityLines).forEach { (activity, line) ->
-            val result = submit(activity.copy(sourceSeq = line.toLong()))
+            val result = submitOne(activity.copy(sourceSeq = line.toLong()))
             rows +=
                 when (result) {
                     is SubmitResult.Accepted -> {

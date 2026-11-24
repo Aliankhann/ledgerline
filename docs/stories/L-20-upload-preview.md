@@ -185,3 +185,24 @@ those stories. Row status is one of `NEW`, `DUPLICATE`, `CONFLICT`, `REJECTED`. 
 - **Ran** (in the worktree): `./gradlew build --offline`: 579 tests, 1 failed (the test issue above), 190 skipped
   (Integration). L20: `L20UploadPreviewSpec` 15 run, 14 pass, 1 fail; `L20UiGuardSpec` 8 pass; `L20PreviewHttpSpec` 8 and
   `L20ConfirmSpec` 11 skipped (Integration, not run here). `cd ui && npm ci && npm run typecheck && npm run build` clean.
+
+### Round 2 (B-038, B-039, pool exhaustion)
+
+- **B-038.** `ImportPreview.accountRefusal` checks the account id up front (blank: `ACCOUNT_ID_BLANK`; `SYS:` prefix:
+  `ACCOUNT_ID_RESERVED`; field `account_id`). Preview uses it, and `IngestionService.submit` (the funnel behind confirm,
+  `POST /v1/imports` and `POST /v1/activities`) calls it before touching the ledger, so all three report the row as
+  REJECTED / `SubmitResult.Invalid` and the rest of the file is processed; no broad exception is caught. Side effect:
+  `POST /v1/activities` with a `SYS:` account now answers the usual invalid-activity response instead of a 500.
+- **B-039.** `ImportPreview.guardedWarnings` catches `ArithmeticException` around the in-memory replay only. Rows keep
+  their classification; the report carries one warning, `ruleId` `AMOUNT_OUT_OF_RANGE`, naming the engine's message, with
+  every NEW line and `amountMinor` 0. Same wording idea as B-037's 422 on the tax-year routes, but a warning, because the
+  import itself is valid (the ledger stores the row).
+- **Pool exhaustion.** `LedgerRepository.withImportLock` now takes a session-level advisory lock (`pg_advisory_lock`)
+  on one connection and hands the block a `Submitter` that runs `submit` on that same connection (one transaction per
+  row, as before, so per-row partial-import semantics are unchanged). The lock holder never asks the pool for a second
+  connection. Lock order is import lock then append lock; the import lock is released in `finally` (and by Postgres if
+  the connection drops). New file `ledger/Submitter.kt`. Provisional decision change: the lock is session-level, not
+  transaction-scoped (decision 3 above), because a transaction-scoped lock cannot span per-row commits; owner to confirm.
+  No migration, no `UPDATE`/`DELETE`.
+- **Ran.** `./gradlew --init-script ../mirror.init.gradle.kts build --offline`: BUILD SUCCESSFUL (ktlint clean). Not run:
+  Integration tests (no Docker/Postgres here).
