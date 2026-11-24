@@ -4,7 +4,7 @@ Running log for the story loop. Every agent updates this at the end of its turn.
 
 ## Current step
 
-**Everything that doesn't need the owner is done (2026-11-23).** All stories L-01 to L-14 and L-16 are on `main`, built
+**Everything that doesn't need the owner is done (2026-11-23).** All stories L-01 to L-14, L-16 and L-17 are on `main`, built
 provisionally and waiting for owner approval; L-15 waits on branch `l-15` for tax-rule decisions. CI on `main` is green
 (last full run on the same code: 45248906888).
 
@@ -13,7 +13,10 @@ provisionally and waiting for owner approval; L-15 waits on branch `l-15` for ta
 1. **Read** `README.md`, then `docs/owner-inputs.md` (every OWNER-INPUT placeholder, with its proposed default).
 2. **Tax rules** (blocking): C6/C7 rule acceptance; L-15 differences vs tsiemens/acb (rounding order, SL-MULTI,
    SL-ADDBACK-TIMING); CRA mutual-fund 13-cent rounding; C33 transfers in and registered-account shares.
-3. **Approve or reject stories** L-01 to L-16 (each has "Needs owner decision"); L-15 and L-16 are beyond the 14-story cap.
+3. **Approve or reject stories** L-01 to L-17 (each has "Needs owner decision"); L-15 to L-18 are beyond the 14-story cap.
+   L-17 (explain a holding) has four provisional readings to confirm: B-031 step order of the SL add-back, B-032 SL
+   targets outside the holding, B-033 book value with no trades, B-034 a reason citing no trade is never "fully explained".
+   L-18 (your tax year) is a Draft with an owner-decisions list (half-inclusion rounding, settlement-date year boundary).
 4. **Rewrite ADRs 0001 to 0007** in your own words (0007 is the correction-as-one-unit design from B-029/B-030).
 5. **Thresholds**: mutation score C9 (first report 42%; ledger code is mostly Docker-only), file length, performance
    tolerance C10, benchmark hardware B3 (L-13 bench targets wait on these).
@@ -42,6 +45,8 @@ provisionally and waiting for owner approval; L-15 waits on branch `l-15` for ta
 | L-14 | Second domain plugin | QE passed (pure), awaiting owner | 1 | main | CI green (run 44701421807); cash-balance plugin in plugins/; C30 overdraft; PluginReplay location (calc vs core) owner call; AC1/6/7 untested |
 | L-15 | Differential ACB check against tsiemens/acb | Tests written + exporter built; CI run 45060148937: 371 tests, only the 3 L15Diff tests red (tax-rule differences, owner) | 1 | l-15 | Extra story beyond the 14-story cap (owner approval); oracle pinned to acb ee4afc7 (0.26.06); SL-PARTIAL agrees; see Open questions |
 | L-16 | Missing-data warnings on the ACB-vs-book list | QE passed, awaiting owner (provisional) | 2 | main | CI green (run 45117734937); B-027, B-028 fixed; Extra story beyond the 14-story cap (owner approval); sub-rule IDs and shape are OWNER-INPUT; depends on C33 only for out-of-scope cost |
+| L-17 | Explain a holding (timeline, reasons, strict footer) | QE passed, awaiting owner | 2 | main | 45 tests; B-031..B-035 fixed (B-031..B-034 provisional readings); CI green on l-17 2b54fd2 |
+| L-18 | Your tax year (per-sale Schedule 3 rows, totals, CSV) | Draft, awaiting owner approval | 0 | — | Owner decisions listed in the story |
 | L-17 | Explain a holding (explainable reconciliation) | Draft, provisional | 0 | l-17 | Flagship; extra story beyond the 14-story cap (owner approval); OWNER-INPUT: portfolio card, add-back target id, badge labels; FX reason not producible today (out of scope) |
 
 ## Owner instruction (2026-11-19)
