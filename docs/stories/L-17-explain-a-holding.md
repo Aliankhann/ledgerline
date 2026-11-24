@@ -129,3 +129,14 @@ Tax numbers come only from existing fixtures in `tests/fixtures/cra/`; this stor
 - Blocked: `L17ExplainSpec.kt` does not compile (missing `jsonPrimitive` import, `Int` vs `Long` `shouldBeGreaterThan`);
   see `docs/status.md` Open questions. On a scratch copy with those two imports added, L17+L11+L16 spec tests: 86 run, 0
   failed; `./gradlew build`: successful, 574 tests, 0 failures. UI `npm run typecheck` and `npm run build` pass.
+- Round 2 (QE attack tests, bugs B-031..B-035; bug files untouched, QE verifies):
+  - B-031: steps are now sorted (stable) by tax date, ties keep history order, and running totals/cost deltas are recomputed
+    in that order, so the add-back carries the target's date and may precede the sale. Deltas still sum to ACB.
+    Provisional, owner to confirm (AC5 order wins over "history order").
+  - B-032: `superficialLoss.targetEntryIds` lists only substituted purchases that are timeline steps; a TFSA/registered
+    repurchase still denies the loss but is not cited. Provisional, owner to confirm.
+  - B-033: explain returns 200 with no steps and status DATA_GAP for a security with a book value but no ledger history
+    (still 404 when it has neither). Provisional, owner to confirm (AC4 vs AC2).
+  - B-034: `fullyExplained` is false when any non-zero reason cites no entry (NO-LEDGER-HISTORY, DATA_GAP), so no
+    "fully explained" footer for untraceable differences. Provisional, owner to confirm.
+  - B-035: a malformed book value file gives 400 "Bad book value file: ..." instead of an exception.

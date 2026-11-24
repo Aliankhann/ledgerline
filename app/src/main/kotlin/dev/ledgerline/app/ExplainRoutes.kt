@@ -29,7 +29,12 @@ fun Application.explainFromActivities(
             val taxpayer = call.parameters["taxpayer"].orEmpty()
             val security = call.parameters["security"].orEmpty()
             val key = PoolKey(taxpayer, security)
-            val book = BookValueCsv.parse(taxpayer, bookValueCsv)[key]
+            val book =
+                runCatching { BookValueCsv.parse(taxpayer, bookValueCsv)[key] }
+                    .getOrElse {
+                        val msg = "Bad book value file: ${it.message}"
+                        return@get call.respondText(msg, ContentType.Text.Plain, HttpStatusCode.BadRequest)
+                    }
             val explanation = HoldingExplanation.explain(activities(taxpayer), book, key)
             if (explanation == null) {
                 call.respondText(

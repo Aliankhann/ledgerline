@@ -83,7 +83,7 @@ object HoldingExplanation {
         val replay = engine.replaySuperficial(activities)
         val pool = replay.pools[key]
         val warnings = DataGapWarnings.detect(activities, engine.replay(activities))[key].orEmpty()
-        if (pool == null && warnings.isEmpty()) return null
+        if (pool == null && warnings.isEmpty() && bookValueCents == null) return null
         val row =
             BookValueComparison.compareAll(
                 listOfNotNull(pool).associateBy { it.key },
@@ -95,7 +95,7 @@ object HoldingExplanation {
         val footer = diff?.let { ExplanationFooter.of(it, row.reasons) }
         val status =
             when {
-                warnings.isNotEmpty() && steps.isEmpty() -> ExplainStatus.DATA_GAP
+                (warnings.isNotEmpty() || pool == null) && steps.isEmpty() -> ExplainStatus.DATA_GAP
                 footer == null -> ExplainStatus.NO_BOOK_VALUE
                 else -> footer.status
             }
@@ -107,7 +107,8 @@ object HoldingExplanation {
             steps,
             row.reasons,
             status,
-            footer?.fullyExplained ?: false,
+            // A difference only "explained" by reasons that cite no entry (cannot be traced) is not fully explained.
+            (footer?.fullyExplained ?: false) && row.reasons.none { it.amountMinor != 0L && it.entryIds.isEmpty() },
             footer?.adjustmentCount ?: 0,
             footer?.unexplainedCents ?: 0L,
         )
@@ -122,7 +123,9 @@ object HoldingExplanation {
         var shares = 0L
         var acb = 0L
         var previousCents = 0L
-        return pool.history.map { change ->
+        val stepEntryIds = pool.history.map { it.entryId }.toSet()
+        // Tax-date order (AC5); sortedBy is stable, so ties keep history (sequence) order. Running totals follow it.
+        return pool.history.sortedBy { it.taxDate }.map { change ->
             shares = Math.addExact(shares, change.sharesDelta)
             acb = Math.addExact(acb, change.acbDelta)
             val runningCents = rules.toReportedCents(acb)
@@ -140,7 +143,7 @@ object HoldingExplanation {
                     Math.subtractExact(runningCents, previousCents),
                     shares,
                     runningCents,
-                    addBack?.let { superficial(it, byActivity, replay) },
+                    addBack?.let { superficial(it, byActivity, replay, stepEntryIds) },
                 )
             previousCents = runningCents
             step
@@ -151,11 +154,12 @@ object HoldingExplanation {
         change: PoolChange,
         byActivity: Map<String, PostedActivity>,
         replay: SlReplay,
+        stepEntryIds: Set<Long>,
     ): SuperficialLossStep? {
         val sale = replay.sales.firstOrNull { it.activityId == change.activityId } ?: return null
         return SuperficialLossStep(
             change.entryId,
-            sale.triggers.map { byActivity.getValue(it.activityId).entryId },
+            sale.triggers.map { byActivity.getValue(it.activityId).entryId }.filter { it in stepEntryIds },
             rules.toReportedCents(-sale.gainBeforeRule),
             rules.toReportedCents(sale.denied),
             rules.toReportedCents(change.acbDelta),
