@@ -1,5 +1,6 @@
 package dev.ledgerline.calc
 
+import dev.ledgerline.core.Currency
 import java.time.LocalDate
 
 /** One sale in the tax year view. Money is whole cents (CAD); [sharesUnits] is 10^-6 share. */
@@ -19,6 +20,8 @@ data class TaxYearRow(
     val ruleIds: List<String>,
     val entryIds: List<Long>,
     val substituteEntryIds: List<Long>,
+    /** Currency of the money fields. Anything but CAD is NOT converted (see `FX-NOT-CONVERTED`). */
+    val currency: Currency = Currency.CAD,
 )
 
 data class TaxYearTotals(
@@ -59,17 +62,30 @@ object TaxYearReport {
     ): TaxYear {
         val mine = activities.filter { it.activity.taxpayerId == taxpayerId }
         val rows = allRows(mine).filter { it.taxDate.year == year }
-        val gains = rows.filter { it.gainCents > 0 }.sumOf { it.gainCents }
-        val losses = rows.filter { it.gainCents < 0 }.sumOf { it.gainCents }
+        val unconverted = rows.filter { it.currency != Currency.CAD }
+        val counted = rows - unconverted.toSet()
+        val gains = counted.filter { it.gainCents > 0 }.sumOf { it.gainCents }
+        val losses = counted.filter { it.gainCents < 0 }.sumOf { it.gainCents }
         val net = gains + losses
         val totals =
-            TaxYearTotals(gains, losses, net, taxableCents(net), rows.sumOf { it.superficialLossDeniedCents })
-        val warnings =
+            TaxYearTotals(gains, losses, net, taxableCents(net), counted.sumOf { it.superficialLossDeniedCents })
+        val gapWarnings =
             DataGapWarnings.detect(mine, engine.replay(mine)).entries
                 .sortedWith(compareBy({ it.key.taxpayerId }, { it.key.securityId }))
                 .flatMap { (_, reasons) -> reasons.sortedBy { it.ruleId } }
+        val warnings = gapWarnings + unconverted.map(::fxWarning)
         return TaxYear(taxpayerId, year, rows, totals, warnings)
     }
+
+    // OWNER-INPUT: L-18 provisional id and wording; FX conversion is not wired into AcbEngine (pre-existing).
+    private fun fxWarning(r: TaxYearRow): Reason =
+        Reason(
+            "FX-NOT-CONVERTED",
+            "Sale of ${r.securityId} is in ${r.currency}; amounts need FX conversion to CAD, so it is listed " +
+                "but left out of the totals.",
+            r.entryIds,
+            0L,
+        )
 
     /** Years with at least one row for [taxpayerId], newest first. */
     fun yearsWithRows(
@@ -135,6 +151,7 @@ object TaxYearReport {
             ruleIds = sale.ruleIds.sorted(),
             entryIds = listOf(posted.entryId),
             substituteEntryIds = substitutes,
+            currency = a.currency,
         )
     }
 }

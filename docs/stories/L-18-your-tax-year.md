@@ -188,3 +188,8 @@ Shown in the UI as "Not included":
 - Ran: `./gradlew --init-script ../mirror.init.gradle.kts build --offline` BUILD SUCCESSFUL;
   `cd ui && npm ci && npm run typecheck && npm run build` clean. Specs: L18YourYearSpec 20/20, L18UiGuardSpec 5/5
   (0 skipped, 0 failures).
+- Round 2 (B-036, B-037): `TaxYearRow.currency` (new, JSON `currency`). A non-CAD sale keeps its row, labelled with its
+  own currency, but is left out of every total and gets an `FX-NOT-CONVERTED` warning with its entry id
+  (OWNER-INPUT: provisional id and wording). Open question: FX conversion is not wired into AcbEngine (pre-existing);
+  owner to decide. Provisional. Overflow: the three routes catch `ArithmeticException` only (app layer, not calc) and
+  answer 422 JSON `{"error":"AMOUNT_OUT_OF_RANGE","message":...}` instead of throwing.

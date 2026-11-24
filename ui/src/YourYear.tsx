@@ -5,6 +5,7 @@ type Row = {
   activityId: string;
   taxDate: string;
   securityId: string;
+  currency?: string;
   sharesUnits: number;
   proceedsCents: number;
   outlaysCents: number;
@@ -129,7 +130,10 @@ export function YourYear() {
                 {view.rows.map((r) => (
                   <tr key={r.activityId}>
                     <td>{r.taxDate}</td>
-                    <td>{r.securityId}</td>
+                    <td>
+                      {r.securityId}
+                      {r.currency && r.currency !== "CAD" ? ` (${r.currency}, not converted; not in totals)` : ""}
+                    </td>
                     <td style={{ textAlign: "right" }}>{r.sharesUnits}</td>
                     <td style={{ textAlign: "right" }}>{formatMoney(r.proceedsCents)}</td>
                     <td style={{ textAlign: "right" }}>{formatMoney(r.acbSoldCents)}</td>

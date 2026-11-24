@@ -29,7 +29,7 @@ fun Application.taxYearFromActivities(activities: (taxpayer: String) -> List<Pos
         get("/v1/tax-year/{taxpayer}") {
             val taxpayer = call.parameters["taxpayer"].orEmpty()
             val acts = knownActivities(taxpayer, activities) ?: return@get
-            val years = TaxYearReport.yearsWithRows(acts, taxpayer)
+            val years = guarded { TaxYearReport.yearsWithRows(acts, taxpayer) } ?: return@get
             val body =
                 buildJsonObject {
                     put("taxpayerId", taxpayer)
@@ -47,7 +47,7 @@ fun Application.taxYearFromActivities(activities: (taxpayer: String) -> List<Pos
                 return@get
             }
             val acts = knownActivities(taxpayer, activities) ?: return@get
-            val report = TaxYearReport.build(acts, taxpayer, yearText.toInt())
+            val report = guarded { TaxYearReport.build(acts, taxpayer, yearText.toInt()) } ?: return@get
             if (csv) {
                 call.respondText(csvOf(report), ContentType.Text.CSV)
             } else {
@@ -56,6 +56,20 @@ fun Application.taxYearFromActivities(activities: (taxpayer: String) -> List<Pos
         }
     }
 }
+
+/** An amount too large for the engine's integer range fails loudly in calc; here it becomes a clear 422. */
+private suspend fun <T> RoutingContext.guarded(block: () -> T): T? =
+    try {
+        block()
+    } catch (e: ArithmeticException) {
+        val body =
+            buildJsonObject {
+                put("error", "AMOUNT_OUT_OF_RANGE")
+                put("message", "An amount is too large to calculate (${e.message}); no tax year can be built.")
+            }
+        call.respondText(body.toString(), ContentType.Application.Json, HttpStatusCode.UnprocessableEntity)
+        null
+    }
 
 private suspend fun RoutingContext.knownActivities(
     taxpayer: String,
@@ -106,6 +120,7 @@ private fun jsonOf(r: TaxYear): JsonElement =
 private fun rowJson(r: TaxYearRow): JsonElement =
     buildJsonObject {
         put("activityId", r.activityId)
+        put("currency", r.currency.name)
         put("taxDate", r.taxDate.toString())
         put("securityId", r.securityId)
         put("kind", r.kind.name)
