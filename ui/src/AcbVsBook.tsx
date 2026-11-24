@@ -1,4 +1,8 @@
 import { useState } from "react";
+import { ExplainPanel } from "./ExplainPanel";
+import { formatMoney } from "./money";
+
+export { formatMoney };
 
 type Reason = { ruleId: string; text: string; entryIds: number[]; amountMinor: number };
 type Holding = {
@@ -10,16 +14,6 @@ type Holding = {
 };
 type View = { taxpayerId: string; currency: string; holdings: Holding[] };
 
-/** Minor units (cents) to "-1,234.05" with integer math only. */
-export function formatMoney(cents: number): string {
-  const sign = cents < 0 ? "-" : "";
-  const abs = Math.abs(cents);
-  const dollars = Math.trunc(abs / 100);
-  const rest = abs - dollars * 100;
-  const grouped = String(dollars).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return `${sign}${grouped}.${rest < 10 ? "0" : ""}${rest}`;
-}
-
 /** A missing value (no broker book value) is shown as a dash. */
 function formatOptional(cents: number | null): string {
   return cents === null ? "\u2014" : formatMoney(cents);
@@ -29,9 +23,11 @@ export function AcbVsBook() {
   const [taxpayer, setTaxpayer] = useState("TP-0001");
   const [view, setView] = useState<View | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
 
   function load() {
     setError(null);
+    setOpen(null);
     fetch(`/api/v1/holdings/${encodeURIComponent(taxpayer)}/acb-vs-book`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((v: View) => setView(v))
@@ -63,7 +59,7 @@ export function AcbVsBook() {
           </thead>
           <tbody>
             {view.holdings.map((h) => (
-              <tr key={h.securityId}>
+              <tr key={h.securityId} onClick={() => setOpen(h.securityId)} style={{ cursor: "pointer" }}>
                 <td>{h.securityId}</td>
                 <td style={{ textAlign: "right" }}>{formatOptional(h.bookValueCents)}</td>
                 <td style={{ textAlign: "right" }}>{formatMoney(h.acbCents)}</td>
@@ -87,6 +83,7 @@ export function AcbVsBook() {
           </tbody>
         </table>
       )}
+      {view && open && <ExplainPanel taxpayer={view.taxpayerId} security={open} />}
     </section>
   );
 }

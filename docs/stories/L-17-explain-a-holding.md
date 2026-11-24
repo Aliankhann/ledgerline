@@ -1,6 +1,6 @@
 # L-17 Explain a holding (explainable reconciliation)
 
-**Status:** Draft (provisional, owner to approve; OWNER-INPUT)
+**Status:** In QE (provisional, owner to approve; OWNER-INPUT)
 **Day:** N · **Branch:** `l-17` · **Round:** 0 / 3
 
 ## Story
@@ -112,4 +112,20 @@ Tax numbers come only from existing fixtures in `tests/fixtures/cra/`; this stor
 
 ## Change notes (Dev fills)
 
-- …
+- calc: new `HoldingExplanation.kt` (`ExplainStatus`, `SuperficialLossStep`, `ExplainStep`, `Explanation`,
+  `ExplanationFooter`, `HoldingExplanation.explain`). It reuses `replaySuperficial`, `BookValueComparison.compareAll` and
+  `DataGapWarnings`; no new tax logic, integer money only. Steps are the pool history in replay order; running shares/ACB
+  are cumulative sums and `costDeltaCents` is the difference of rounded running ACBs. One add-back step per denied sale,
+  with target entry ids from the sale's `SlTrigger`s.
+- calc: the old `dev.ledgerline.calc.Explanation` (rule-set note on `PoolStep.Applied`) is renamed `StepExplanation`
+  because the L-17 contract takes the name `Explanation`. Pure rename.
+- Status: `DATA_GAP` when the holding has L-16 warnings and no pool steps (a transfer-only or oversell-only holding
+  still has an empty pool object, so "no pool" is read as "no steps").
+- app: `ExplainRoutes.kt` (`explainFromActivities`, `GET /v1/holdings/{taxpayer}/{security}/explain`, 404 names both),
+  wired in `Main.kt`.
+- ui: `ExplainPanel.tsx` (card, reasons with entry-id chips, footer per AC8, timeline); `AcbVsBook.tsx` rows are
+  clickable; `formatMoney` moved to `money.ts` (re-exported). Footer shows "$X unexplained" with `formatMoney`, so a
+  negative amount reads "$-0.40".
+- Blocked: `L17ExplainSpec.kt` does not compile (missing `jsonPrimitive` import, `Int` vs `Long` `shouldBeGreaterThan`);
+  see `docs/status.md` Open questions. On a scratch copy with those two imports added, L17+L11+L16 spec tests: 86 run, 0
+  failed; `./gradlew build`: successful, 574 tests, 0 failures. UI `npm run typecheck` and `npm run build` pass.

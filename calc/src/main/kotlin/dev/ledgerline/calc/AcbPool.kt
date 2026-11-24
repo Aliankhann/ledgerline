@@ -44,7 +44,7 @@ data class GainLine(
     val ruleIds: Set<String>,
 )
 
-data class Explanation(val ruleSetId: String, val ruleIds: Set<String>, val text: String)
+data class StepExplanation(val ruleSetId: String, val ruleIds: Set<String>, val text: String)
 
 enum class RejectionCode { INSUFFICIENT_SHARES }
 
@@ -66,7 +66,7 @@ sealed interface PoolStep {
     data class Applied(
         override val pool: AcbPool,
         val gains: List<GainLine>,
-        val explanation: Explanation,
+        val explanation: StepExplanation,
     ) : PoolStep
 
     data class Rejected(override val pool: AcbPool, val rejection: Rejection) : PoolStep

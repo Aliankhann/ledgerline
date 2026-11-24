@@ -112,6 +112,8 @@ private fun serve() {
         // Book values come from the optional file named by BOOK_VALUE_CSV (header security_id,book_value). OWNER-INPUT: C29.
         val activities = ActivityStore(dataSource)
         acbVsBookFromActivities(activities::effectiveActivities, bookValueCsv())
+        // L-17: the timeline and sum check behind one holding's difference, from the same stored activities.
+        explainFromActivities(activities::effectiveActivities, bookValueCsv())
     }.start(wait = true)
 }
 

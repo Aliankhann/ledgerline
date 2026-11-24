@@ -151,14 +151,14 @@ class AcbEngine(val ruleSet: TaxRuleSet) {
                 totalAcb = Math.addExact(pool.totalAcb, acbDelta),
                 history = history,
             )
-        return PoolStep.Applied(next, gains, Explanation(ruleSet.id, rules, text))
+        return PoolStep.Applied(next, gains, StepExplanation(ruleSet.id, rules, text))
     }
 
     private fun unchanged(
         pool: AcbPool,
         rules: Set<String>,
         text: String,
-    ): PoolStep.Applied = PoolStep.Applied(pool, emptyList(), Explanation(ruleSet.id, rules, text))
+    ): PoolStep.Applied = PoolStep.Applied(pool, emptyList(), StepExplanation(ruleSet.id, rules, text))
 
     private companion object {
         val SHARE_UNIT: BigInteger = BigInteger.TEN.pow(Scale.SHARE_DECIMALS)
