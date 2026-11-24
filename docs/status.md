@@ -42,6 +42,7 @@ provisionally and waiting for owner approval; L-15 waits on branch `l-15` for ta
 | L-14 | Second domain plugin | QE passed (pure), awaiting owner | 1 | main | CI green (run 44701421807); cash-balance plugin in plugins/; C30 overdraft; PluginReplay location (calc vs core) owner call; AC1/6/7 untested |
 | L-15 | Differential ACB check against tsiemens/acb | Tests written + exporter built; CI run 45060148937: 371 tests, only the 3 L15Diff tests red (tax-rule differences, owner) | 1 | l-15 | Extra story beyond the 14-story cap (owner approval); oracle pinned to acb ee4afc7 (0.26.06); SL-PARTIAL agrees; see Open questions |
 | L-16 | Missing-data warnings on the ACB-vs-book list | QE passed, awaiting owner (provisional) | 2 | main | CI green (run 45117734937); B-027, B-028 fixed; Extra story beyond the 14-story cap (owner approval); sub-rule IDs and shape are OWNER-INPUT; depends on C33 only for out-of-scope cost |
+| L-17 | Explain a holding (explainable reconciliation) | Draft, provisional | 0 | l-17 | Flagship; extra story beyond the 14-story cap (owner approval); OWNER-INPUT: portfolio card, add-back target id, badge labels; FX reason not producible today (out of scope) |
 
 ## Owner instruction (2026-11-19)
 
