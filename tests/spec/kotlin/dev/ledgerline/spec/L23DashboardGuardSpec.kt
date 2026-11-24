@@ -72,7 +72,10 @@ class L23DashboardGuardSpec : FunSpec({
 
     fun passedIdentifiers(tag: String): Set<String> =
         Regex("""=\{\s*([A-Za-z_]\w*)(?:\.length)?\s*\}""").findAll(tag).map { it.groupValues[1] }
-            .filterNot { it.startsWith("taxpayer", ignoreCase = true) || Regex("""^(set|on)[A-Z]""").containsMatchIn(it) }
+            .filterNot {
+                it.startsWith("taxpayer", ignoreCase = true) ||
+                    Regex("""^(set|on)[A-Z]""").containsMatchIn(it)
+            }
             .toSet()
 
     fun slug(s: String) = Regex("""["'`]#?$s["'`]|\b$s\s*:""")
@@ -195,7 +198,9 @@ class L23DashboardGuardSpec : FunSpec({
                 Regex("""/\s*100\b""").findAll(ui).count() shouldBe 1
             }
             withClue("the bar and the Data checks tab are given the same list identifier (one source)") {
-                val shared = passedIdentifiers(tagOf(flatUi, "DataChecks")) intersect passedIdentifiers(tagOf(flatUi, "SummaryBar"))
+                val shared =
+                    passedIdentifiers(tagOf(flatUi, "DataChecks")) intersect
+                        passedIdentifiers(tagOf(flatUi, "SummaryBar"))
                 withClue(
                     "DataChecks tag: ${tagOf(flatUi, "DataChecks")} / SummaryBar tag: ${tagOf(flatUi, "SummaryBar")}",
                 ) {
@@ -275,18 +280,30 @@ class L23DashboardGuardSpec : FunSpec({
                 Regex("""\bline\b""").containsMatchIn(dc) shouldBe true
             }
             withClue("nothing dropped or merged away") {
-                Regex("""(reasons|warnings|rows|items|checks)\w*[^;]{0,80}\.filter\(""").containsMatchIn(dc) shouldBe false
+                val hit =
+                    Regex("""(reasons|warnings|rows|items|checks)\w*[^;]{0,80}\.filter\(""").containsMatchIn(
+                        dc,
+                    )
+                hit shouldBe false
                 Regex("""dedup|unique|uniq\b""", RegexOption.IGNORE_CASE).containsMatchIn(dc) shouldBe false
             }
             withClue("DataChecks gets a callback that opens the Holdings timeline and the report from App state") {
                 val tag = tagOf(flatUi, "DataChecks")
                 Regex("""\bon[A-Z]\w*=\{""").containsMatchIn(tag) shouldBe true
-                Regex("""report|preview""", RegexOption.IGNORE_CASE).containsMatchIn(flatUi.let { tag + appSrc }) shouldBe true
+                val hit =
+                    Regex("""report|preview""", RegexOption.IGNORE_CASE).containsMatchIn(
+                        flatUi.let { tag + appSrc },
+                    )
+                hit shouldBe true
             }
             withClue("the last preview report is held in App and Upload receives its setter as a prop") {
                 Regex("""\[\s*\w*(report|preview)\w*\s*,\s*set\w+\s*\]\s*=\s*useState""", RegexOption.IGNORE_CASE)
                     .containsMatchIn(appSrc) shouldBe true
-                Regex("""\[\s*report\s*,\s*setReport\s*\]\s*=\s*useState""").containsMatchIn(src("Upload.tsx")) shouldBe false
+                val hit =
+                    Regex("""\[\s*report\s*,\s*setReport\s*\]\s*=\s*useState""").containsMatchIn(
+                        src("Upload.tsx"),
+                    )
+                hit shouldBe false
                 Regex("""<Upload\b[\s\S]{0,300}?=\{\s*set\w*\s*\}""").containsMatchIn(appSrc) shouldBe true
             }
             withClue("the tax-year 422 body is read, not just thrown away") {
