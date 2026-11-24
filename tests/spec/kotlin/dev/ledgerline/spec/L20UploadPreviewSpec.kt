@@ -69,7 +69,7 @@ class L20UploadPreviewSpec : FunSpec({
     }
 
     test("L-20 AC2 (L-02 C20): a row that differs from its stored twin only in description is a DUPLICATE") {
-        val r = L20.classify(ac1.replace("Initial deposit", "Opening cash, retyped"), held)
+        val r = L20.classify(ac1.replace("Initial deposit", "Opening cash retyped"), held)
         r.duplicates shouldBe 3
         r.new shouldBe 0
         r.conflicts shouldBe 0

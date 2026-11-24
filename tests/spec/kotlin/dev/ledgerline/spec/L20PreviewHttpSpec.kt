@@ -58,7 +58,7 @@ class L20PreviewHttpSpec : FunSpec({
                 val overlap = http.preview(L20.file(L20.ac1Rows[0], L20.ac1Rows[1], L20.row2026))
                 overlap.countList() shouldBe listOf(3, 1, 2, 0, 0)
                 overlap.statuses() shouldContainExactly listOf(2 to "DUPLICATE", 3 to "DUPLICATE", 4 to "NEW")
-                val described = http.preview(L20.ac1.replace("Initial deposit", "Opening cash, retyped"))
+                val described = http.preview(L20.ac1.replace("Initial deposit", "Opening cash retyped"))
                 described.countList() shouldBe listOf(3, 0, 3, 0, 0)
                 e.count("entry") shouldBe 3L
             }
