@@ -1,6 +1,6 @@
 # L-23 Dashboard: four tabs and a summary bar
 
-**Status:** Draft  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** N · **Branch:** `l-23` · **Round:** 0 / 3
 
 ## Story
@@ -133,3 +133,22 @@ No new backend endpoint is needed; the summary bar is built from `GET /api/healt
   an unmounted tab loses it: lift it. Tax-year route returns 422 `{error, message}` for `AMOUNT_OUT_OF_RANGE`
   (B-037), so the UI must read that body, not just throw on `!r.ok`. `ExplainPanel` renders `fullyExplained` text
   with `$${formatMoney(...)}` (a stray `$` before the template) in the unexplained case; not changed by this story.
+
+- Dev (round 1): `App.tsx` owns the one taxpayer (`useState("TP-0001")`), tab state from `location.hash` (+ `hashchange`
+  listener, click writes the hash), the lifted upload `report`, and the single `checks` list given to both `SummaryBar`
+  and `DataChecks`. New files: `SummaryBar.tsx`, `DataChecks.tsx`, `checks.ts` (builds the list with loops, no
+  `filter`), `api.ts` (shared types, `fetchYear` reads the 422 body), `useTaxpayerData.ts`, `styles.css`.
+  `AcbVsBook` and `YourYear` take `taxpayer` (plus data from App) and are re-mounted with `key={taxpayer}`.
+  `ExplainPanel` gained an optional `focusEntry` prop so Data checks entry buttons open the timeline highlighted.
+  `Upload` takes `report`/`setReport` props. No new dependency; the stray `$$` in ExplainPanel is untouched.
+- Owner-input choices made provisionally (marked `// OWNER-INPUT: L-23 ...` in source):
+  1. Holdings badge: one `/explain` call per holding (no backend change).
+  2. Footer is strict: "All N holdings fully explained" only if every holding with a book value has
+     `fullyExplained === true`; otherwise "Not explained: ..." names them (a failed load counts as not explained;
+     no-book-value holdings are not compared).
+  3. Warnings count = data-gap reasons (`DATA-GAP*`, not tied to a year) + selected-year tax-year warnings + the
+     422 refusal + last preview warnings and REJECTED rows. Other years' warnings are not shown.
+  4. Default tab: "Your year" if the taxpayer has any tax year, else "Upload"; an explicit hash wins.
+  5. "What to do" wording is the BA-proposed text, verbatim, in a static map.
+- Known gaps: a successful import does not refresh the summary bar until the taxpayer changes (not in the story);
+  the rendered behaviour (tab switching, back/forward) is unproven by guards and needs the owner's eye.

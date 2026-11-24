@@ -1,0 +1,32 @@
+:root { color-scheme: light; --line: #d5d9e0; --muted: #5b6472; --accent: #1f5fbf; --bg: #f5f7fa; }
+body { margin: 0; background: var(--bg); font-family: system-ui, sans-serif; color: #1c2430; }
+.app { max-width: 1040px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+.app h1 { margin: 0; }
+.muted { color: var(--muted); }
+.ok { color: #1a7f37; font-weight: 600; }
+.warn { color: #b42318; font-weight: 600; }
+.summary { display: flex; flex-wrap: wrap; gap: 0.75rem; background: #fff; border: 1px solid var(--line);
+  border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+.summary .field { min-width: 110px; }
+.summary small { color: var(--muted); display: block; }
+.summary .value { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.summary input, .summary select { font: inherit; padding: 2px 6px; width: 8rem; }
+.summary select { width: auto; }
+.tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--line); }
+.tab { border: 1px solid transparent; border-bottom: none; background: none; font: inherit; padding: 0.5rem 1rem;
+  cursor: pointer; border-radius: 8px 8px 0 0; color: var(--muted); }
+.tab.active { background: #fff; border-color: var(--line); color: var(--accent); font-weight: 600; margin-bottom: -2px; }
+.panel { background: #fff; border: 1px solid var(--line); border-top: none; border-radius: 0 0 10px 10px; padding: 1rem 1.25rem; }
+.grid, .panel table { border-collapse: collapse; width: 100%; }
+.panel th, .panel td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+.panel td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.grid tbody tr:hover { background: #eef3fb; }
+.badge { border: 1px solid #98a2b3; border-radius: 4px; padding: 0 6px; font-size: 0.8rem; background: #f2f4f7; }
+.chip { border: 1px solid var(--accent); color: var(--accent); background: #fff; border-radius: 12px; padding: 0 8px;
+  margin-right: 4px; cursor: pointer; }
+.chip:disabled { border-color: var(--line); color: var(--muted); cursor: default; }
+.footer { margin-top: 0.75rem; }
+.checks { list-style: none; padding: 0; margin: 0; }
+.check { border: 1px solid var(--line); border-left: 4px solid #d97706; border-radius: 6px; padding: 0.6rem 0.8rem; margin-bottom: 0.6rem; }
+.check .trades, .check .todo { margin-top: 0.3rem; }
+.empty { color: var(--muted); }

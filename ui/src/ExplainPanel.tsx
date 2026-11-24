@@ -34,7 +34,7 @@ type Explanation = {
   reasons: Reason[];
 };
 
-const BADGES: Record<string, string> = {
+export const BADGES: Record<string, string> = {
   MATCHES: "Matches",
   EXPLAINED: "Explained",
   DISCREPANCY: "Discrepancy",
@@ -65,7 +65,15 @@ const card = { border: "1px solid #bbb", borderRadius: 8, padding: 12, marginTop
 const chip = { border: "1px solid gray", borderRadius: 12, padding: "0 8px", marginRight: 4, cursor: "pointer" } as const;
 const num = { textAlign: "right" } as const;
 
-export function ExplainPanel({ taxpayer, security }: { taxpayer: string; security: string }) {
+export function ExplainPanel({
+  taxpayer,
+  security,
+  focusEntry = null,
+}: {
+  taxpayer: string;
+  security: string;
+  focusEntry?: number | null;
+}) {
   const [data, setData] = useState<Explanation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
@@ -73,12 +81,12 @@ export function ExplainPanel({ taxpayer, security }: { taxpayer: string; securit
   useEffect(() => {
     setData(null);
     setError(null);
-    setSelected(null);
+    setSelected(focusEntry);
     fetch(`/api/v1/holdings/${encodeURIComponent(taxpayer)}/${encodeURIComponent(security)}/explain`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((d: Explanation) => setData(d))
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
-  }, [taxpayer, security]);
+  }, [taxpayer, security, focusEntry]);
 
   if (error) return <p>Could not explain {security}: {error}</p>;
   if (!data) return <p>Loading {security}...</p>;

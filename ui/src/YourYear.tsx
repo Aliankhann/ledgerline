@@ -1,29 +1,5 @@
-import { useState } from "react";
+import type { YearView } from "./api";
 import { formatMoney } from "./money";
-
-type Row = {
-  activityId: string;
-  taxDate: string;
-  securityId: string;
-  currency?: string;
-  sharesUnits: number;
-  proceedsCents: number;
-  outlaysCents: number;
-  acbSoldCents: number;
-  gainCents: number;
-  superficialLossDeniedCents: number;
-  notes: string[];
-  entryIds: number[];
-};
-type Warning = { ruleId: string; text: string; entryIds: number[] };
-type Totals = {
-  gainsCents: number;
-  lossesCents: number;
-  netCents: number;
-  taxableCapitalGainCents: number;
-  superficialLossesDeniedCents: number;
-};
-type YearView = { taxpayerId: string; year: number; rows: Row[]; totals: Totals; warnings: Warning[] };
 
 const NOT_INCLUDED = [
   "Other income: dividends, interest, return of capital income, fees, T-slip boxes",
@@ -32,10 +8,6 @@ const NOT_INCLUDED = [
   "Registered accounts (TFSA, RRSP): their dispositions are not reported",
   "Carry-forward or carry-back of net capital losses, reserves, lifetime exemption, tax payable",
 ];
-
-function fetchJson<T>(url: string): Promise<T> {
-  return fetch(url).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))));
-}
 
 function Card({ label, value }: { label: string; value: string }) {
   return (
@@ -46,51 +18,27 @@ function Card({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function YourYear() {
-  const [taxpayer, setTaxpayer] = useState("TP-0001");
-  const [years, setYears] = useState<number[]>([]);
-  const [year, setYear] = useState<number | null>(null);
-  const [view, setView] = useState<YearView | null>(null);
-  const [error, setError] = useState<string | null>(null);
+type Props = {
+  taxpayer: string;
+  years: number[];
+  year: number | null;
+  view: YearView | null;
+  error: string | null;
+  onYear: (year: number) => void;
+};
 
+export function YourYear({ taxpayer, years, year, view, error, onYear }: Props) {
   const base = `/api/v1/tax-year/${encodeURIComponent(taxpayer)}`;
-
-  function loadYear(y: number) {
-    setYear(y);
-    fetchJson<YearView>(`/api/v1/tax-year/${encodeURIComponent(taxpayer)}/${y}`)
-      .then((v) => setView(v))
-      .catch((e: unknown) => {
-        setView(null);
-        setError(e instanceof Error ? e.message : String(e));
-      });
-  }
-
-  function load() {
-    setError(null);
-    setView(null);
-    setYear(null);
-    fetchJson<{ years: number[] }>(base)
-      .then((r) => {
-        setYears(r.years);
-        const latest = r.years[0];
-        if (latest !== undefined) loadYear(latest);
-      })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
-  }
 
   return (
     <section>
       <h2>Your year</h2>
-      <label>
-        Taxpayer <input value={taxpayer} onChange={(e) => setTaxpayer(e.target.value)} />
-      </label>{" "}
-      <button onClick={load}>Load</button>
-      {error && <p>Could not load: {error}</p>}
+      {error && <p role="alert">Could not load: {error}</p>}
       {year !== null && (
         <p>
           <label>
             Tax year{" "}
-            <select value={year} onChange={(e) => loadYear(Number(e.target.value))}>
+            <select value={year} onChange={(e) => onYear(Number(e.target.value))}>
               {years.map((y) => (
                 <option key={y} value={y}>
                   {y}
@@ -101,6 +49,7 @@ export function YourYear() {
           <a href={`${base}/${year}.csv`}>Download CSV</a>
         </p>
       )}
+      {year === null && !error && <p>No tax years for {taxpayer} yet. Upload activities first.</p>}
       {view && (
         <>
           <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>

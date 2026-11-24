@@ -15,7 +15,7 @@ type Row = {
 };
 type Warning = { ruleId: string; securityId: string; text: string; lines: number[]; amountMinor: number };
 type FileError = { code: string; message: string; column: string | null };
-type Report = {
+export type Report = {
   fileSha256: string;
   rowsRead: number;
   new: number;
@@ -60,9 +60,10 @@ function asJson<T>(r: Response): Promise<T> {
   return r.ok ? (r.json() as Promise<T>) : Promise.reject(new Error(`HTTP ${r.status}`));
 }
 
-export function Upload() {
+type UploadProps = { report: Report | null; setReport: (r: Report | null) => void };
+
+export function Upload({ report, setReport }: UploadProps) {
   const [text, setText] = useState<string | null>(null);
-  const [report, setReport] = useState<Report | null>(null);
   const [result, setResult] = useState<ConfirmResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
