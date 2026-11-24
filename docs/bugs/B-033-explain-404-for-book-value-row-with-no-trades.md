@@ -1,6 +1,6 @@
 # B-033 Drill-down 404s for a holding the ACB-vs-book list shows
 
-**Story:** L-17 (AC2 exemption, AC4) · **Severity:** minor · **Status:** Open · **Round:** 1
+**Story:** L-17 (AC2 exemption, AC4) · **Severity:** minor · **Status:** Fixed (QE verified, round 2; provisional reading, owner to confirm) · **Round:** 1
 
 ## Reproduction
 
@@ -27,3 +27,8 @@ expected:<200 OK> but was:<404 Not Found>
 - `HoldingExplanation.explain` returns null when there is no pool and no L-16 warning, ignoring the book value. AC4 says an
   unknown security is 404, so this is an AC4 vs AC2 conflict for a security that is unknown to the ledger but known to
   the broker. Owner/BA to decide; the current behaviour makes the DATA_GAP reason unreachable here.
+
+## Round 2 verification
+
+200 with no steps and DATA_GAP for a book-value-only security; attack tests 7 and 11 pass (book value 0 also 200; no book
+value and no trades stays 404). Provisional AC4-vs-AC2 reading: owner to confirm.

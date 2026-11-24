@@ -1,6 +1,6 @@
 # B-031 Explain timeline is not ordered by tax date when a superficial-loss target precedes the sale
 
-**Story:** L-17 (AC5, AC3) · **Severity:** minor (wrong order in the timeline; sums are still exact) · **Status:** Open · **Round:** 1
+**Story:** L-17 (AC5, AC3) · **Severity:** minor (wrong order in the timeline; sums are still exact) · **Status:** Fixed (QE verified, round 2; provisional reading, owner to confirm) · **Round:** 1
 
 ## Reproduction
 
@@ -32,3 +32,8 @@ expected:<[2025-01-02, 2025-06-20, 2025-06-20, 2025-07-01]> but was:<[2025-01-02
 - The story contradicts itself here (AC5 order by tax date vs. the add-back carries the target's date). The owner or BA
   must say which wins: either the add-back step is dated at the sale (history order) or the timeline is sorted and the
   running totals recomputed. Not silently changed by QE.
+
+## Round 2 verification
+
+Dev sorts steps by tax date (stable) and recomputes running totals and cost deltas; attack tests 1, 2, 4 and 10 pass and
+cost deltas still sum to ACB. Provisional owner decision (AC5 order wins over history order): owner to confirm.

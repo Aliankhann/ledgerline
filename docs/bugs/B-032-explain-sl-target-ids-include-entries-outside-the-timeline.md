@@ -1,6 +1,6 @@
 # B-032 Superficial-loss target entry ids can name a TFSA buy that is not a timeline step
 
-**Story:** L-17 (AC3, AC6) · **Severity:** minor · **Status:** Open · **Round:** 1
+**Story:** L-17 (AC3, AC6) · **Severity:** minor · **Status:** Fixed (QE verified, round 2; provisional reading, owner to confirm) · **Round:** 1
 
 ## Reproduction
 
@@ -26,3 +26,8 @@ Collection should contain all of [1003L, 1004L] but was missing [1004L]
   triggers (`SL-REGISTERED`). The TFSA buy is not part of the non-registered pool, so it has no step. Whether to show it
   is an owner/BA question (the denial is real, the target is just not in this pool); the UI should at least not offer a
   chip that selects nothing.
+
+## Round 2 verification
+
+`targetEntryIds` now lists only timeline steps; attack test 3 passes. Provisional: a registered repurchase still denies the
+loss but is not cited. Owner to confirm.

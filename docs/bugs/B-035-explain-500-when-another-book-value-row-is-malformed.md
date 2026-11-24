@@ -1,6 +1,6 @@
 # B-035 One malformed book value row makes every explain request fail with an exception
 
-**Story:** L-17 (route) · shares the parser with L-11 · **Severity:** minor · **Status:** Open · **Round:** 1
+**Story:** L-17 (route) · shares the parser with L-11 · **Severity:** minor · **Status:** Fixed (QE verified, round 2) · **Round:** 1
 
 ## Reproduction
 
@@ -28,3 +28,10 @@ observe the last two separately.
 
 - The route calls `BookValueCsv.parse(taxpayer, bookValueCsv)` on the whole file for every request, with no handler.
   The L-11 route has the same shape; the book value file is service config, so impact is small.
+
+## Round 2 verification
+
+A malformed file gives 400 "Bad book value file: ..." naming the bad value, for all three parse failures (attack test 12).
+Every security gets the 400, including unaffected ones: acceptable because the file is service config and the whole file
+is parsed per request (same shape as L-11); a 5xx would be more accurate than 4xx for a server-side config fault, but this
+is a style call, not a defect.

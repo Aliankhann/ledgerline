@@ -1,6 +1,6 @@
 # B-034 "Fully explained" is true when the only reason is NO-LEDGER-HISTORY ("cannot be traced")
 
-**Story:** L-17 (AC8) · **Severity:** major (the footer is the honesty gate of the story) · **Status:** Open · **Round:** 1
+**Story:** L-17 (AC8) · **Severity:** major (the footer is the honesty gate of the story) · **Status:** Fixed (QE verified, round 2; provisional reading, owner to confirm) · **Round:** 1
 
 ## Reproduction
 
@@ -28,3 +28,7 @@ Explanation(... acbCents=0, differenceCents=-100000, steps=[],
 - Follows the literal AC8 text (cent reasons sum to the difference, no `UNEXPLAINED`), but a reason with no entry ids
   explains nothing. The same applies to the `DATA_GAP` reason for a book value with no activity. Needs an owner decision on
   whether these pseudo reasons count towards "fully explained"; QE's reading is that they must not.
+
+## Round 2 verification
+
+`fullyExplained` is false when a non-zero reason cites no entry; attack test 9 passes. Provisional: owner to confirm.

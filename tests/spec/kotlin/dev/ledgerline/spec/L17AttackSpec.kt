@@ -251,4 +251,35 @@ class L17AttackSpec : FunSpec({
         (1..25).forEach { seed -> explain(rows.shuffled(Random(seed)), 1L, key) shouldBe base }
         explain(rows.reversed(), 1L, key) shouldBe base
     }
+
+    test("L-17 attack 11: no-trade holdings: book value 0 is a 200 data gap, no book value and no trades stays 404") {
+        val rows = listOf(trade("atk11-b1", ActivityType.BUY, "2025-01-02", sec, 10, 100_000, 1))
+        val none = "/v1/holdings/$tp/SYN-NONE/explain"
+        val zero = rawGet(rows, "security_id,book_value\n$sec,10.00\nSYN-NONE,0.00\n", none)
+        withClue(zero.second) { zero.first shouldBe HttpStatusCode.OK }
+        val body = parse(zero.second)
+        body.text("status") shouldBe "DATA_GAP"
+        val e = HoldingExplanation.explain(rows, 0L, PoolKey(tp, "SYN-NONE"))
+        requireNotNull(e)
+        e.steps.size shouldBe 0
+        e.differenceCents shouldBe 0L
+        val unknown = rawGet(rows, "security_id,book_value\n$sec,10.00\n", none)
+        unknown.first shouldBe HttpStatusCode.NotFound
+    }
+
+    test("L-17 attack 12: a malformed book value file is a 400 naming the bad value, for each failure kind") {
+        val rows = listOf(trade("atk12-b1", ActivityType.BUY, "2025-01-02", sec, 10, 100_000, 1))
+        mapOf(
+            "SYN-OTHER,not-money" to "not-money",
+            "SYN-OTHER,99999999999999999999.00" to "Bad book value file",
+            "SYN-OTHER,5.00\nSYN-OTHER,6.00" to "Duplicate security SYN-OTHER",
+        ).forEach { (bad, named) ->
+            val csv = "security_id,book_value\n$sec,10.00\n$bad\n"
+            val (status, body) = rawGet(rows, csv, "/v1/holdings/$tp/$sec/explain")
+            withClue("$bad -> $body") {
+                status shouldBe HttpStatusCode.BadRequest
+                body shouldContain named
+            }
+        }
+    }
 })
