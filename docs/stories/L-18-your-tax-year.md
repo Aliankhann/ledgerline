@@ -1,6 +1,6 @@
 # L-18 Your tax year: realised gains summary and per-sale table
 
-**Status:** Draft (owner to approve)
+**Status:** In QE
 **Day:** N · **Branch:** `l-18` · **Round:** 0 / 3
 
 ## Story
@@ -165,4 +165,26 @@ Shown in the UI as "Not included":
 
 ## Change notes (Dev fills)
 
-- …
+- Added `calc/TaxYearReport.kt` (pure; `TaxYearRow`, `TaxYearTotals`, `TaxYear`, `build`, `yearsWithRows`,
+  `taxableCents`), `app/TaxYearRoutes.kt` (`taxYearFromActivities`: `GET /v1/tax-year/{taxpayer}`, `/{year}`,
+  `/{year}.csv`, read-only, wired in `Main.kt` from `activities::effectiveActivities`) and `ui/src/YourYear.tsx`
+  ("Your year" section in `App.tsx`: year picker, five cards, per-sale table, Download CSV link, Not included panel,
+  warnings list). No migration, no new tax rule, no change to existing calc.
+- Source of every figure: `AcbEngine.replaySuperficial` sales (`gainBeforeRule`, `denied`, `reportedGain`, triggers),
+  ACB sold from the sale's own pool-history entry (`sharesDelta < 0`), rounded once with `toReportedCents`. Proceeds
+  and selling commission are joined from the SELL `Activity` by activity id. The join reproduces `gainBeforeRule`
+  exactly: the engine computes `(amount - commission) x 10^4 - acbSold`; on the CRA XYZ fixture the row identity
+  650000 - 6000 - 400000 = 244000 holds. Warnings come from `DataGapWarnings.detect`.
+- Row set: non-registered pools only (the SL replay assesses `NON_REGISTERED` sales only); rejected sells and
+  zero-quantity sells give no row.
+- Provisional values awaiting the owner (each marked `// OWNER-INPUT: L-18` in code):
+  - Odd-cent half inclusion: `taxableCents` truncates the half cent (1001 -> 500). Not a decision; tests do not assert it.
+  - CSV money format: integer cents. Totals line puts net in `gain`, denied in `superficialLossDenied`, and gains,
+    losses and taxable in the notes cell.
+  - `DEEMED_GAIN_ROC` lines: excluded (no row), because `SlReplay` does not carry them; owner to decide.
+  - Inclusion rate fixed at 1/2 for every year.
+  - Per-row rounding: rows rounded on their own, totals sum the rounded rows; no on-screen rounding note yet.
+  - SL display: one note per sale naming SL-PARTIAL, the sale entry id and the substituted buy entry ids.
+- Ran: `./gradlew --init-script ../mirror.init.gradle.kts build --offline` BUILD SUCCESSFUL;
+  `cd ui && npm ci && npm run typecheck && npm run build` clean. Specs: L18YourYearSpec 20/20, L18UiGuardSpec 5/5
+  (0 skipped, 0 failures).

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AcbVsBook } from "./AcbVsBook";
+import { YourYear } from "./YourYear";
 
 type Health = { status: string; modules: string[] };
 
@@ -29,6 +30,7 @@ export function App() {
         {!error && !health && <p>Checking…</p>}
       </section>
       <AcbVsBook />
+      <YourYear />
     </main>
   );
 }

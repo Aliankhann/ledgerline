@@ -114,6 +114,8 @@ private fun serve() {
         acbVsBookFromActivities(activities::effectiveActivities, bookValueCsv())
         // L-17: the timeline and sum check behind one holding's difference, from the same stored activities.
         explainFromActivities(activities::effectiveActivities, bookValueCsv())
+        // L-18: your tax year (read-only), from the same stored activities.
+        taxYearFromActivities(activities::effectiveActivities)
     }.start(wait = true)
 }
 
