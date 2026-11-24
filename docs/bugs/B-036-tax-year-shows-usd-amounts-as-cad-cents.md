@@ -1,6 +1,6 @@
 # B-036 A USD trade is reported as CAD cents in the tax year, with no conversion, flag or warning
 
-**Story:** L-18 (AC1 shape, "Out of scope" claim about USD) · **Severity:** major · **Status:** Open (round 2: JSON fixed, CSV not) · **Round:** 2
+**Story:** L-18 (AC1 shape, "Out of scope" claim about USD) · **Severity:** major · **Status:** Fixed (round 3: CSV notes mark non-CAD rows NOT-CONVERTED; QE attack 11 passes; FX in AcbEngine remains an owner decision) · **Round:** 3
 
 ## Reproduction
 
