@@ -1,8 +1,10 @@
 package dev.ledgerline.app
 
+import dev.ledgerline.calc.PostedActivity
 import dev.ledgerline.core.Activity
 import dev.ledgerline.ingest.CanonicalCsv
 import dev.ledgerline.ingest.FileError
+import dev.ledgerline.ingest.ParseResult
 import dev.ledgerline.ingest.Rejection
 import dev.ledgerline.ledger.LedgerRepository
 import dev.ledgerline.ledger.SubmitOutcome
@@ -66,20 +68,62 @@ class IngestionService(
      */
     fun importCsv(text: String): ImportReport {
         val parsed = CanonicalCsv.parse(text)
-        var posted = 0
-        var duplicates = 0
-        val rejected = parsed.rejections.toMutableList()
-        parsed.activities.zip(parsed.activityLines).forEach { (activity, line) ->
-            when (val result = submit(activity.copy(sourceSeq = line.toLong()))) {
-                is SubmitResult.Accepted -> if (result.alreadyExisted) duplicates++ else posted++
-                is SubmitResult.KeyMismatch ->
-                    rejected +=
-                        Rejection(line, SubmitResult.KEY_MISMATCH, "idempotency_key", "Key reused with another payload")
-                is SubmitResult.Invalid ->
-                    rejected += Rejection(line, result.code, result.field.orEmpty(), "Refused: ${result.code}")
+        val rows = submitRows(parsed)
+        return ImportReport(
+            rows.count { it.status == PreviewStatus.NEW },
+            rows.count { it.status == PreviewStatus.DUPLICATE },
+            rows.filter { it.status == PreviewStatus.CONFLICT || it.status == PreviewStatus.REJECTED }
+                .map { Rejection(it.line, it.code.orEmpty(), it.field ?: "idempotency_key", it.message.orEmpty()) },
+            parsed.fileErrors,
+        )
+    }
+
+    /**
+     * L-20 confirm: the same row-by-row path as [importCsv] (no second idempotency rule), run while holding the
+     * file-import lock, so two confirms of one file are atomic per file: the second sees every key of the first.
+     * OWNER-INPUT: L-20 atomic per file through a database advisory lock (not an in-process mutex).
+     */
+    fun confirm(text: String): PreviewReport {
+        val parsed = CanonicalCsv.parse(text)
+        val rows = ledger.withImportLock { submitRows(parsed) }
+        return PreviewReport.of(rows, emptyList(), parsed.fileErrors, ImportPreview.sha256(text))
+    }
+
+    /**
+     * L-20 preview: reads on one read-only transaction and classifies in memory ([ImportPreview.classify]). Writes
+     * nothing and consumes no key.
+     */
+    fun preview(text: String): PreviewReport {
+        val parsed = CanonicalCsv.parse(text)
+        val (hashes, existing) =
+            ledger.readOnly { r ->
+                r.payloadHashes(parsed.activities.map { it.idempotencyKey }) to
+                    r.activities(parsed.activities.map { it.taxpayerId })
             }
+        return ImportPreview.classify(
+            parsed,
+            ImportPreview.sha256(text),
+            hashes::get,
+            existing.map { PostedActivity(it.activityId, it.entryId, it.activity) },
+        )
+    }
+
+    /** One result row per file row (good rows submitted in file order, parse rejections as they are), by line. */
+    private fun submitRows(parsed: ParseResult): List<PreviewRow> {
+        val rows = parsed.rejections.map { ImportPreview.rejectedRow(it) }.toMutableList()
+        parsed.activities.zip(parsed.activityLines).forEach { (activity, line) ->
+            val result = submit(activity.copy(sourceSeq = line.toLong()))
+            rows +=
+                when (result) {
+                    is SubmitResult.Accepted -> {
+                        val status = if (result.alreadyExisted) PreviewStatus.DUPLICATE else PreviewStatus.NEW
+                        ImportPreview.row(activity, line, status)
+                    }
+                    is SubmitResult.KeyMismatch -> ImportPreview.conflictRow(activity, line)
+                    is SubmitResult.Invalid -> ImportPreview.refusedRow(activity, line, result.code, result.field)
+                }
         }
-        return ImportReport(posted, duplicates, rejected.sortedBy { it.line }, parsed.fileErrors)
+        return rows.sortedBy { it.line }
     }
 
     fun find(idempotencyKey: String): StoredActivity? =

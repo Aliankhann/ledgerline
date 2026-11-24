@@ -105,6 +105,8 @@ private fun serve() {
     embeddedServer(Netty, port = config.httpPort) {
         module()
         ingestionModule(ingestion)
+        // L-20: upload preview (read-only) and confirm (the same ingestion path, atomic per file).
+        importPreviewModule(ingestion)
         // Read-only, per request: the taxpayer's stored activities (not reversed, C19) are replayed to pools WITH step
         // history, so reasons can be explained. calc.pool stays the consumer's state; reconciliation compares the two.
         // acbVsBookFromActivities wraps acbVsBookModule with the superficial-loss replay.

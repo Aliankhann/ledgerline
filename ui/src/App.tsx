@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AcbVsBook } from "./AcbVsBook";
+import { Upload } from "./Upload";
 import { YourYear } from "./YourYear";
 
 type Health = { status: string; modules: string[] };
@@ -31,6 +32,7 @@ export function App() {
       </section>
       <AcbVsBook />
       <YourYear />
+      <Upload />
     </main>
   );
 }

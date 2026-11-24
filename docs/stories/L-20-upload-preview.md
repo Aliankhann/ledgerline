@@ -1,6 +1,6 @@
 # L-20 Upload preview: dry-run import before posting
 
-**Status:** Draft  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
+**Status:** In QE  <!-- Draft → Approved → Tests written → In dev → In QE → Done. Only the owner sets Approved. -->
 **Day:** N · **Branch:** `l-20` · **Round:** 0 / 3
 
 ## Story
@@ -152,4 +152,36 @@ those stories. Row status is one of `NEW`, `DUPLICATE`, `CONFLICT`, `REJECTED`. 
 
 ## Change notes (Dev fills)
 
-- _None yet._
+- **Code.** `app/ImportPreview.kt` (pure `classify`, types), `app/ImportPreviewRoutes.kt` (`POST /v1/imports/preview`,
+  `POST /v1/imports/confirm`), `IngestionService.preview/confirm` (`importCsv` now shares one `submitRows` path with
+  confirm, so there is no second idempotency rule), `ledger/LedgerReader.kt` plus `LedgerRepository.readOnly` and
+  `withImportLock`, `ui/src/Upload.tsx` (added to `App.tsx`). Installed in `Main.kt` next to `ingestionModule`. No
+  migration, no new table, no `UPDATE`/`DELETE`, no floating point.
+- **Read-only.** The preview reads on one read-only, repeatable-read transaction (`LedgerRepository.readOnly`), never
+  writes, consumes no key, and returns a body that is a pure function of file and ledger state.
+- **Provisional decisions** (`// OWNER-INPUT: L-20 ...`, for the owner to confirm or replace in an ADR):
+  1. Stateless confirm: file plus `fileSha256` (409 `PREVIEW_MISMATCH` if different, 400 `MISSING_FILE_SHA256` if absent)
+     plus optional `previewNew=<lines>`, which only drives `changedSincePreview` and `changedRows`, never what is posted.
+  2. Partial confirm (good rows post, conflicts and rejected rows are reported), as `POST /v1/imports`.
+  3. Confirm is atomic per file: it holds a transaction-scoped Postgres advisory lock (`withImportLock`, a different key
+     from the append lock) for the whole file, so of two concurrent confirms one posts, the other posts 0.
+  4. A row the ledger would refuse at posting (zero amount on a cash-only type) is `REJECTED` (`ZERO_AMOUNT`, field
+     `amount`) before its key is looked at, exactly as `importCsv` treats it. A key repeated in one file: first `NEW`,
+     then `DUPLICATE` (same payload) or `CONFLICT` (other payload), as C24. Not predicted: an outbox event too large for
+     the broker (`EVENT_TOO_LARGE`), which depends on runtime config; `importCsv` and confirm report it, preview shows `NEW`.
+  5. Warnings "caused by the file": L-16 detection on stored (non-reversed) activities of the file's taxpayers with and
+     without the NEW rows; only rule/pool pairs absent before are listed, with the file lines of the NEW rows named in the
+     reason (a stored row starved by a new earlier sale falls back to the NEW lines on that security). Confirm answers
+     `warnings []`.
+  6. Size cap: the existing 32 MB import cap, no row cap on `rows`. Conflict code `IDEMPOTENCY_KEY_MISMATCH`.
+  7. Read-only enforced by a read-only transaction, not a new database role.
+- **UI.** `Upload` section (no tab component exists in `App.tsx`): picker (clears preview and result, re-fires for the same
+  file), preview POST on choose, five count cards, table with `data-status`/`data-line` (rejected and conflict rows sorted
+  first and bold, nothing hidden), Warnings list, "Confirm import" disabled with no preview, `new` 0, any file error or a
+  request in flight (state plus a ref, so a double click sends one confirm). Integer text only; `formatMoney` for the 0 amount.
+- **Test issue.** `L20UploadPreviewSpec` "AC2 ... only in description" (and the same replace in `L20PreviewHttpSpec` AC2)
+  inserts an unquoted comma, so the parser rejects the row with `WRONG_COLUMN_COUNT`. Noted under Open questions in
+  `docs/status.md`; `tests/` untouched. That one test fails until QE fixes it.
+- **Ran** (in the worktree): `./gradlew build --offline`: 579 tests, 1 failed (the test issue above), 190 skipped
+  (Integration). L20: `L20UploadPreviewSpec` 15 run, 14 pass, 1 fail; `L20UiGuardSpec` 8 pass; `L20PreviewHttpSpec` 8 and
+  `L20ConfirmSpec` 11 skipped (Integration, not run here). `cd ui && npm ci && npm run typecheck && npm run build` clean.

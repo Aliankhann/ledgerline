@@ -137,17 +137,17 @@ fun Application.ingestionModule(service: IngestionService) {
 }
 
 private const val MAX_ACTIVITY_BYTES = 4L * 1024 * 1024
-private const val MAX_IMPORT_BYTES = 32L * 1024 * 1024
+internal const val MAX_IMPORT_BYTES = 32L * 1024 * 1024
 private const val MAX_JSON_DEPTH = 32
 
 /** The request body as text, or null if it is larger than [limit] bytes (checked on the header and on the text). */
-private suspend fun ApplicationCall.receiveLimitedText(limit: Long): String? {
+internal suspend fun ApplicationCall.receiveLimitedText(limit: Long): String? {
     if ((request.contentLength() ?: 0L) > limit) return null
     val text = receiveText()
     return if (text.length > limit) null else text
 }
 
-private suspend fun ApplicationCall.respondTooLarge() =
+internal suspend fun ApplicationCall.respondTooLarge() =
     respondJson(
         HttpStatusCode.PayloadTooLarge,
         buildJsonObject {
@@ -180,7 +180,7 @@ private fun nestsTooDeep(body: String): Boolean {
     return false
 }
 
-private suspend fun ApplicationCall.respondJson(
+internal suspend fun ApplicationCall.respondJson(
     status: HttpStatusCode,
     body: JsonObject,
 ) = respondText(body.toString(), ContentType.Application.Json, status)

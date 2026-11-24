@@ -1,9 +1,6 @@
 package dev.ledgerline.ledger
 
-import dev.ledgerline.core.AccountType
 import dev.ledgerline.core.Activity
-import dev.ledgerline.core.ActivityType
-import dev.ledgerline.core.Currency
 import dev.ledgerline.ledger.outbox.OutboxLimits
 import dev.ledgerline.ledger.outbox.OutboxWrites
 import java.sql.Connection
@@ -86,41 +83,44 @@ class LedgerRepository(
     /** The accepted activity for [idempotencyKey] as first stored, or null. */
     fun findActivity(idempotencyKey: String): ActivityRecord? =
         dataSource.connection.use { c ->
-            c.prepareStatement(
-                "SELECT activity_id, entry_id, recorded_at, taxpayer_id, account_id, account_type, activity_type, " +
-                    "effective_date, settlement_date, security_id, quantity, currency, amount, commission, " +
-                    "counter_currency, counter_amount, description, source_seq " +
-                    "FROM ledger.activity WHERE idempotency_key = ?",
-            ).use { st ->
+            c.prepareStatement("SELECT $ACTIVITY_COLUMNS FROM ledger.activity WHERE idempotency_key = ?").use { st ->
                 st.setString(1, idempotencyKey)
-                st.executeQuery().use { rs ->
-                    if (!rs.next()) return null
-                    val activity =
-                        Activity(
-                            idempotencyKey = idempotencyKey,
-                            taxpayerId = rs.getString(4),
-                            accountId = rs.getString(5),
-                            accountType = AccountType.valueOf(rs.getString(6)),
-                            activityType = ActivityType.valueOf(rs.getString(7)),
-                            effectiveDate = rs.getObject(8, LocalDate::class.java),
-                            settlementDate = rs.getObject(9, LocalDate::class.java),
-                            securityId = rs.getString(10),
-                            quantity = rs.getLong(11).takeUnless { rs.wasNull() },
-                            currency = Currency.valueOf(rs.getString(12)),
-                            amountMinor = rs.getLong(13),
-                            commissionMinor = rs.getLong(14),
-                            counterCurrency = rs.getString(15)?.let { Currency.valueOf(it) },
-                            counterAmountMinor = rs.getLong(16).takeUnless { rs.wasNull() },
-                            description = rs.getString(17),
-                            sourceSeq = rs.getLong(18),
-                        )
-                    ActivityRecord(
-                        rs.getString(1),
-                        rs.getLong(2),
-                        activity,
-                        rs.getObject(3, OffsetDateTime::class.java).toInstant(),
-                    )
+                st.executeQuery().use { rs -> if (rs.next()) rs.toActivityRecord() else null }
+            }
+        }
+
+    /**
+     * Runs [block] on one read-only, repeatable-read transaction (L-20 preview): the connection is marked read-only, so
+     * the database refuses any write, and both reads see the same ledger state.
+     */
+    fun <T> readOnly(block: (LedgerReader) -> T): T =
+        dataSource.connection.use { c ->
+            c.isReadOnly = true
+            c.autoCommit = false
+            c.transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ
+            try {
+                block(LedgerReader(c))
+            } finally {
+                c.rollback()
+                c.transactionIsolation = Connection.TRANSACTION_READ_COMMITTED
+                c.autoCommit = true
+                c.isReadOnly = false
+            }
+        }
+
+    /**
+     * Runs [block] while holding a transaction-scoped advisory lock that every [withImportLock] caller shares (L-20),
+     * so two imports of a file never interleave. It is a different lock from the append lock that [submit] takes, and
+     * the lock connection writes nothing. Released on commit, rollback or a dropped connection.
+     */
+    fun <T> withImportLock(block: () -> T): T =
+        dataSource.connection.use { c ->
+            inTransaction(c) {
+                c.prepareStatement("SELECT pg_advisory_xact_lock(?)").use {
+                    it.setLong(1, IMPORT_LOCK)
+                    it.execute()
                 }
+                block()
             }
         }
 
@@ -501,6 +501,9 @@ class LedgerRepository(
     private companion object {
         /** Advisory lock key that serialises appends ("LEDGERLN" in ASCII). */
         const val APPEND_LOCK = 0x4C45444745524C4EL
+
+        /** Advisory lock key that serialises whole-file imports ("LEDGRIMP" in ASCII). */
+        const val IMPORT_LOCK = 0x4C45444752494D50L
         const val UNIQUE_VIOLATION = "23505"
     }
 }
