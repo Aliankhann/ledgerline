@@ -1,6 +1,6 @@
 # B-036 A USD trade is reported as CAD cents in the tax year, with no conversion, flag or warning
 
-**Story:** L-18 (AC1 shape, "Out of scope" claim about USD) · **Severity:** major · **Status:** Open · **Round:** 1
+**Story:** L-18 (AC1 shape, "Out of scope" claim about USD) · **Severity:** major · **Status:** Open (round 2: JSON fixed, CSV not) · **Round:** 2
 
 ## Reproduction
 
@@ -39,3 +39,12 @@ The row has `proceedsCents = 9000`, the body says `"currency":"CAD"`, `warnings`
   the fix is conversion at read time, a warning per USD security, or a story change.
 - The test asserts no tax figure and no particular fix. It passes if any of conversion, a per-row currency field or a
   warning is present.
+
+## Round 2 (QE)
+
+- JSON is fixed: rows carry `currency`, non-CAD rows are excluded from totals, `FX-NOT-CONVERTED` is raised, the UI labels the row.
+- Still open: the CSV. A USD sale row reads `2025-06-03,SYN-USD,5000000,9000,5000,0,4000,0,` (no currency column, no note),
+  the TOTAL row excludes it, and the warning is not in the CSV. The CSV is the artefact meant for a tax return, so it is
+  still the B-036 defect there: USD cents look like CAD, and the rows no longer sum to TOTAL with no explanation.
+  Test: "L-18 attack 11 (B-036 round 2)". Fix needs a currency cell or a note such as `NOT-CONVERTED USD; excluded from totals`.
+- FX conversion in `AcbEngine` remains an owner decision (not asserted by any test).

@@ -1,6 +1,6 @@
 # B-037 One huge amount makes every tax-year route throw an unhandled ArithmeticException
 
-**Story:** L-18 (AC5 robustness, AC7) · **Severity:** minor · **Status:** Open · **Round:** 1
+**Story:** L-18 (AC5 robustness, AC7) · **Severity:** minor · **Status:** Fixed (QE verified, round 2) · **Round:** 2
 
 ## Reproduction
 
@@ -35,3 +35,8 @@ Raised in `AcbEngine.buy` (`Math.multiplyExact(amount + commission, acbUnitsPerC
 - Failing loudly on overflow is the repo's rule (B-007), and the engine is not at fault. The defect is that the route has
   no handler, so one poisoned activity hides all the taxpayer's other securities, as in B-035 for L-17. Severity is minor
   because the amount is about $20 trillion; the same path fails for any total ACB near `Long.MAX / 10^4` cents.
+
+## Round 2 (QE)
+
+Verified: years list, JSON and CSV routes each return 422 with `AMOUNT_OUT_OF_RANGE` for the huge-amount book
+("L-18 attack 12" passes; "attack 10" passes).

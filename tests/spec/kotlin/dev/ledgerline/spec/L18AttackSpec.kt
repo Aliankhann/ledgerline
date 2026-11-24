@@ -365,4 +365,42 @@ class L18AttackSpec : FunSpec({
         // The control: the good book on its own is fine.
         L18.year(good, 2025).rowList().size shouldNotBe 0
     }
+
+    // ------------------------------------------------------------------ 11
+
+    test("L-18 attack 11 (B-036 round 2): a non-CAD sale is marked as non-CAD in the CSV row, not only in JSON") {
+        val usd =
+            listOf(
+                L18.buy("v-b", "SYN-USD", d("2024-01-02"), 5 * share, 5_000, 1),
+                L18.sell("v-s", "SYN-USD", d("2025-06-03"), 5 * share, 9_000, 2),
+            ).map { it.copy(activity = it.activity.copy(currency = Currency.USD)) }
+        val json = L18.year(usd, 2025)
+        json.rowList().single().text("currency") shouldBe "USD"
+        json.warningList().map { it.text("ruleId") } shouldContain "FX-NOT-CONVERTED"
+        json.totals().long("netCents") shouldBe 0L
+        val recs = parseCsv(L18.fetch(usd, "/v1/tax-year/$tp/2025.csv").body)
+        val saleRow = recs.single { it.getOrNull(L18.CSV_HEADER.indexOf("security")) == "SYN-USD" }
+        withClue("CSV sale row ${saleRow.joinToString("|")} shows 9000 with no USD marker; TOTAL excludes it") {
+            saleRow.any { "USD" in it.replace("SYN-USD", "") } shouldBe true
+        }
+    }
+
+    // ------------------------------------------------------------------ 12
+
+    test("L-18 attack 12 (B-037 round 2): overflow is 422 AMOUNT_OUT_OF_RANGE on the years list, JSON and CSV routes") {
+        val book =
+            listOf(
+                L18.buy("o-b", "SYN-HUGE", d("2024-01-02"), 5 * share, 2_000_000_000_000_000L, 1),
+                L18.sell("o-s", "SYN-HUGE", d("2025-03-03"), 5 * share, 9_000, 2),
+            )
+        val res =
+            L18.fetchAll(
+                book,
+                listOf("", "/2025", "/2025.csv").map { HttpMethod.Get to "/v1/tax-year/$tp$it" },
+            )
+        res.forEach {
+            it.status shouldBe HttpStatusCode.UnprocessableEntity
+            it.body.contains("AMOUNT_OUT_OF_RANGE") shouldBe true
+        }
+    }
 })
