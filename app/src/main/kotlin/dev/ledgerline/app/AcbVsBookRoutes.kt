@@ -10,6 +10,7 @@ import dev.ledgerline.calc.HoldingRow
 import dev.ledgerline.calc.PoolKey
 import dev.ledgerline.calc.PostedActivity
 import dev.ledgerline.calc.Reason
+import dev.ledgerline.calc.fx.FxRateCache
 import io.ktor.http.ContentType
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
@@ -35,8 +36,9 @@ fun Application.acbVsBookModule(
 fun Application.acbVsBookFromActivities(
     activities: (taxpayer: String) -> List<PostedActivity>,
     bookValueCsv: String,
+    fx: FxRateCache? = null,
 ) {
-    val engine = AcbEngine(CaIta2026v1)
+    val engine = AcbEngine(CaIta2026v1, fx)
     acbVsBookRoute(
         { taxpayer -> engine.replaySuperficial(activities(taxpayer)).pools },
         { taxpayer ->

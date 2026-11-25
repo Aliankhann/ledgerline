@@ -4,7 +4,7 @@ import dev.ledgerline.calc.PostedActivity
 import dev.ledgerline.calc.TaxYear
 import dev.ledgerline.calc.TaxYearReport
 import dev.ledgerline.calc.TaxYearRow
-import dev.ledgerline.core.Currency
+import dev.ledgerline.calc.fx.FxRateCache
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
@@ -25,12 +25,19 @@ private val YEAR_TEXT = Regex("\\d{1,4}")
  * L-18 (read-only): `GET /v1/tax-year/{taxpayer}` lists years with rows; `/{year}` is the JSON table and
  * `/{year}.csv` the same rows as CSV. The figures come from [TaxYearReport] over the stored activities.
  */
-fun Application.taxYearFromActivities(activities: (taxpayer: String) -> List<PostedActivity>) {
+fun Application.taxYearFromActivities(activities: (taxpayer: String) -> List<PostedActivity>) =
+    taxYearFromActivities(null, activities)
+
+/** L-25: with [fx], USD sales are converted to CAD at their trade-date rate; without it they are rejected. */
+fun Application.taxYearFromActivities(
+    fx: FxRateCache?,
+    activities: (taxpayer: String) -> List<PostedActivity>,
+) {
     routing {
         get("/v1/tax-year/{taxpayer}") {
             val taxpayer = call.parameters["taxpayer"].orEmpty()
             val acts = knownActivities(taxpayer, activities) ?: return@get
-            val years = guarded { TaxYearReport.yearsWithRows(acts, taxpayer) } ?: return@get
+            val years = guarded { TaxYearReport.yearsWithRows(acts, taxpayer, fx) } ?: return@get
             val body =
                 buildJsonObject {
                     put("taxpayerId", taxpayer)
@@ -48,7 +55,7 @@ fun Application.taxYearFromActivities(activities: (taxpayer: String) -> List<Pos
                 return@get
             }
             val acts = knownActivities(taxpayer, activities) ?: return@get
-            val report = guarded { TaxYearReport.build(acts, taxpayer, yearText.toInt()) } ?: return@get
+            val report = guarded { TaxYearReport.build(acts, taxpayer, yearText.toInt(), fx) } ?: return@get
             if (csv) {
                 call.respondText(csvOf(report), ContentType.Text.CSV)
             } else {
@@ -163,18 +170,7 @@ private fun csvOf(r: TaxYear): String {
 /** A cell a spreadsheet could run as a formula gets a leading apostrophe. */
 private fun safe(cell: String): String = if (cell.firstOrNull() in setOf('=', '+', '-', '@')) "'$cell" else cell
 
-// OWNER-INPUT: L-18 B-036 wording; a non-CAD row is marked in the notes cell because FX is not converted yet.
-private fun csvNotes(row: TaxYearRow): String {
-    val fx =
-        if (row.currency != Currency.CAD) {
-            listOf(
-                "NOT-CONVERTED ${row.currency}; excluded from totals",
-            )
-        } else {
-            emptyList()
-        }
-    return (fx + row.notes).joinToString("; ")
-}
+private fun csvNotes(row: TaxYearRow): String = row.notes.joinToString("; ")
 
 private fun csvLine(vararg cells: String): String = cells.joinToString(",") { quote(it) }
 

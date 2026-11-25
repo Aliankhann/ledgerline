@@ -1,5 +1,6 @@
 package dev.ledgerline.calc
 
+import dev.ledgerline.calc.fx.FxRateCache
 import dev.ledgerline.core.Currency
 import java.time.LocalDate
 
@@ -20,7 +21,7 @@ data class TaxYearRow(
     val ruleIds: List<String>,
     val entryIds: List<Long>,
     val substituteEntryIds: List<Long>,
-    /** Currency of the money fields. Anything but CAD is NOT converted (see `FX-NOT-CONVERTED`). */
+    /** Currency of the money fields: CAD once converted (L-25); the activity's own currency only when the caller gave no rate cache. */
     val currency: Currency = Currency.CAD,
 )
 
@@ -45,8 +46,6 @@ data class TaxYear(
  * here; proceeds and the selling commission are joined from the SELL activity by activity id.
  */
 object TaxYearReport {
-    private val engine = AcbEngine(CaIta2026v1)
-
     // OWNER-INPUT: L-18 inclusion rate 1/2 for every year (docs/tax-model.md quotes ITA-38); per-year table is open.
     private const val INCLUSION_NUMERATOR = 1L
     private const val INCLUSION_DENOMINATOR = 2L
@@ -59,11 +58,12 @@ object TaxYearReport {
         activities: List<PostedActivity>,
         taxpayerId: String,
         year: Int,
+        fx: FxRateCache? = null,
     ): TaxYear {
+        val engine = AcbEngine(CaIta2026v1, fx)
         val mine = activities.filter { it.activity.taxpayerId == taxpayerId }
-        val rows = allRows(mine).filter { it.taxDate.year == year }
-        val unconverted = rows.filter { it.currency != Currency.CAD }
-        val counted = rows - unconverted.toSet()
+        val rows = allRows(engine, mine).filter { it.taxDate.year == year }
+        val counted = rows
         val gains = counted.filter { it.gainCents > 0 }.sumOf { it.gainCents }
         val losses = counted.filter { it.gainCents < 0 }.sumOf { it.gainCents }
         val net = gains + losses
@@ -73,26 +73,16 @@ object TaxYearReport {
             DataGapWarnings.detect(mine, engine.replay(mine)).entries
                 .sortedWith(compareBy({ it.key.taxpayerId }, { it.key.securityId }))
                 .flatMap { (_, reasons) -> reasons.sortedBy { it.ruleId } }
-        val warnings = gapWarnings + unconverted.map(::fxWarning)
-        return TaxYear(taxpayerId, year, rows, totals, warnings)
+        return TaxYear(taxpayerId, year, rows, totals, gapWarnings)
     }
-
-    // OWNER-INPUT: L-18 provisional id and wording; FX conversion is not wired into AcbEngine (pre-existing).
-    private fun fxWarning(r: TaxYearRow): Reason =
-        Reason(
-            "FX-NOT-CONVERTED",
-            "Sale of ${r.securityId} is in ${r.currency}; amounts need FX conversion to CAD, so it is listed " +
-                "but left out of the totals.",
-            r.entryIds,
-            0L,
-        )
 
     /** Years with at least one row for [taxpayerId], newest first. */
     fun yearsWithRows(
         activities: List<PostedActivity>,
         taxpayerId: String,
+        fx: FxRateCache? = null,
     ): List<Int> =
-        allRows(activities.filter { it.activity.taxpayerId == taxpayerId })
+        allRows(AcbEngine(CaIta2026v1, fx), activities.filter { it.activity.taxpayerId == taxpayerId })
             .map { it.taxDate.year }.distinct().sortedDescending()
 
     /**
@@ -102,16 +92,20 @@ object TaxYearReport {
     fun taxableCents(netCents: Long): Long =
         if (netCents <= 0L) 0L else netCents * INCLUSION_NUMERATOR / INCLUSION_DENOMINATOR
 
-    private fun allRows(mine: List<PostedActivity>): List<TaxYearRow> {
+    private fun allRows(
+        engine: AcbEngine,
+        mine: List<PostedActivity>,
+    ): List<TaxYearRow> {
         val replay = engine.replaySuperficial(mine)
         val byActivity = mine.associateBy { it.activityId }
         val entryOf = byActivity.mapValues { it.value.entryId }
         return replay.sales
-            .map { sale -> row(sale, byActivity.getValue(sale.activityId), replay, entryOf) }
+            .map { sale -> row(engine, sale, byActivity.getValue(sale.activityId), replay, entryOf) }
             .sortedWith(compareBy({ it.taxDate }, { it.sequence }, { it.entryIds.first() }))
     }
 
     private fun row(
+        engine: AcbEngine,
         sale: SaleResult,
         posted: PostedActivity,
         replay: SlReplay,
@@ -125,7 +119,18 @@ object TaxYearReport {
             replay.pools.getValue(key).history
                 .first { it.activityId == sale.activityId && it.sharesDelta < 0 }.acbDelta.let { -it }
         val substitutes = sale.triggers.mapNotNull { entryOf[it.activityId] }.sorted()
-        val notes =
+        // L-25: a USD sale's money is CAD cents at its own trade-date rate; the original USD amount is kept in a note.
+        val rate = engine.rateFor(a)
+        val fxNotes =
+            if (rate == null) {
+                emptyList()
+            } else {
+                listOf(
+                    "FX: ${a.currency} ${usd(a.amountMinor)} proceeds and ${usd(a.commissionMinor)} commission " +
+                        "converted at ${rate4(rate.rateScaled)} (Bank of Canada rate of ${rate.date})",
+                )
+            }
+        val slNotes =
             if (sale.denied > 0L) {
                 listOf(
                     "SL-PARTIAL: loss denied ${rules.toReportedCents(sale.denied)} cents; " +
@@ -135,6 +140,7 @@ object TaxYearReport {
             } else {
                 emptyList()
             }
+        val notes = fxNotes + slNotes
         return TaxYearRow(
             activityId = sale.activityId,
             taxDate = sale.taxDate,
@@ -142,8 +148,8 @@ object TaxYearReport {
             kind = GainKind.DISPOSITION,
             sequence = a.sourceSeq,
             sharesUnits = a.quantity ?: 0L,
-            proceedsCents = a.amountMinor,
-            outlaysCents = a.commissionMinor,
+            proceedsCents = engine.cadCents(a.amountMinor, rate),
+            outlaysCents = engine.cadCents(a.commissionMinor, rate),
             acbSoldCents = rules.toReportedCents(acbSold),
             gainCents = rules.toReportedCents(sale.reportedGain),
             superficialLossDeniedCents = rules.toReportedCents(sale.denied),
@@ -151,7 +157,11 @@ object TaxYearReport {
             ruleIds = sale.ruleIds.sorted(),
             entryIds = listOf(posted.entryId),
             substituteEntryIds = substitutes,
-            currency = a.currency,
+            currency = if (rate == null) a.currency else Currency.CAD,
         )
     }
+
+    private fun usd(minor: Long): String = "${minor / 100}.${(minor % 100).toString().padStart(2, '0')}"
+
+    private fun rate4(scaled: Long): String = "${scaled / 10_000}.${(scaled % 10_000).toString().padStart(4, '0')}"
 }

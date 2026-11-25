@@ -7,6 +7,8 @@ import dev.ledgerline.calc.ActivityStore
 import dev.ledgerline.calc.CaIta2026v1
 import dev.ledgerline.calc.CalcMigrations
 import dev.ledgerline.calc.PoolConsumer
+import dev.ledgerline.calc.fx.FxRateCache
+import dev.ledgerline.calc.fx.ValetResponse
 import dev.ledgerline.ledger.LedgerMigrations
 import dev.ledgerline.ledger.LedgerRepository
 import dev.ledgerline.ledger.outbox.OutboxProducers
@@ -26,6 +28,7 @@ import org.slf4j.LoggerFactory
 import org.slf4j.bridge.SLF4JBridgeHandler
 import java.nio.file.Path
 import java.time.Duration
+import java.time.LocalDate
 import kotlin.system.exitProcess
 
 private val log = LoggerFactory.getLogger("dev.ledgerline.app")
@@ -42,8 +45,22 @@ fun main(args: Array<String>) {
 private fun reconcileFromEnv(): Int {
     val config = AppConfig.fromEnv()
     return pool(config.databaseUrl, config.databaseUser, config.databasePassword, size = 2).use {
-        ReconcileCommand.run(it, System.out, Path.of("build/reconciliation/report.json"))
+        ReconcileCommand.run(
+            it,
+            System.out,
+            Path.of("build/reconciliation/report.json"),
+            AcbEngine(CaIta2026v1, loadFxRates()),
+        )
     }
+}
+
+// OWNER-INPUT: L-25 the committed Bank of Canada file and its coverage; the app never fetches rates live (ADR 0008).
+private fun loadFxRates(): FxRateCache {
+    val name = "/fx/FXUSDCAD_2023-01-01_2025-12-31.json"
+    val json =
+        requireNotNull(object {}.javaClass.getResourceAsStream(name)) { "Missing $name" }
+            .use { String(it.readBytes(), Charsets.UTF_8) }
+    return FxRateCache.fromValetJson(listOf(ValetResponse(json, LocalDate.of(2023, 1, 1), LocalDate.of(2025, 12, 31))))
 }
 
 private fun serve() {
@@ -64,6 +81,7 @@ private fun serve() {
         }
     }
 
+    val fx = loadFxRates()
     val dataSource = pool(config.databaseUrl, config.databaseUser, config.databasePassword, size = 10)
     log.info("Serving as database role {}", config.databaseUser)
 
@@ -86,7 +104,7 @@ private fun serve() {
                 "group.id" to config.kafkaGroupId,
                 "auto.offset.reset" to "earliest",
             ),
-            AcbEngine(CaIta2026v1),
+            AcbEngine(CaIta2026v1, fx),
         )
     consumer.start()
     log.info("Pool consumer started, group {} at {}", config.kafkaGroupId, config.kafkaBootstrap)
@@ -113,11 +131,11 @@ private fun serve() {
         // OWNER-INPUT: C31 holdings list every pool (NO_BROKER_VALUE / DATA_GAP placeholders).
         // Book values come from the optional file named by BOOK_VALUE_CSV (header security_id,book_value). OWNER-INPUT: C29.
         val activities = ActivityStore(dataSource)
-        acbVsBookFromActivities(activities::effectiveActivities, bookValueCsv())
+        acbVsBookFromActivities(activities::effectiveActivities, bookValueCsv(), fx)
         // L-17: the timeline and sum check behind one holding's difference, from the same stored activities.
-        explainFromActivities(activities::effectiveActivities, bookValueCsv())
+        explainFromActivities(activities::effectiveActivities, bookValueCsv(), fx)
         // L-18: your tax year (read-only), from the same stored activities.
-        taxYearFromActivities(activities::effectiveActivities)
+        taxYearFromActivities(fx, activities::effectiveActivities)
     }.start(wait = true)
 }
 

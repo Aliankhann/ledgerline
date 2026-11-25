@@ -47,3 +47,15 @@ Currencies other than USD; FX gain/loss on cash balances; live fetching; T1135 f
 - Approval beyond the 14-story cap.
 
 ## Change notes
+
+- Dev (2026-11-25): `AcbEngine(rules, fx)` converts USD buy (amount + commission, one rounding), sell (proceeds and
+  commission separately) and return of capital at `rateFor(effectiveDate)`; a missing rate is a `FX_RATE_MISSING`
+  rejection, reported as `FX-RATE-MISSING` in Data checks (via `DataGapWarnings.detect`). `TaxYearReport`, `HoldingExplanation`
+  take `fx`; `ExplainStep.fx` (`FxStep`) and the explain JSON show the USD amount, rate, rate date and CAD cents.
+  `FX-HISTORICAL` scans published days (earliest first) for one rate that is not a buy's trade-date rate. The L-18
+  `FX-NOT-CONVERTED` warning and the CSV `NOT-CONVERTED` note are gone. Rates: `app/src/main/resources/fx/` (BoC
+  2023-01-01..2025-12-31), loaded once in `Main.kt` and passed to the explain, tax-year, acb-vs-book routes, the pool
+  consumer and `reconcile`. UI keeps the `FX-NOT-CONVERTED` entry (L-23 guards) and adds `FX-RATE-MISSING`.
+- Deviation from the L25.kt KDoc: with `fx == null` nothing is converted and nothing is rejected (old behaviour).
+  `L16AttackSpec` (seed 42 holds USD rows, engine has no cache) fails otherwise. See `docs/status.md` open questions.
+  Not wired: `ImportPreview` still uses a cache-less engine. Draft ADR: `docs/adr/0008-fx-trade-date-boc-rate.md`.

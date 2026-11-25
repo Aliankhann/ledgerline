@@ -6,6 +6,7 @@ const WHAT_TO_DO: Record<string, string> = {
   "DATA-GAP-TRANSFER-NO-COST": "Add the cost of the transferred shares, or treat the ACB as unknown",
   "DATA-GAP-OVERSELL": "Add the missing purchase or remove the sale",
   "FX-NOT-CONVERTED": "Foreign-currency rows are excluded from totals; convert them yourself for now",
+  "FX-RATE-MISSING": "Add the Bank of Canada rate file for the trade date, or correct the trade date",
   AMOUNT_OUT_OF_RANGE: "Split or correct the very large amount in the listed rows",
   REJECTED: "Fix the row named and upload again",
 };

@@ -6,6 +6,7 @@ import dev.ledgerline.calc.Explanation
 import dev.ledgerline.calc.HoldingExplanation
 import dev.ledgerline.calc.PoolKey
 import dev.ledgerline.calc.PostedActivity
+import dev.ledgerline.calc.fx.FxRateCache
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
@@ -23,6 +24,7 @@ import kotlinx.serialization.json.put
 fun Application.explainFromActivities(
     activities: (taxpayer: String) -> List<PostedActivity>,
     bookValueCsv: String,
+    fx: FxRateCache? = null,
 ) {
     routing {
         get("/v1/holdings/{taxpayer}/{security}/explain") {
@@ -35,7 +37,7 @@ fun Application.explainFromActivities(
                         val msg = "Bad book value file: ${it.message}"
                         return@get call.respondText(msg, ContentType.Text.Plain, HttpStatusCode.BadRequest)
                     }
-            val explanation = HoldingExplanation.explain(activities(taxpayer), book, key)
+            val explanation = HoldingExplanation.explain(activities(taxpayer), book, key, fx)
             if (explanation == null) {
                 call.respondText(
                     "No holding $security for taxpayer $taxpayer",
@@ -91,6 +93,18 @@ private fun stepJson(s: ExplainStep): JsonElement =
         put("costDeltaCents", s.costDeltaCents)
         put("runningSharesUnits", s.runningSharesUnits)
         put("runningAcbCents", s.runningAcbCents)
+        put(
+            "fx",
+            s.fx?.let {
+                buildJsonObject {
+                    put("currency", it.currency.name)
+                    put("originalMinor", it.originalMinor)
+                    put("rateScaled", it.rateScaled)
+                    put("rateDate", it.rateDate.toString())
+                    put("cadCents", it.cadCents)
+                }
+            } ?: JsonNull,
+        )
         val sl = s.superficialLoss
         put(
             "superficialLoss",

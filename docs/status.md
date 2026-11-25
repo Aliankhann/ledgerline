@@ -96,6 +96,11 @@ The full structured list is in [`owner-inputs.md`](owner-inputs.md). Older items
 
 ## Open questions
 
+- **L-25 (dev, for owner and QE):** the `L25.kt` KDoc says `AcbEngine(rules, fx = null)` rejects a USD activity
+  `FX-RATE-MISSING`. `L16AttackSpec` (seed 42 has USD rows) builds `AcbEngine(CaIta2026v1)` with no cache and expects
+  every rejection to be an over-sell, so Dev made `fx == null` mean "no conversion, no rejection". With a cache, a
+  missing rate is rejected as specified. Decide which should win; `ImportPreview` also still uses a cache-less engine.
+
 - **L-20 hardening (QE note, not a defect).** The import lock's `pg_advisory_unlock` result is not checked; if it failed
   on a live connection, the pool could get back a lock-holding connection. Suggested fix: abort the connection when the
   unlock fails. Also: preview does not predict `EVENT_TOO_LARGE`; rejected rows have no key/type/date in the table.

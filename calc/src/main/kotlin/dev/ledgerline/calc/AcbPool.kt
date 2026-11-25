@@ -46,7 +46,7 @@ data class GainLine(
 
 data class StepExplanation(val ruleSetId: String, val ruleIds: Set<String>, val text: String)
 
-enum class RejectionCode { INSUFFICIENT_SHARES }
+enum class RejectionCode { INSUFFICIENT_SHARES, FX_RATE_MISSING }
 
 /** `held` and `requested` are in 10^-6 share units. */
 data class Rejection(

@@ -1,6 +1,10 @@
 package dev.ledgerline.calc
 
+import dev.ledgerline.calc.fx.FxRate
+import dev.ledgerline.calc.fx.FxRateCache
+import dev.ledgerline.core.Activity
 import dev.ledgerline.core.ActivityType
+import dev.ledgerline.core.Currency
 import java.time.LocalDate
 
 /** L-17: how a holding's ACB was built and how its difference to the book value is explained. */
@@ -15,6 +19,15 @@ data class SuperficialLossStep(
     val addBackCents: Long,
 )
 
+/** L-25: how a USD amount became CAD on a step. [originalMinor] is USD cents (buy: amount + commission). */
+data class FxStep(
+    val currency: Currency,
+    val originalMinor: Long,
+    val rateScaled: Long,
+    val rateDate: LocalDate,
+    val cadCents: Long,
+)
+
 data class ExplainStep(
     val entryId: Long,
     val activityId: String,
@@ -27,6 +40,7 @@ data class ExplainStep(
     val runningSharesUnits: Long,
     val runningAcbCents: Long,
     val superficialLoss: SuperficialLossStep?,
+    val fx: FxStep? = null,
 )
 
 data class Explanation(
@@ -72,25 +86,30 @@ object ExplanationFooter {
 
 object HoldingExplanation {
     private val rules = CaIta2026v1
-    private val engine = AcbEngine(rules)
+
+    // OWNER-INPUT: L-25 reason id and wording for a book value at one single historical rate.
+    const val FX_HISTORICAL = "FX-HISTORICAL"
 
     /** Null only for an unknown holding: no pool and no L-16 warning for [key]. */
     fun explain(
         activities: List<PostedActivity>,
         bookValueCents: Long?,
         key: PoolKey,
+        fx: FxRateCache? = null,
     ): Explanation? {
+        val engine = AcbEngine(rules, fx)
         val replay = engine.replaySuperficial(activities)
         val pool = replay.pools[key]
         val warnings = DataGapWarnings.detect(activities, engine.replay(activities))[key].orEmpty()
         if (pool == null && warnings.isEmpty() && bookValueCents == null) return null
-        val row =
+        val compared =
             BookValueComparison.compareAll(
                 listOfNotNull(pool).associateBy { it.key },
                 listOfNotNull(bookValueCents).associate { key to it },
                 mapOf(key to warnings).filterValues { it.isNotEmpty() },
             ).single()
-        val steps = pool?.let { steps(it, activities, replay) }.orEmpty()
+        val row = historicalFx(compared, pool, activities, fx) ?: compared
+        val steps = pool?.let { steps(it, activities, replay, engine) }.orEmpty()
         val diff = row.differenceCents
         val footer = diff?.let { ExplanationFooter.of(it, row.reasons) }
         val status =
@@ -118,6 +137,7 @@ object HoldingExplanation {
         pool: AcbPool,
         activities: List<PostedActivity>,
         replay: SlReplay,
+        engine: AcbEngine,
     ): List<ExplainStep> {
         val byActivity = activities.associateBy { it.activityId }
         var shares = 0L
@@ -144,10 +164,59 @@ object HoldingExplanation {
                     shares,
                     runningCents,
                     addBack?.let { superficial(it, byActivity, replay, stepEntryIds) },
+                    if (addBack == null) fxStep(posted.activity, engine) else null,
                 )
             previousCents = runningCents
             step
         }
+    }
+
+    private fun fxStep(
+        a: Activity,
+        engine: AcbEngine,
+    ): FxStep? {
+        val rate = engine.rateFor(a) ?: return null
+        val original =
+            if (a.activityType == ActivityType.BUY) Math.addExact(a.amountMinor, a.commissionMinor) else a.amountMinor
+        return FxStep(a.currency, original, rate.rateScaled, rate.date, engine.cadCents(original, rate))
+    }
+
+    /**
+     * L-25 AC6: when the book value is the whole USD cost of the buys held at one published rate that none of those
+     * buys used, the difference is that rate choice. Null when it does not apply.
+     * OWNER-INPUT: L-25 detection scans every published day, earliest first; "today's rate" is not detected.
+     */
+    private fun historicalFx(
+        row: HoldingRow,
+        pool: AcbPool?,
+        activities: List<PostedActivity>,
+        fx: FxRateCache?,
+    ): HoldingRow? {
+        val book = row.bookValueCents
+        val diff = row.differenceCents
+        if (fx == null || pool == null || book == null || diff == null || diff == 0L) return null
+        val byActivity = activities.associateBy { it.activityId }
+        val buys =
+            pool.history.filter { it.sharesDelta > 0L }
+                .map { byActivity.getValue(it.activityId) }
+                .filter { it.activity.activityType == ActivityType.BUY }
+        if (buys.isEmpty() || buys.any { it.activity.currency != Currency.USD }) return null
+        val usdCost = buys.sumOf { Math.addExact(it.activity.amountMinor, it.activity.commissionMinor) }
+        val tradeDates = buys.map { fx.rateFor(it.activity.effectiveDate).date }.toSet()
+        val single: FxRate =
+            fx.publishedRates().firstOrNull { it.date !in tradeDates && fx.toCadCents(rules, usdCost, it) == book }
+                ?: return null
+        val reason =
+            Reason(
+                FX_HISTORICAL,
+                "The book value converts the USD cost of ${buys.size} buy(s) at one rate, " +
+                    "${single.rateScaled / 10_000}." +
+                    "${(single.rateScaled % 10_000).toString().padStart(4, '0')} of ${single.date}, " +
+                    "not each buy's own trade-date rate.",
+                buys.map { it.entryId }.sorted(),
+                diff,
+            )
+        return row.copy(reasons = listOf(reason) + row.reasons.filter { it.amountMinor == 0L })
     }
 
     private fun superficial(

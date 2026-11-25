@@ -52,6 +52,9 @@ class FxRateCache private constructor(
         return FxRate(entry.key, entry.value)
     }
 
+    /** Every published rate, oldest first. Not a lookup: it does not count in [lookupCount]. */
+    fun publishedRates(): List<FxRate> = rates.map { FxRate(it.key, it.value) }
+
     /** `FX-CAD-REQUIRED`: null for CAD, no lookup. */
     fun rateFor(
         currency: String,
