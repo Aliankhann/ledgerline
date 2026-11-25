@@ -1,5 +1,7 @@
 package dev.ledgerline.app
 
+import dev.ledgerline.core.AccountType
+import dev.ledgerline.ingest.ImportDefaults
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
@@ -25,7 +27,8 @@ fun Application.importPreviewModule(service: IngestionService) {
     routing {
         post("/v1/imports/preview") {
             val text = call.receiveLimitedText(MAX_IMPORT_BYTES) ?: return@post call.respondTooLarge()
-            call.respondJson(HttpStatusCode.OK, reportJson(service.preview(text)))
+            val defaults = call.importDefaults() ?: return@post call.respondCode(HttpStatusCode.BadRequest, BAD_TYPE)
+            call.respondJson(HttpStatusCode.OK, reportJson(service.preview(text, defaults.value)))
         }
 
         post("/v1/imports/confirm") {
@@ -41,13 +44,27 @@ fun Application.importPreviewModule(service: IngestionService) {
             if (!sha.equals(ImportPreview.sha256(text), ignoreCase = true)) {
                 return@post call.respondCode(HttpStatusCode.Conflict, "PREVIEW_MISMATCH")
             }
-            val report = service.confirm(text)
+            val defaults = call.importDefaults() ?: return@post call.respondCode(HttpStatusCode.BadRequest, BAD_TYPE)
+            val report = service.confirm(text, defaults.value)
             call.respondJson(
                 HttpStatusCode.OK,
                 JsonObject(reportJson(report) + confirmJson(report, previewNew)),
             )
         }
     }
+}
+
+private const val BAD_TYPE = "INVALID_ACCOUNT_TYPE"
+
+private class Defaults(val value: ImportDefaults?)
+
+/** `?taxpayer=&accountType=` (Broker B uploads). Both absent: no defaults. Null result: accountType is not valid. */
+private fun ApplicationCall.importDefaults(): Defaults? {
+    val taxpayer = request.queryParameters["taxpayer"]?.trim().orEmpty()
+    val type = request.queryParameters["accountType"]?.trim().orEmpty()
+    if (taxpayer.isEmpty() && type.isEmpty()) return Defaults(null)
+    val accountType = AccountType.entries.firstOrNull { it.name == type } ?: return null
+    return Defaults(if (taxpayer.isEmpty()) null else ImportDefaults(taxpayer, accountType))
 }
 
 private suspend fun ApplicationCall.respondCode(
@@ -87,6 +104,7 @@ private fun confirmJson(
 private fun reportJson(r: PreviewReport): JsonObject =
     buildJsonObject {
         put("fileSha256", r.fileSha256)
+        put("format", r.format?.name)
         put("rowsRead", r.rowsRead)
         put("new", r.new)
         put("duplicates", r.duplicates)

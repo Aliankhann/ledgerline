@@ -2,8 +2,10 @@ package dev.ledgerline.app
 
 import dev.ledgerline.calc.PostedActivity
 import dev.ledgerline.core.Activity
+import dev.ledgerline.ingest.BrokerFormats
 import dev.ledgerline.ingest.CanonicalCsv
 import dev.ledgerline.ingest.FileError
+import dev.ledgerline.ingest.ImportDefaults
 import dev.ledgerline.ingest.ParseResult
 import dev.ledgerline.ingest.Rejection
 import dev.ledgerline.ledger.LedgerRepository
@@ -92,18 +94,30 @@ class IngestionService(
      * file-import lock, so two confirms of one file are atomic per file: the second sees every key of the first.
      * OWNER-INPUT: L-20 atomic per file through a database advisory lock (not an in-process mutex).
      */
-    fun confirm(text: String): PreviewReport {
-        val parsed = CanonicalCsv.parse(text)
+    fun confirm(
+        text: String,
+        defaults: ImportDefaults? = null,
+    ): PreviewReport {
+        val parsed = BrokerFormats.parse(text, defaults)
         val rows = ledger.withImportLock { submitter -> submitRows(parsed) { submitWith(it, submitter) } }
-        return PreviewReport.of(rows, emptyList(), parsed.fileErrors, ImportPreview.sha256(text))
+        return PreviewReport.of(
+            rows,
+            emptyList(),
+            parsed.fileErrors,
+            ImportPreview.sha256(text),
+            BrokerFormats.detectFile(text),
+        )
     }
 
     /**
      * L-20 preview: reads on one read-only transaction and classifies in memory ([ImportPreview.classify]). Writes
      * nothing and consumes no key.
      */
-    fun preview(text: String): PreviewReport {
-        val parsed = CanonicalCsv.parse(text)
+    fun preview(
+        text: String,
+        defaults: ImportDefaults? = null,
+    ): PreviewReport {
+        val parsed = BrokerFormats.parse(text, defaults)
         val (hashes, existing) =
             ledger.readOnly { r ->
                 r.payloadHashes(parsed.activities.map { it.idempotencyKey }) to
@@ -114,6 +128,7 @@ class IngestionService(
             ImportPreview.sha256(text),
             hashes::get,
             existing.map { PostedActivity(it.activityId, it.entryId, it.activity) },
+            BrokerFormats.detectFile(text),
         )
     }
 

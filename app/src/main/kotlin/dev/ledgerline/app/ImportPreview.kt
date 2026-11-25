@@ -6,8 +6,10 @@ import dev.ledgerline.calc.DataGapWarnings
 import dev.ledgerline.calc.PoolKey
 import dev.ledgerline.calc.PostedActivity
 import dev.ledgerline.core.Activity
-import dev.ledgerline.ingest.CanonicalCsv
+import dev.ledgerline.ingest.BrokerFormat
+import dev.ledgerline.ingest.BrokerFormats
 import dev.ledgerline.ingest.FileError
+import dev.ledgerline.ingest.ImportDefaults
 import dev.ledgerline.ingest.ParseResult
 import dev.ledgerline.ingest.Rejection
 import dev.ledgerline.ledger.PayloadHash
@@ -47,6 +49,7 @@ data class PreviewReport(
     val warnings: List<PreviewWarning>,
     val fileErrors: List<FileError>,
     val fileSha256: String,
+    val format: BrokerFormat?,
 ) {
     companion object {
         fun of(
@@ -54,6 +57,7 @@ data class PreviewReport(
             warnings: List<PreviewWarning>,
             fileErrors: List<FileError>,
             fileSha256: String,
+            format: BrokerFormat? = null,
         ): PreviewReport {
             fun count(s: PreviewStatus) = rows.count { it.status == s }
             return PreviewReport(
@@ -66,6 +70,7 @@ data class PreviewReport(
                 warnings,
                 fileErrors,
                 fileSha256,
+                format,
             )
         }
     }
@@ -82,13 +87,22 @@ object ImportPreview {
         csv: String,
         stored: (idempotencyKey: String) -> String?,
         existing: List<PostedActivity> = emptyList(),
-    ): PreviewReport = classify(CanonicalCsv.parse(csv), sha256(csv), stored, existing)
+        defaults: ImportDefaults? = null,
+    ): PreviewReport =
+        classify(
+            BrokerFormats.parse(csv, defaults),
+            sha256(csv),
+            stored,
+            existing,
+            BrokerFormats.detectFile(csv),
+        )
 
     fun classify(
         parsed: ParseResult,
         fileSha256: String,
         stored: (String) -> String?,
         existing: List<PostedActivity>,
+        format: BrokerFormat? = null,
     ): PreviewReport {
         val rows = parsed.rejections.map { rejectedRow(it) }.toMutableList()
         val inFile = mutableMapOf<String, String>()
@@ -111,7 +125,7 @@ object ImportPreview {
                 }
         }
         val warnings = if (parsed.fileErrors.isEmpty()) guardedWarnings(existing, fresh) else emptyList()
-        return PreviewReport.of(rows.sortedBy { it.line }, warnings, parsed.fileErrors, fileSha256)
+        return PreviewReport.of(rows.sortedBy { it.line }, warnings, parsed.fileErrors, fileSha256, format)
     }
 
     fun sha256(text: String): String =

@@ -105,6 +105,10 @@ object CanonicalCsv {
         return ParseResult(activities, rejections, emptyList(), lines)
     }
 
+    /** The records of [text] (BOM dropped) as (physical line, fields); shared with the other broker adapters. */
+    internal fun records(text: String): List<Pair<Int, List<String>>> =
+        tokenize(text.removePrefix(BOM)).map { it.line to it.fields }
+
     private fun fileError(
         message: String,
         column: String?,

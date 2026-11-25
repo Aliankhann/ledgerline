@@ -105,7 +105,7 @@ export function App() {
         ))}
       </div>
       <div role="tabpanel" id="tabpanel" aria-labelledby={`tab-${tab}`} className="panel">
-        {tab === "upload" && <Upload report={report} setReport={setReport} />}
+        {tab === "upload" && <Upload report={report} setReport={setReport} taxpayer={taxpayer} />}
         {tab === "your-year" && (
           <YourYear
             key={taxpayer}

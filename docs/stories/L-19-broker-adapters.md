@@ -46,3 +46,15 @@ Wealthsimple (needs header), PDF statements, options, corporate actions.
 - Approval beyond the 14-story cap.
 
 ## Change notes
+
+- Dev (round 1): added `ingest/BrokerFormats.kt` (`BrokerFormat`, `ImportDefaults`, `detect`, `parse`). Broker B rows are
+  mapped to the canonical field map (ISO dates, action name, `abs(Quantity)`, `$` and commas removed, key
+  `BROKERB:<Account>:<Reference>`, Memo as description) and checked by `CanonicalCsv.parseFields`; its error fields are
+  renamed to the Broker B column. Own codes: `SELL_QUANTITY_NOT_NEGATIVE`, `IMPORT_DEFAULTS_REQUIRED`. An unknown
+  header reuses the canonical parser's HEADER_INVALID (column kept, L-20) and adds both expected headers to the message.
+  An unquoted amount like `$3,012.50` splits at its comma; the money columns take back a following 3-digit group when the
+  row has too many cells. `ImportPreview.classify(..., defaults)`, `PreviewReport.format`, `IngestionService.preview/confirm`
+  take defaults; `/v1/imports/preview` and `/confirm` read `?taxpayer=&accountType=` and return `format`. UI: Upload shows
+  the detected format; for Broker B it uses the shared taxpayer (L-23 allows only one text input) plus an Account type
+  select, and re-previews with both as query params. Open: two property cases fail (see `docs/status.md`). Status stays
+  as is until QE and the owner settle that.
