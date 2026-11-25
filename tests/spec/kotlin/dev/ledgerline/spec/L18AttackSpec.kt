@@ -3,7 +3,6 @@ package dev.ledgerline.spec
 import dev.ledgerline.calc.PostedActivity
 import dev.ledgerline.calc.TaxYearReport
 import dev.ledgerline.core.AccountType
-import dev.ledgerline.core.Currency
 import dev.ledgerline.testsupport.L17.ids
 import dev.ledgerline.testsupport.L17.long
 import dev.ledgerline.testsupport.L17.parse
@@ -15,10 +14,12 @@ import dev.ledgerline.testsupport.L18.parseCsv
 import dev.ledgerline.testsupport.L18.rowList
 import dev.ledgerline.testsupport.L18.totals
 import dev.ledgerline.testsupport.L18.warningList
+import dev.ledgerline.testsupport.L25
 import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.longs.shouldBeGreaterThan
 import io.kotest.matchers.longs.shouldBeLessThanOrEqual
 import io.kotest.matchers.shouldBe
@@ -323,18 +324,22 @@ class L18AttackSpec : FunSpec({
 
     // ------------------------------------------------------------------ 9
 
-    test("L-18 attack 9: a USD activity is not presented as CAD cents without conversion, a flag or a warning") {
-        val usdBuy = L18.buy("u-b", "SYN-USD", d("2024-01-02"), 5 * share, 5_000, 1)
-        val usdSell = L18.sell("u-s", "SYN-USD", d("2025-06-03"), 5 * share, 9_000, 2)
-        val book = listOf(usdBuy, usdSell).map { it.copy(activity = it.activity.copy(currency = Currency.USD)) }
-        val body = L18.year(book, 2025)
+    test("L-18 attack 9 (B-036, L-25 AC5): a USD activity is converted to CAD at its trade-date rate, not shown raw") {
+        val fx = L25.cache()
+        val book =
+            listOf(
+                L25.usdBuy("u-b", "SYN-USD", d("2025-03-04"), 5 * share, 5_000, 1),
+                L25.usdSell("u-s", "SYN-USD", d("2025-06-30"), 5 * share, 9_000, 2),
+            )
+        val body = L18.year(book, 2025, fx = fx)
         val row = body.rowList().single()
-        val raw = row.long("proceedsCents") == 9_000L
-        val labelledCad = body.getValue("currency").toString().trim('"') == "CAD"
-        val flagged = body.warningList().isNotEmpty() || row.keys.any { it.lowercase().contains("currency") }
-        withClue("USD proceeds 9000 minor units shown as CAD 9000 cents, no warning, no per-row currency") {
-            (raw && labelledCad && !flagged) shouldBe false
+        withClue("USD 9000 minor units must not appear as CAD 9000 cents") {
+            row.long("proceedsCents") shouldBe L25.cad(fx, 9_000, d("2025-06-30"))
+            row.long("proceedsCents") shouldNotBe 9_000L
+            row.text("currency") shouldBe "CAD"
+            body.getValue("currency").toString().trim('"') shouldBe "CAD"
         }
+        body.warningList().map { it.text("ruleId") } shouldNotContain "FX-NOT-CONVERTED"
     }
 
     // ------------------------------------------------------------------ 10
@@ -368,21 +373,26 @@ class L18AttackSpec : FunSpec({
 
     // ------------------------------------------------------------------ 11
 
-    test("L-18 attack 11 (B-036 round 2): a non-CAD sale is marked as non-CAD in the CSV row, not only in JSON") {
+    test("L-18 attack 11 (B-036, L-25 AC5): a USD sale is a CAD row in JSON and CSV and counts in every total") {
+        val fx = L25.cache()
         val usd =
             listOf(
-                L18.buy("v-b", "SYN-USD", d("2024-01-02"), 5 * share, 5_000, 1),
-                L18.sell("v-s", "SYN-USD", d("2025-06-03"), 5 * share, 9_000, 2),
-            ).map { it.copy(activity = it.activity.copy(currency = Currency.USD)) }
-        val json = L18.year(usd, 2025)
-        json.rowList().single().text("currency") shouldBe "USD"
-        json.warningList().map { it.text("ruleId") } shouldContain "FX-NOT-CONVERTED"
-        json.totals().long("netCents") shouldBe 0L
-        val recs = parseCsv(L18.fetch(usd, "/v1/tax-year/$tp/2025.csv").body)
+                L25.usdBuy("v-b", "SYN-USD", d("2025-03-04"), 5 * share, 5_000, 1),
+                L25.usdSell("v-s", "SYN-USD", d("2025-06-30"), 5 * share, 9_000, 2),
+            )
+        val json = L18.year(usd, 2025, fx = fx)
+        val row = json.rowList().single()
+        row.text("currency") shouldBe "CAD"
+        json.warningList().map { it.text("ruleId") } shouldNotContain "FX-NOT-CONVERTED"
+        val gain = row.long("gainCents")
+        gain shouldBe L25.cad(fx, 9_000, d("2025-06-30")) - L25.cad(fx, 5_000, d("2025-03-04"))
+        json.totals().long("netCents") shouldBe gain
+        val csv = L18.fetch(usd, "/v1/tax-year/$tp/2025.csv", fx = fx).body
+        csv.contains("NOT-CONVERTED") shouldBe false
+        val recs = parseCsv(csv)
         val saleRow = recs.single { it.getOrNull(L18.CSV_HEADER.indexOf("security")) == "SYN-USD" }
-        withClue("CSV sale row ${saleRow.joinToString("|")} shows 9000 with no USD marker; TOTAL excludes it") {
-            saleRow.any { "USD" in it.replace("SYN-USD", "") } shouldBe true
-        }
+        centsOf(saleRow[L18.CSV_HEADER.indexOf("gain")]) shouldBe gain
+        centsOf(recs.last()[L18.CSV_HEADER.indexOf("gain")]) shouldBe gain
     }
 
     // ------------------------------------------------------------------ 12

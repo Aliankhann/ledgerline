@@ -2,6 +2,7 @@ package dev.ledgerline.testsupport
 
 import dev.ledgerline.app.taxYearFromActivities
 import dev.ledgerline.calc.PostedActivity
+import dev.ledgerline.calc.fx.FxRateCache
 import dev.ledgerline.core.ActivityType
 import io.ktor.client.request.request
 import io.ktor.client.statement.bodyAsText
@@ -109,10 +110,11 @@ object L18 {
         rows: List<PostedActivity>,
         requests: List<Pair<HttpMethod, String>>,
         known: String = tp,
+        fx: FxRateCache? = null,
     ): List<Resp> {
         val out = mutableListOf<Resp>()
         testApplication {
-            application { taxYearFromActivities { t -> if (t == known) rows else emptyList() } }
+            application { taxYearFromActivities(fx) { t -> if (t == known) rows else emptyList() } }
             requests.forEach { (method, path) ->
                 val res = client.request(path) { this.method = method }
                 out += Resp(res.status, res.bodyAsText(), res.contentType())
@@ -125,14 +127,16 @@ object L18 {
         rows: List<PostedActivity>,
         path: String,
         known: String = tp,
-    ): Resp = fetchAll(rows, listOf(HttpMethod.Get to path), known).single()
+        fx: FxRateCache? = null,
+    ): Resp = fetchAll(rows, listOf(HttpMethod.Get to path), known, fx).single()
 
     suspend fun year(
         rows: List<PostedActivity>,
         year: Int,
         taxpayer: String = tp,
+        fx: FxRateCache? = null,
     ): JsonObject {
-        val res = fetch(rows, "/v1/tax-year/$taxpayer/$year", taxpayer)
+        val res = fetch(rows, "/v1/tax-year/$taxpayer/$year", taxpayer, fx)
         check(res.status == HttpStatusCode.OK) { "GET $year gave ${res.status}: ${res.body}" }
         return L17.parse(res.body)
     }
