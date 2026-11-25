@@ -169,7 +169,7 @@ object BookValueComparison {
             else -> "$rule accounts for ${money(cents)}."
         }
 
-    private fun money(cents: Long): String {
+    internal fun money(cents: Long): String {
         val a = Math.abs(cents)
         return "${if (cents < 0) "-" else ""}$${a / 100}.${"%02d".format(a % 100)}"
     }

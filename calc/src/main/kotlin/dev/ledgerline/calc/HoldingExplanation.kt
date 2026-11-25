@@ -90,6 +90,12 @@ object HoldingExplanation {
     // OWNER-INPUT: L-25 reason id and wording for a book value at one single historical rate.
     const val FX_HISTORICAL = "FX-HISTORICAL"
 
+    // OWNER-INPUT: L-26 reason id for purchase commissions the broker's book value leaves out.
+    const val COMMISSION_NOT_IN_BOOK = "COMMISSION-NOT-IN-BOOK"
+
+    // OWNER-INPUT: L-26 subset limit: all subsets of buys up to this many, else the whole-holding sum only.
+    private const val SUBSET_LIMIT = 20
+
     /** Null only for an unknown holding: no pool and no L-16 warning for [key]. */
     fun explain(
         activities: List<PostedActivity>,
@@ -108,7 +114,8 @@ object HoldingExplanation {
                 listOfNotNull(bookValueCents).associate { key to it },
                 mapOf(key to warnings).filterValues { it.isNotEmpty() },
             ).single()
-        val row = historicalFx(compared, pool, activities, fx) ?: compared
+        val fxRow = historicalFx(compared, pool, activities, fx) ?: compared
+        val row = commissionReason(fxRow, pool, activities, key, fx)
         val steps = pool?.let { steps(it, activities, replay, engine) }.orEmpty()
         val diff = row.differenceCents
         val footer = diff?.let { ExplanationFooter.of(it, row.reasons) }
@@ -217,6 +224,93 @@ object HoldingExplanation {
                 diff,
             )
         return row.copy(reasons = listOf(reason) + row.reasons.filter { it.amountMinor == 0L })
+    }
+
+    /**
+     * L-26: after the other reasons, an unexplained remainder equal to the commission still inside the pool ACB for
+     * a subset of whole buys is labelled COMMISSION-NOT-IN-BOOK. A buy's share is the engine's own ACB with and
+     * without that buy's commission (so partial sales are pro-rated by the engine, with no new rounding).
+     */
+    private fun commissionReason(
+        row: HoldingRow,
+        pool: AcbPool?,
+        activities: List<PostedActivity>,
+        key: PoolKey,
+        fx: FxRateCache?,
+    ): HoldingRow {
+        val diff = row.differenceCents
+        val replaced = setOf("COST-BUY-COMMISSION", BookValueComparison.UNEXPLAINED)
+        val touched = row.reasons.any { it.ruleId in replaced }
+        if (pool == null || diff == null || !touched) return row
+        val kept = row.reasons.filter { it.ruleId !in replaced } + addBackReason(row, pool, diff)
+        val rest = Math.subtractExact(diff, kept.sumOf { it.amountMinor })
+        if (rest == 0L) return row.copy(reasons = kept)
+        val engine = AcbEngine(rules, fx)
+
+        fun acbWithout(ids: Set<Long>): Long {
+            val changed =
+                activities.map {
+                    if (it.entryId in ids) it.copy(activity = it.activity.copy(commissionMinor = 0L)) else it
+                }
+            return rules.toReportedCents(engine.replaySuperficial(changed).pools[key]?.totalAcb ?: 0L)
+        }
+        val buys =
+            activities.filter {
+                it.activity.activityType == ActivityType.BUY && it.activity.commissionMinor != 0L &&
+                    it.entryId in pool.history.map { h -> h.entryId }
+            }.sortedBy { it.entryId }
+        val shares = buys.map { it.entryId to Math.subtractExact(row.acbCents, acbWithout(setOf(it.entryId))) }
+        val usable = shares.filter { it.second != 0L }
+        val found =
+            if (usable.size <= SUBSET_LIMIT) {
+                (1 until (1 shl usable.size)).asSequence()
+                    .map { mask -> usable.filterIndexed { i, _ -> mask and (1 shl i) != 0 } }
+                    .firstOrNull { sub ->
+                        sub.sumOf { it.second } == rest &&
+                            row.acbCents - acbWithout(sub.map { it.first }.toSet()) == rest
+                    }
+            } else {
+                usable.takeIf { u -> row.acbCents - acbWithout(u.map { it.first }.toSet()) == rest }
+            }
+        val allIds = pool.history.map { it.entryId }
+        val tail =
+            if (found != null) {
+                Reason(
+                    COMMISSION_NOT_IN_BOOK,
+                    "Buy commissions of ${BookValueComparison.money(rest)} are in the ACB; " +
+                        "book value that omits them is lower.",
+                    found.map { it.first },
+                    rest,
+                )
+            } else {
+                row.reasons.firstOrNull { it.ruleId == BookValueComparison.UNEXPLAINED }?.copy(amountMinor = rest)
+                    ?: Reason(
+                        BookValueComparison.UNEXPLAINED,
+                        "${BookValueComparison.money(rest)} of the difference is not explained by any recorded pool " +
+                            "step; the broker's book value may follow a different method.",
+                        allIds,
+                        rest,
+                    )
+            }
+        return row.copy(reasons = kept + tail)
+    }
+
+    /** Denied superficial losses added back to the pool, as a reason when not already listed and it fits the diff. */
+    private fun addBackReason(
+        row: HoldingRow,
+        pool: AcbPool,
+        diff: Long,
+    ): List<Reason> {
+        val rule = "SL-ADDBACK-TARGET"
+        if (row.reasons.any { it.ruleId == rule && it.amountMinor != 0L }) return emptyList()
+        val changes = pool.history.filter { rule in it.ruleIds }
+        val cents = rules.toReportedCents(changes.sumOf { it.acbDelta })
+        val fits = cents != 0L && java.lang.Long.signum(cents) == java.lang.Long.signum(diff)
+        if (!fits || Math.abs(cents) > Math.abs(diff)) return emptyList()
+        val text =
+            "Denied superficial losses of ${BookValueComparison.money(cents)} are added back to ACB; " +
+                "book value without them is lower."
+        return listOf(Reason(rule, text, changes.map { it.entryId }, cents))
     }
 
     private fun superficial(

@@ -33,3 +33,12 @@ Selling commissions (they are outlays on the sale, L-18). Commission rebates.
 - Approval beyond the 14-story cap.
 
 ## Change notes
+
+- Dev (round 1): `HoldingExplanation.commissionReason` runs after the superficial-loss and `FX-HISTORICAL` reasons.
+  It replaces the whole-sum `COST-BUY-COMMISSION` reason and the UNEXPLAINED remainder by `COMMISSION-NOT-IN-BOOK` when
+  the remainder equals the commission left in the pool ACB for a subset of whole buys (buys by entry id, subsets in
+  bitmask order; limit 20 buys, else whole-holding only; `// OWNER-INPUT: L-26 subset limit`). Each buy's share is the
+  engine's own ACB minus the ACB replayed with that buy's commission zeroed, so partial sales use the engine's
+  rounding and no new rounding exists. No match leaves UNEXPLAINED. `BookValueComparison.money` became `internal`.
+  `ui/src/DataChecks.tsx` not changed: its map covers data checks, not explain reasons.
+  Also adds an `SL-ADDBACK-TARGET` reason (pool add-back total) when it fits the difference, since AC2 needs it and BookValueComparison left it UNEXPLAINED.
