@@ -230,7 +230,7 @@ object ImportPreview {
         fresh: List<PostedActivity>,
     ): List<PreviewWarning> {
         if (fresh.isEmpty()) return emptyList()
-        val engine = AcbEngine(CaIta2026v1)
+        val engine = AcbEngine(CaIta2026v1, ProductionFx.cache())
         val before = DataGapWarnings.detect(existing, engine.replay(existing))
         val all = existing + fresh
         val after = DataGapWarnings.detect(all, engine.replay(all))

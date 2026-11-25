@@ -104,7 +104,7 @@ object BenchHarness {
         val t0 = System.nanoTime()
         val history = taxpayers.flatMap { store.effectiveActivities(it) }
         val t1 = System.nanoTime()
-        AcbEngine(CaIta2026v1).replay(history)
+        AcbEngine(CaIta2026v1, dev.ledgerline.app.ProductionFx.cache()).replay(history)
         val t2 = System.nanoTime()
         val exit = ReconcileCommand.run(dataSource, StringBuilder())
         val t3 = System.nanoTime()

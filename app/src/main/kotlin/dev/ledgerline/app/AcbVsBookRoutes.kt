@@ -38,7 +38,7 @@ fun Application.acbVsBookFromActivities(
     bookValueCsv: String,
     fx: FxRateCache? = null,
 ) {
-    val engine = AcbEngine(CaIta2026v1, fx)
+    val engine = AcbEngine(CaIta2026v1, fx ?: ProductionFx.cache())
     acbVsBookRoute(
         { taxpayer -> engine.replaySuperficial(activities(taxpayer)).pools },
         { taxpayer ->

@@ -7,8 +7,6 @@ import dev.ledgerline.calc.ActivityStore
 import dev.ledgerline.calc.CaIta2026v1
 import dev.ledgerline.calc.CalcMigrations
 import dev.ledgerline.calc.PoolConsumer
-import dev.ledgerline.calc.fx.FxRateCache
-import dev.ledgerline.calc.fx.ValetResponse
 import dev.ledgerline.ledger.LedgerMigrations
 import dev.ledgerline.ledger.LedgerRepository
 import dev.ledgerline.ledger.outbox.OutboxProducers
@@ -28,7 +26,6 @@ import org.slf4j.LoggerFactory
 import org.slf4j.bridge.SLF4JBridgeHandler
 import java.nio.file.Path
 import java.time.Duration
-import java.time.LocalDate
 import kotlin.system.exitProcess
 
 private val log = LoggerFactory.getLogger("dev.ledgerline.app")
@@ -49,18 +46,9 @@ private fun reconcileFromEnv(): Int {
             it,
             System.out,
             Path.of("build/reconciliation/report.json"),
-            AcbEngine(CaIta2026v1, loadFxRates()),
+            AcbEngine(CaIta2026v1, ProductionFx.cache()),
         )
     }
-}
-
-// OWNER-INPUT: L-25 the committed Bank of Canada file and its coverage; the app never fetches rates live (ADR 0008).
-private fun loadFxRates(): FxRateCache {
-    val name = "/fx/FXUSDCAD_2023-01-01_2025-12-31.json"
-    val json =
-        requireNotNull(object {}.javaClass.getResourceAsStream(name)) { "Missing $name" }
-            .use { String(it.readBytes(), Charsets.UTF_8) }
-    return FxRateCache.fromValetJson(listOf(ValetResponse(json, LocalDate.of(2023, 1, 1), LocalDate.of(2025, 12, 31))))
 }
 
 private fun serve() {
@@ -81,7 +69,7 @@ private fun serve() {
         }
     }
 
-    val fx = loadFxRates()
+    val fx = ProductionFx.cache()
     val dataSource = pool(config.databaseUrl, config.databaseUser, config.databasePassword, size = 10)
     log.info("Serving as database role {}", config.databaseUser)
 

@@ -23,7 +23,7 @@ object ReconcileCommand {
         dataSource: DataSource,
         out: Appendable,
         reportFile: Path? = null,
-        engine: AcbEngine = AcbEngine(CaIta2026v1),
+        engine: AcbEngine = AcbEngine(CaIta2026v1, ProductionFx.cache()),
     ): Int {
         val lines = StringBuilder()
         return try {
