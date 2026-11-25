@@ -36,16 +36,25 @@ fun main(args: Array<String>) {
     val seed = arg(args, "--seed")?.toLong() ?: 42L
     val activities = arg(args, "--activities")?.toInt() ?: 1000
     val cfg = AppConfig.fromEnv()
+    val writers = arg(args, "--writers")?.toInt() ?: 8
+    val config = BenchConfig(seed, activities)
+    var extras: BenchExtras? = null
     val results =
         HikariDataSource(
             HikariConfig().apply {
                 jdbcUrl = cfg.databaseUrl
                 username = cfg.databaseUser
                 password = cfg.databasePassword
-                maximumPoolSize = 4
+                maximumPoolSize = 16
             },
-        ).use { BenchHarness.run(BenchConfig(seed, activities), it) }
-    val report = BenchReport.render(results, hardware(), seed, gitSha())
+        ).use {
+            val ingest = BenchHarness.run(config, it)
+            val burst = BenchHarness.runBurst(config, it, writers)
+            val import = BenchHarness.runImport(config, it)
+            extras = BenchExtras(burst, writers, import, BenchHarness.runReplay(it))
+            ingest
+        }
+    val report = BenchReport.render(results, hardware(), seed, gitSha(), extras)
     val out = File("out/report.md").let { if (File("bench").isDirectory) File("bench/out/report.md") else it }
     out.parentFile.mkdirs()
     out.writeText(report)
