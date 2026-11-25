@@ -124,7 +124,7 @@ object L12ConsumerChild {
                     "group.id" to a.getValue("group"),
                     "auto.offset.reset" to "earliest",
                 ),
-                dev.ledgerline.calc.AcbEngine(dev.ledgerline.calc.CaIta2026v1),
+                dev.ledgerline.calc.AcbEngine(dev.ledgerline.calc.CaIta2026v1, AppFx.cache()),
                 a.getValue("topic"),
             )
         val idleUntil = System.nanoTime() + 60_000_000_000L

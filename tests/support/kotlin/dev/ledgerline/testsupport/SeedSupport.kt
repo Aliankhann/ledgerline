@@ -44,7 +44,7 @@ fun LedgerDb.entryKeys(): List<String> =
  */
 fun L05Env.drainAndApply(group: String = "seed") {
     draining { check(awaitDelivered(Duration.ofSeconds(120)).isEmpty()) { "outbox not drained" } }
-    val engine = AcbEngine(CaIta2026v1)
+    val engine = AcbEngine(CaIta2026v1, AppFx.cache())
     PoolConsumer(db.app, consumerConfig(group), engine, topic).use { it.pollUntilInbox(db, events().size) }
     check(db.inboxEventIds().size == events().size) {
         "consumer applied ${db.inboxEventIds().size} of ${events().size} events"

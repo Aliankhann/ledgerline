@@ -85,7 +85,7 @@ object L10 {
         group: String = "l10",
     ): List<PostedActivity> {
         val posted = e.postAndPublish(work)
-        val engine = dev.ledgerline.calc.AcbEngine(dev.ledgerline.calc.CaIta2026v1)
+        val engine = dev.ledgerline.calc.AcbEngine(dev.ledgerline.calc.CaIta2026v1, AppFx.cache())
         PoolConsumer(e.db.app, e.consumerConfig(group), engine, e.topic).use {
             it.pollUntilInbox(e.db, e.events().size)
         }
