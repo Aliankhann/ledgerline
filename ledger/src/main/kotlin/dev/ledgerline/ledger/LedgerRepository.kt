@@ -7,8 +7,6 @@ import java.sql.Connection
 import java.sql.SQLException
 import java.time.Instant
 import java.time.LocalDate
-import java.time.OffsetDateTime
-import java.time.ZoneOffset
 import java.util.UUID
 import javax.sql.DataSource
 
@@ -59,8 +57,21 @@ class LedgerRepository(
         recordedAt: Instant,
     ): SubmitOutcome = dataSource.connection.use { c -> submitOn(c, activity, recordedAt) }
 
+    /**
+     * [submit] for many activities: chunks of [BatchSubmit.CHUNK] rows, each in one transaction with one append-lock
+     * acquisition and JDBC batch inserts. Results are per row, in input order, identical to calling [submit] row by row.
+     */
+    fun submitAll(
+        activities: List<Activity>,
+        recordedAt: Instant,
+    ): List<BatchResult> =
+        dataSource.connection.use {
+                c ->
+            BatchSubmit(this, maxEventBytes).submitAll(c, activities, recordedAt)
+        }
+
     /** [submit] on the caller's connection, one transaction per call (and one retry on a unique violation). */
-    private fun submitOn(
+    internal fun submitOn(
         c: Connection,
         activity: Activity,
         recordedAt: Instant,
@@ -128,7 +139,19 @@ class LedgerRepository(
                 it.execute()
             }
             try {
-                block(Submitter { activity, at -> submitOn(c, activity, at) })
+                block(
+                    object : Submitter {
+                        override fun submit(
+                            activity: Activity,
+                            recordedAt: Instant,
+                        ) = submitOn(c, activity, recordedAt)
+
+                        override fun submitAll(
+                            activities: List<Activity>,
+                            recordedAt: Instant,
+                        ) = BatchSubmit(this@LedgerRepository, maxEventBytes).submitAll(c, activities, recordedAt)
+                    },
+                )
             } finally {
                 c.autoCommit = true
                 c.prepareStatement("SELECT pg_advisory_unlock(?)").use {
@@ -393,37 +416,13 @@ class LedgerRepository(
         recordedAt: Instant,
         a: Activity,
     ) {
-        c.prepareStatement(
-            "INSERT INTO ledger.activity (activity_id, entry_id, idempotency_key, payload_hash, recorded_at, " +
-                "taxpayer_id, account_id, account_type, activity_type, effective_date, settlement_date, " +
-                "security_id, quantity, currency, amount, commission, counter_currency, counter_amount, " +
-                "description, source_seq) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        ).use { st ->
-            st.setString(1, activityId)
-            st.setLong(2, entryId)
-            st.setString(3, a.idempotencyKey)
-            st.setString(4, hash)
-            st.setObject(5, OffsetDateTime.ofInstant(recordedAt, ZoneOffset.UTC))
-            st.setString(6, a.taxpayerId)
-            st.setString(7, a.accountId)
-            st.setString(8, a.accountType.name)
-            st.setString(9, a.activityType.name)
-            st.setObject(10, a.effectiveDate)
-            st.setObject(11, a.settlementDate)
-            st.setString(12, a.securityId)
-            st.setObject(13, a.quantity)
-            st.setString(14, a.currency.name)
-            st.setLong(15, a.amountMinor)
-            st.setLong(16, a.commissionMinor)
-            st.setString(17, a.counterCurrency?.name)
-            st.setObject(18, a.counterAmountMinor)
-            st.setString(19, a.description)
-            st.setLong(20, a.sourceSeq)
+        c.prepareStatement(ActivityRows.INSERT).use { st ->
+            ActivityRows.bind(st, activityId, entryId, hash, recordedAt, a)
             st.executeUpdate()
         }
     }
 
-    private fun lockAppends(c: Connection) {
+    internal fun lockAppends(c: Connection) {
         c.prepareStatement("SELECT pg_advisory_xact_lock(?)").use {
             it.setLong(1, APPEND_LOCK)
             it.execute()
@@ -494,7 +493,7 @@ class LedgerRepository(
         )
     }
 
-    private fun <T> inTransaction(
+    internal fun <T> inTransaction(
         c: Connection,
         block: () -> T,
     ): T {

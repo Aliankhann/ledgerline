@@ -30,6 +30,63 @@ internal object OutboxWrites {
         )
     }
 
+    /** [activityPosted] for many entries, as one JDBC batch. An oversized event throws before anything is sent. */
+    fun activityPostedAll(
+        c: Connection,
+        entries: List<PostedEntry>,
+        activityIds: List<String>,
+        activities: List<Activity>,
+        maxEventBytes: Int,
+    ) {
+        val payloads =
+            entries.indices.map { i ->
+                val payload = OutboxPayloads.activityPosted(entries[i].sequence, activityIds[i], activities[i])
+                checkSize(activities[i].idempotencyKey, payload, maxEventBytes)
+                payload
+            }
+        c.prepareStatement(INSERT_SQL).use { st ->
+            entries.indices.forEach { i ->
+                bind(
+                    st,
+                    entries[i].sequence,
+                    activityIds[i],
+                    OutboxEventType.ACTIVITY_POSTED,
+                    activities[i].taxpayerId,
+                    payloads[i],
+                )
+                st.addBatch()
+            }
+            st.executeBatch()
+        }
+    }
+
+    private const val INSERT_SQL =
+        "INSERT INTO ledger.outbox (entry_id, activity_id, event_type, taxpayer_id, payload) VALUES (?, ?, ?, ?, ?)"
+
+    private fun checkSize(
+        idempotencyKey: String,
+        payload: String,
+        maxEventBytes: Int,
+    ) {
+        val bytes = OutboxLimits.messageBytesUpperBound(payload)
+        if (bytes > maxEventBytes) throw EventTooLargeException(idempotencyKey, bytes, maxEventBytes)
+    }
+
+    private fun bind(
+        st: java.sql.PreparedStatement,
+        entryId: Long,
+        activityId: String?,
+        type: OutboxEventType,
+        taxpayerId: String,
+        payload: String,
+    ) {
+        st.setLong(1, entryId)
+        st.setString(2, activityId)
+        st.setString(3, type.name)
+        st.setString(4, taxpayerId)
+        st.setString(5, payload)
+    }
+
     /**
      * OWNER-INPUT: C25. ENTRY_REVERSED for [reversal] of entry [originalSequence], keyed by the original's taxpayer.
      * An original that was never published (the L-03 direct `post`/`append` APIs write no outbox row and carry no
@@ -86,17 +143,9 @@ internal object OutboxWrites {
         taxpayerId: String,
         payload: String,
     ) {
-        val bytes = OutboxLimits.messageBytesUpperBound(payload)
-        if (bytes > maxEventBytes) throw EventTooLargeException(idempotencyKey, bytes, maxEventBytes)
-        c.prepareStatement(
-            "INSERT INTO ledger.outbox (entry_id, activity_id, event_type, taxpayer_id, payload) " +
-                "VALUES (?, ?, ?, ?, ?)",
-        ).use { st ->
-            st.setLong(1, entryId)
-            st.setString(2, activityId)
-            st.setString(3, type.name)
-            st.setString(4, taxpayerId)
-            st.setString(5, payload)
+        checkSize(idempotencyKey, payload, maxEventBytes)
+        c.prepareStatement(INSERT_SQL).use { st ->
+            bind(st, entryId, activityId, type, taxpayerId, payload)
             st.executeUpdate()
         }
     }
