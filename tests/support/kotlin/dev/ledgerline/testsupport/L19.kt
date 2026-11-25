@@ -166,7 +166,7 @@ object L19 {
                     money(a.amountMinor, fancy),
                     money(a.commissionMinor, fancy),
                     a.currency.name,
-                    "R${i + 1}",
+                    "R%04d".format(i + 1),
                     "",
                 ).joinToString(",") + "\n"
             }

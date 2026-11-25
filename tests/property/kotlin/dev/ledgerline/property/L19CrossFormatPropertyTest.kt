@@ -113,7 +113,8 @@ class L19CrossFormatPropertyTest : FunSpec({
             b.fileErrors.shouldBeEmpty()
             b.activities.size shouldBe canon.activities.size
             b.activities.map { it.normalized() } shouldBe canon.activities.map { it.normalized() }
-            b.activities.map { it.idempotencyKey } shouldBe acts.indices.map { "BROKERB:${L19.ACCOUNT}:R${it + 1}" }
+            val keys = acts.indices.map { "BROKERB:${L19.ACCOUNT}:R%04d".format(it + 1) }
+            b.activities.map { it.idempotencyKey } shouldBe keys
         }
     }
 
@@ -146,12 +147,20 @@ class L19CrossFormatPropertyTest : FunSpec({
 
     test("L-19 AC4 property: two accounts, one per format, share one pool per security (100 seeds)") {
         checkAll(100, seeds) { seed ->
-            val one = trades(seed)
+            // Settlement dates are dropped here: the engine orders by settlement date, which can put a sell ahead of its
+            // buy within one account and hide the pooling property behind a rejection. Same-day ties then sort by key.
+            val one = trades(seed).map { it.copy(settlementDate = null) }
             val canon = CanonicalCsv.parse(L19.renderCanonical(one)).activities
             val b = BrokerFormats.parse(L19.renderBrokerB(one, "TP-0001-NR2"), d).activities
             (canon + b).map { it.accountId }.toSet().size shouldBe 2
-            val alone = engine.replay(posted(canon)).pools
-            val both = engine.replay(posted(canon + b)).pools
+            val aloneReplay = engine.replay(posted(canon))
+            val alone = aloneReplay.pools
+            val bothReplay = engine.replay(posted(canon + b))
+            val both = bothReplay.pools
+            // Each account's own history is valid (invariant 7 in the generator), and pooling only adds shares, so
+            // neither replay may reject a sell.
+            aloneReplay.rejections.shouldBeEmpty()
+            bothReplay.rejections.shouldBeEmpty()
             both.keys shouldBe alone.keys
             both.keys.all { it.taxpayerId == L19.TP } shouldBe true
             alone.forEach { (k, p) -> both.getValue(k).shares shouldBe 2 * p.shares }
