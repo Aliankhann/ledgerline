@@ -23,6 +23,25 @@ shows the ACB-vs-book view; `scripts/verify.sh` runs the reconcile command twice
 summaries match and drift is 0; `make reconcile` runs it once. `./gradlew :tests:test -PincludeIntegration` runs the Docker-backed tests, `make mutation`
 the Pitest report. `make help` lists the shortcuts.
 
+## Demo (5 minutes)
+
+All data is synthetic. Start everything with `bash scripts/demo.sh`: it brings the stack up, posts a few activities,
+then uploads [`docs/demo/sample-trades.csv`](docs/demo/sample-trades.csv) through the preview, confirms it, and previews
+it again to show that a re-upload adds nothing. Then run `cd ui && npm ci && npm run dev` and use taxpayer `TP-0098`.
+
+1. **Upload** (`#upload`): pick the sample file. The preview shows new rows, the rejected bad-date row, and the data
+   gap the transfer would cause, before anything is saved. Confirm. Pick it again: every row is a duplicate.
+2. **Your year** (`#your-year`, 2025): the XYZ sale shows proceeds $6,500, outlays $60, ACB $4,000, gain $2,440
+   (the shape of CRA's worked example); the June loss is denied as a superficial loss because of the June 20 buy.
+   Download the CSV.
+3. **Holdings** (`#holdings`): book value vs ACB per holding; click a row for the timeline (running shares and ACB per
+   trade). Reasons link to their trades, and "fully explained" appears only when the reasons add up to the cent.
+4. **Data checks** (`#data-checks`): the transfer with no cost and the rejected row, each with what to do.
+5. **Proof**: `make reconcile` replays every activity and diffs against the live pools (drift 0).
+
+**Provisional:** every `OWNER-INPUT` choice is listed in `docs/status.md`. USD amounts are not converted to CAD yet
+(labelled and left out of totals, B-036). Not tax advice.
+
 ## What it proves
 
 Only claims backed by an existing test are listed. Tests tagged `Integration` need Docker.
