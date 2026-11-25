@@ -24,3 +24,16 @@ for _ in $(seq 1 30); do
   sleep 1
 done
 echo "$out"
+
+# L-20/L-23: upload the synthetic sample through the preview, confirm it, then preview it again (all duplicates).
+SAMPLE=docs/demo/sample-trades.csv
+SHA="$(sha256sum "$SAMPLE" | cut -d' ' -f1)"
+echo "--- preview of $SAMPLE (posts nothing)"
+curl -sS -X POST "$BASE/v1/imports/preview" -H 'Content-Type: text/csv' --data-binary "@$SAMPLE"; echo
+echo "--- confirm"
+curl -sS -X POST "$BASE/v1/imports/confirm?fileSha256=$SHA" -H 'Content-Type: text/csv' --data-binary "@$SAMPLE"; echo
+echo "--- second preview (every row should now be a duplicate)"
+curl -sS -X POST "$BASE/v1/imports/preview" -H 'Content-Type: text/csv' --data-binary "@$SAMPLE"; echo
+UI="${UI_URL:-http://localhost:5173}"
+echo "--- open the dashboard (cd ui && npm run dev), taxpayer TP-0098:"
+for t in upload your-year holdings data-checks; do echo "  $UI/#$t"; done
