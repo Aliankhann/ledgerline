@@ -4,16 +4,22 @@ Running log for the story loop. Every agent updates this at the end of its turn.
 
 ## Current step
 
-**Everything that doesn't need the owner is done (2026-11-23).** All stories L-01 to L-14, L-16 to L-18 and L-20 are on `main`, built
-provisionally and waiting for owner approval; L-15 waits on branch `l-15` for tax-rule decisions. CI on `main` is green
-(last full run on the same code: 45248906888).
+**Dev work for the demo is done; ready for the owner (2026-11-25).** Stories L-01 to L-14, L-16 to L-18, L-20 and
+L-23 (dashboard) are on `main`, built provisionally and waiting for owner approval; L-15 waits on branch `l-15` for
+tax-rule decisions. The demo pack (sample file, `scripts/demo.sh`, README "Demo" section) is on `main`. Not built:
+L-19 broker adapters (needs the Wealthsimple header), L-21 year carry-forward, L-22 what-if checker, FX conversion.
+Usage rules changed on 2026-11-25; see `docs/agent-routing.md`.
 
 ### Owner review checklist (suggested order)
 
 1. **Read** `README.md`, then `docs/owner-inputs.md` (every OWNER-INPUT placeholder, with its proposed default).
 2. **Tax rules** (blocking): C6/C7 rule acceptance; L-15 differences vs tsiemens/acb (rounding order, SL-MULTI,
    SL-ADDBACK-TIMING); CRA mutual-fund 13-cent rounding; C33 transfers in and registered-account shares.
-3. **Approve or reject stories** L-01 to L-20 (each has "Needs owner decision"); L-15 to L-20 are beyond the 14-story cap.
+3. **Approve or reject stories** L-01 to L-23 (each has "Needs owner decision"); L-15 to L-23 are beyond the 14-story cap.
+   **L-23 by eye** (no browser test tool; source guards only): tab clicks, back/forward, `#holdings` deep link, taxpayer
+   change refetches, Data checks trade buttons open the timeline; the summary bar does not refresh after an import until
+   the taxpayer changes. OWNER-INPUT: badge source (one `/explain` call per holding), what-to-do wording, warnings count,
+   default tab.
    L-17 (explain a holding) has four provisional readings to confirm: B-031 step order of the SL add-back, B-032 SL
    targets outside the holding, B-033 book value with no trades, B-034 a reason citing no trade is never "fully explained".
    L-18 (your tax year): OWNER-INPUT placeholders for odd-cent half inclusion (truncates), CSV money format (cents),
@@ -28,7 +34,7 @@ provisionally and waiting for owner approval; L-15 waits on branch `l-15` for ta
    tolerance C10, benchmark hardware B3 (L-13 bench targets wait on these).
 6. **Open questions below**: untestable ACs, settlement-date check in the ledger, reversal parking (B-026), over-sells,
    seeding default C32, L-16 warning ids, B-028 `Rejection` fields.
-7. **Housekeeping**: branch protection, license (C12), delete stale branches (`l-02` … `l-wire`, `ac-gaps`,
+7. **Housekeeping**: branch protection, license (C12), delete stale branches (`l-17`, `l-18`, `l-20`, `l-23`, `l-24`, `l-02` … `l-wire`, `ac-gaps`,
    `l-ac-gaps`, `l-16`, `l-seed`, `pitest`; keep `backup/pre-author-rewrite` until you're satisfied), real CSV header (B1/B2).
 
 ## Stories
@@ -54,6 +60,7 @@ provisionally and waiting for owner approval; L-15 waits on branch `l-15` for ta
 | L-17 | Explain a holding (timeline, reasons, strict footer) | QE passed, awaiting owner | 2 | main | 45 tests; B-031..B-035 fixed (B-031..B-034 provisional readings); CI green on l-17 2b54fd2 |
 | L-18 | Your tax year (per-sale Schedule 3 rows, totals, CSV) | QE passed, awaiting owner | 3 | main | 37 tests; B-036 (FX labelled, not converted), B-037 fixed; CI green (run 45453549077) |
 | L-20 | Upload preview (dry run, then confirm) | QE passed, awaiting owner | 2 | main | 52 tests (21 integration); B-038, B-039 fixed; CI green on l-20 790ac99 |
+| L-23 | Dashboard: four tabs and a summary bar | Built, awaiting owner (by-eye check) | 1 | main | 7 source guards; CI green on l-23 6cd7f95; QE browser review not done (usage limit) |
 | L-17 | Explain a holding (explainable reconciliation) | Draft, provisional | 0 | l-17 | Flagship; extra story beyond the 14-story cap (owner approval); OWNER-INPUT: portfolio card, add-back target id, badge labels; FX reason not producible today (out of scope) |
 
 ## Owner instruction (2026-11-19)
