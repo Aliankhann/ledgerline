@@ -36,11 +36,15 @@ it again to show that a re-upload adds nothing. Then run `cd ui && npm ci && npm
    Download the CSV.
 3. **Holdings** (`#holdings`): book value vs ACB per holding; click a row for the timeline (running shares and ACB per
    trade). Reasons link to their trades, and "fully explained" appears only when the reasons add up to the cent.
+   `SYN-DEMO` (USD) is the flagship case: broker book value $8,420.00, ACB $9,146.80, difference +$726.80, explained by
+   three adjustments: historical FX correction $483.82 (broker used one 2023 rate instead of each trade-date Bank of
+   Canada rate), superficial-loss add-back $214.46 and acquisition commissions missing from book value $28.52.
+   `scripts/demo.sh` fails unless this holding comes back fully explained. Figures are synthetic.
 4. **Data checks** (`#data-checks`): the transfer with no cost and the rejected row, each with what to do.
 5. **Proof**: `make reconcile` replays every activity and diffs against the live pools (drift 0).
 
-**Provisional:** every `OWNER-INPUT` choice is listed in `docs/status.md`. USD amounts are not converted to CAD yet
-(labelled and left out of totals, B-036). Not tax advice.
+**Provisional:** every `OWNER-INPUT` choice is listed in `docs/status.md`. USD amounts convert at the Bank of Canada
+rate for each trade date (2023–2025 rates ship with the app; ADR 0008 draft). Not tax advice.
 
 ## What it proves
 
@@ -61,7 +65,7 @@ Why compare with book value: CRA notes that the cost in box 20 of a T5008 slip "
 base (ACB)" ([CRA, T5008](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/tax-slips/understand-your-tax-slips/t5-slips/t5008-statement-securities-transactions-slip-information-individuals.html);
 see [`docs/problem/evidence.md`](docs/problem/evidence.md) E-36, E-37).
 
-Not yet proven: throughput under a burst (harness exists, nothing measured, no targets set). Mutation score is
+Measured: throughput and burst latency (see Benchmark results); targets are not set yet (C10). Mutation score is
 report-only (first run 42%; threshold not set).
 
 ## Modules
@@ -82,7 +86,15 @@ Data flow and schemas: [`docs/architecture.md`](docs/architecture.md).
 
 ## Benchmark results
 
-Not yet measured; see [`docs/benchmarks.md`](docs/benchmarks.md).
+Measured on a GitHub Actions runner (AMD EPYC 9V45, 4 vCPU, 15 GiB, Postgres 16 in Docker on the same machine), seed
+42; full tables, commits and run links in [`docs/benchmarks.md`](docs/benchmarks.md). Reproduce by pushing to `l-bench*`.
+
+| Measurement | Result |
+| --- | --- |
+| Full ACB replay of the ledger (60,200 events) | **396,053 events/s** |
+| CSV import end to end (20,000 rows, batched) | **2,392 rows/s** (4.0x the unbatched first run) |
+| 8 concurrent writers | 778 activities/s, p99 19.1 ms |
+| Reconcile (replay + diff against live pools) | 2.6 s |
 
 ## Decisions
 

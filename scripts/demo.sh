@@ -32,6 +32,16 @@ echo "--- preview of $SAMPLE (posts nothing)"
 curl -sS -X POST "$BASE/v1/imports/preview" -H 'Content-Type: text/csv' --data-binary "@$SAMPLE"; echo
 echo "--- confirm"
 curl -sS -X POST "$BASE/v1/imports/confirm?fileSha256=$SHA" -H 'Content-Type: text/csv' --data-binary "@$SAMPLE"; echo
+# L-27: the USD holding SYN-DEMO is explained by three adjustments (FX, superficial loss, commission).
+echo "--- explain SYN-DEMO (book value from demo/book-values.csv)"
+explain="$(curl -fsS "$BASE/v1/holdings/TP-0098/SYN-DEMO/explain")"
+echo "$explain"
+for want in '"fullyExplained":true' 'FX-HISTORICAL' 'COMMISSION-NOT-IN-BOOK' 'SL-ADDBACK-TARGET'; do
+  if [[ "$explain" != *"$want"* ]]; then
+    echo "demo check failed: explain output lacks $want" >&2
+    exit 1
+  fi
+done
 echo "--- second preview (every row should now be a duplicate)"
 curl -sS -X POST "$BASE/v1/imports/preview" -H 'Content-Type: text/csv' --data-binary "@$SAMPLE"; echo
 UI="${UI_URL:-http://localhost:5173}"
