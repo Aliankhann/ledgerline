@@ -33,3 +33,14 @@ New reason types. Choosing among several possible single rates beyond what L-25 
 - Approval beyond the 14-story cap.
 
 ## Change notes
+
+- `HoldingExplanation.historicalFx` now finds the single rate by replaying the holding with `AcbEngine(rules, fx, fixedRate)`
+  (new optional `fixedRate`, USD only) and carries only ACB at trade-date rates minus that single-rate cost (plain
+  replays, with commissions first, else without). No new rounding: every amount is a difference of engine cents.
+- `commissionReason` then tries the SL add-back on what FX left, then the commission subset on the rest; the leftover is
+  UNEXPLAINED. The SL reason's `entryIds` now also name the buys the pool took in after the sale (the replay's
+  trigger there is the earlier buy), so the reason points at the holding the add-back sits on.
+- Limit: if a commission sits on a buy that feeds a superficial-loss sale, removing it changes the denied loss too,
+  so the subset check fails and the remainder stays UNEXPLAINED (honest, not forced). The demo data avoids this.
+- Demo: `docs/demo/sample-trades.csv` gains SYN-DEMO (USD) rows, `demo/book-values.csv` its 8420.00 book value, and
+  `scripts/demo.sh` checks the explain output. Compose mounts `demo/book-values.csv`, so the route sees it.

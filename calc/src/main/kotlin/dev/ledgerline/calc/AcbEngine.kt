@@ -15,7 +15,12 @@ import java.math.BigInteger
  * L-25: a USD activity is converted to CAD cents at the Bank of Canada rate for its trade date from [fx]; with [fx]
  * but no rate for its date it is rejected `FX-RATE-MISSING`. With no [fx] at all nothing converts. A CAD activity never touches [fx].
  */
-class AcbEngine(val ruleSet: TaxRuleSet, val fx: FxRateCache? = null) {
+class AcbEngine(
+    val ruleSet: TaxRuleSet,
+    val fx: FxRateCache? = null,
+    /** L-27: when set, every USD activity converts at this one rate (the "single rate" what-if), not its trade date's. */
+    private val fixedRate: FxRate? = null,
+) {
     /** The pre-posting gate: a sell larger than the shares held is rejected, never clipped (invariant 7). */
     fun check(
         pool: AcbPool,
@@ -85,7 +90,7 @@ class AcbEngine(val ruleSet: TaxRuleSet, val fx: FxRateCache? = null) {
      */
     internal fun rateFor(a: Activity): FxRate? {
         if (a.currency == Currency.CAD || fx == null) return null
-        return fx.rateFor(a.effectiveDate)
+        return fixedRate ?: fx.rateFor(a.effectiveDate)
     }
 
     /** [minor] in CAD cents: unchanged for CAD (`rate == null`), else converted with one rounding. */

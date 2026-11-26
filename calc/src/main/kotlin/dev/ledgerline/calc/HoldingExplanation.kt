@@ -1,6 +1,5 @@
 package dev.ledgerline.calc
 
-import dev.ledgerline.calc.fx.FxRate
 import dev.ledgerline.calc.fx.FxRateCache
 import dev.ledgerline.core.Activity
 import dev.ledgerline.core.ActivityType
@@ -189,8 +188,10 @@ object HoldingExplanation {
     }
 
     /**
-     * L-25 AC6: when the book value is the whole USD cost of the buys held at one published rate that none of those
-     * buys used, the difference is that rate choice. Null when it does not apply.
+     * L-25 AC6 / L-27 AC1: when the book value is the cost of the holding converted at one published rate that none
+     * of its buys used, the FX part of the difference is the engine's ACB at trade-date rates minus the same holding's
+     * cost at that single rate (both plain replays, with the buys' commissions, else without them). Only that part
+     * is attributed here; the rest goes on to the other reasons. Null when it does not apply.
      * OWNER-INPUT: L-25 detection scans every published day, earliest first; "today's rate" is not detected.
      */
     private fun historicalFx(
@@ -202,28 +203,43 @@ object HoldingExplanation {
         val book = row.bookValueCents
         val diff = row.differenceCents
         if (fx == null || pool == null || book == null || diff == null || diff == 0L) return null
+        val own =
+            activities.filter {
+                it.activity.taxpayerId == row.key.taxpayerId && it.activity.securityId == row.key.securityId
+            }
         val byActivity = activities.associateBy { it.activityId }
         val buys =
             pool.history.filter { it.sharesDelta > 0L }
                 .map { byActivity.getValue(it.activityId) }
                 .filter { it.activity.activityType == ActivityType.BUY }
         if (buys.isEmpty() || buys.any { it.activity.currency != Currency.USD }) return null
-        val usdCost = buys.sumOf { Math.addExact(it.activity.amountMinor, it.activity.commissionMinor) }
         val tradeDates = buys.map { fx.rateFor(it.activity.effectiveDate).date }.toSet()
-        val single: FxRate =
-            fx.publishedRates().firstOrNull { it.date !in tradeDates && fx.toCadCents(rules, usdCost, it) == book }
-                ?: return null
-        val reason =
-            Reason(
-                FX_HISTORICAL,
-                "The book value converts the USD cost of ${buys.size} buy(s) at one rate, " +
-                    "${single.rateScaled / 10_000}." +
-                    "${(single.rateScaled % 10_000).toString().padStart(4, '0')} of ${single.date}, " +
-                    "not each buy's own trade-date rate.",
-                buys.map { it.entryId }.sorted(),
-                diff,
-            )
-        return row.copy(reasons = listOf(reason) + row.reasons.filter { it.amountMinor == 0L })
+        val stripped = own.map { it.copy(activity = it.activity.copy(commissionMinor = 0L)) }
+
+        fun plainCents(
+            engine: AcbEngine,
+            rows: List<PostedActivity>,
+        ) = rules.toReportedCents(engine.replay(rows).pools[row.key]?.totalAcb ?: 0L)
+        for (rows in listOf(own, stripped)) {
+            val single =
+                fx.publishedRates().firstOrNull {
+                    it.date !in tradeDates && plainCents(AcbEngine(rules, fx, it), rows) == book
+                } ?: continue
+            val part = Math.subtractExact(plainCents(AcbEngine(rules, fx), rows), book)
+            if (part == 0L) continue
+            val reason =
+                Reason(
+                    FX_HISTORICAL,
+                    "The book value converts the USD cost of ${buys.size} buy(s) at one rate, " +
+                        "${single.rateScaled / 10_000}." +
+                        "${(single.rateScaled % 10_000).toString().padStart(4, '0')} of ${single.date}, " +
+                        "not each buy's own trade-date rate.",
+                    buys.map { it.entryId }.sorted(),
+                    part,
+                )
+            return row.copy(reasons = listOf(reason) + row.reasons.filter { it.amountMinor == 0L })
+        }
+        return null
     }
 
     /**
@@ -240,9 +256,19 @@ object HoldingExplanation {
     ): HoldingRow {
         val diff = row.differenceCents
         val replaced = setOf("COST-BUY-COMMISSION", BookValueComparison.UNEXPLAINED)
-        val touched = row.reasons.any { it.ruleId in replaced }
+        val touched = row.reasons.any { it.ruleId in replaced || it.ruleId == FX_HISTORICAL }
         if (pool == null || diff == null || !touched) return row
-        val kept = row.reasons.filter { it.ruleId !in replaced } + addBackReason(row, pool, diff)
+        val others = row.reasons.filter { it.ruleId !in replaced }
+        // L-27 AC2: the SL add-back and the commission are tried on what the earlier reasons left.
+        val kept =
+            others +
+                addBackReason(
+                    row,
+                    pool,
+                    Math.subtractExact(diff, others.sumOf { it.amountMinor }),
+                    activities,
+                    fx,
+                )
         val rest = Math.subtractExact(diff, kept.sumOf { it.amountMinor })
         if (rest == 0L) return row.copy(reasons = kept)
         val engine = AcbEngine(rules, fx)
@@ -300,6 +326,8 @@ object HoldingExplanation {
         row: HoldingRow,
         pool: AcbPool,
         diff: Long,
+        activities: List<PostedActivity>,
+        fx: FxRateCache?,
     ): List<Reason> {
         val rule = "SL-ADDBACK-TARGET"
         if (row.reasons.any { it.ruleId == rule && it.amountMinor != 0L }) return emptyList()
@@ -310,7 +338,20 @@ object HoldingExplanation {
         val text =
             "Denied superficial losses of ${BookValueComparison.money(cents)} are added back to ACB; " +
                 "book value without them is lower."
-        return listOf(Reason(rule, text, changes.map { it.entryId }, cents))
+        // The sale entries that carry the add-back, the buys the replay names as triggers, and the buys the pool took
+        // in after the sale (the add-back sits in the averaged pool on top of them).
+        val sales = AcbEngine(rules, fx).replaySuperficial(activities).sales
+        val byActivity = activities.associateBy { it.activityId }
+        val saleIds = changes.map { it.activityId }.toSet()
+        val triggered =
+            sales.filter { it.activityId in saleIds }.flatMap {
+                    s ->
+                s.triggers.map { byActivity.getValue(it.activityId).entryId }
+            }
+        val saleDate = changes.minOf { c -> sales.first { it.activityId == c.activityId }.taxDate }
+        val later =
+            pool.history.filter { it.sharesDelta > 0L && it.taxDate > saleDate }.map { it.entryId }
+        return listOf(Reason(rule, text, (changes.map { it.entryId } + triggered + later).distinct().sorted(), cents))
     }
 
     private fun superficial(
