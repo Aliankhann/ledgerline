@@ -10,6 +10,7 @@ import dev.ledgerline.core.Activity
 import dev.ledgerline.core.ActivityType
 import dev.ledgerline.ledger.ReversalRefusedException
 import dev.ledgerline.testsupport.Activities
+import dev.ledgerline.testsupport.AppFx
 import dev.ledgerline.testsupport.Integration
 import dev.ledgerline.testsupport.L05Env
 import dev.ledgerline.testsupport.L09F1
@@ -55,7 +56,7 @@ class L09GapSpec : FunSpec({
         broker.close()
     }
     val integration = setOf(Integration)
-    val engine = AcbEngine(CaIta2026v1)
+    val engine = AcbEngine(CaIta2026v1, AppFx.cache())
 
     fun consumer(
         e: L05Env,

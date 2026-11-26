@@ -6,6 +6,7 @@ import dev.ledgerline.calc.CaIta2026v1
 import dev.ledgerline.calc.PoolConsumer
 import dev.ledgerline.core.AccountType
 import dev.ledgerline.core.ActivityType
+import dev.ledgerline.testsupport.AppFx
 import dev.ledgerline.testsupport.Integration
 import dev.ledgerline.testsupport.L05Env
 import dev.ledgerline.testsupport.L10
@@ -59,7 +60,7 @@ class L12GapSpec : FunSpec({
         pg.close()
     }
     val integration = setOf(Integration)
-    val engine = AcbEngine(CaIta2026v1)
+    val engine = AcbEngine(CaIta2026v1, AppFx.cache())
 
     test("L-12 AC5: W42 through a flaky Postgres connection (latency, then resets): reconcile exits 0, no event twice")
         .config(tags = integration) {

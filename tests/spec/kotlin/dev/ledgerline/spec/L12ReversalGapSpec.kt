@@ -8,6 +8,7 @@ import dev.ledgerline.calc.PoolStore
 import dev.ledgerline.calc.Reconciler
 import dev.ledgerline.core.ActivityType
 import dev.ledgerline.testsupport.Activities
+import dev.ledgerline.testsupport.AppFx
 import dev.ledgerline.testsupport.Integration
 import dev.ledgerline.testsupport.PostgresLedger
 import dev.ledgerline.testsupport.RedpandaBroker
@@ -34,7 +35,7 @@ class L12ReversalGapSpec : FunSpec({
         pg.close()
         broker.close()
     }
-    val engine = AcbEngine(CaIta2026v1)
+    val engine = AcbEngine(CaIta2026v1, AppFx.cache())
     val reconciler = Reconciler(engine)
 
     fun buy() =

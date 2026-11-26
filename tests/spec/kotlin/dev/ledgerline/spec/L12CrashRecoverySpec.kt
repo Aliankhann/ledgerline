@@ -6,6 +6,7 @@ import dev.ledgerline.calc.PoolConsumer
 import dev.ledgerline.calc.PoolStore
 import dev.ledgerline.calc.PostedActivity
 import dev.ledgerline.calc.Reconciler
+import dev.ledgerline.testsupport.AppFx
 import dev.ledgerline.testsupport.Integration
 import dev.ledgerline.testsupport.L05Activities
 import dev.ledgerline.testsupport.L05Env
@@ -69,7 +70,7 @@ class L12CrashRecoverySpec : FunSpec({
         pg.close()
         broker.close()
     }
-    val engine = AcbEngine(CaIta2026v1)
+    val engine = AcbEngine(CaIta2026v1, AppFx.cache())
     val reconciler = Reconciler(engine)
     val integration = setOf(Integration)
 

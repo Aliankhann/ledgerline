@@ -14,6 +14,7 @@ import dev.ledgerline.core.ActivityType
 import dev.ledgerline.ingest.CanonicalCsv
 import dev.ledgerline.ingest.SyntheticGenerator
 import dev.ledgerline.testsupport.Activities
+import dev.ledgerline.testsupport.AppFx
 import dev.ledgerline.testsupport.Integration
 import dev.ledgerline.testsupport.PostgresLedger
 import dev.ledgerline.testsupport.RedpandaBroker
@@ -47,7 +48,7 @@ class B025ConsumerArrivalOrderSpec : FunSpec({
         pg.close()
         broker.close()
     }
-    val engine = AcbEngine(CaIta2026v1)
+    val engine = AcbEngine(CaIta2026v1, AppFx.cache())
     val key = PoolKey("TP-0001", "SYN-AAA")
 
     /** ROC of 100.00, settles 06-03. */

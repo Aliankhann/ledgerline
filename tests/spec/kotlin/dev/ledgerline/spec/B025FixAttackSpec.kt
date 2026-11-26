@@ -12,6 +12,7 @@ import dev.ledgerline.calc.Reconciler
 import dev.ledgerline.core.Activity
 import dev.ledgerline.core.ActivityType
 import dev.ledgerline.testsupport.Activities
+import dev.ledgerline.testsupport.AppFx
 import dev.ledgerline.testsupport.Integration
 import dev.ledgerline.testsupport.PostgresLedger
 import dev.ledgerline.testsupport.RedpandaBroker
@@ -41,7 +42,7 @@ class B025FixAttackSpec : FunSpec({
         pg.close()
         broker.close()
     }
-    val engine = AcbEngine(CaIta2026v1)
+    val engine = AcbEngine(CaIta2026v1, AppFx.cache())
     val aaa = PoolKey("TP-0001", "SYN-AAA")
     val bbb = PoolKey("TP-0001", "SYN-BBB")
     val other = PoolKey("TP-0002", "SYN-AAA")
