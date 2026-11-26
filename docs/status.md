@@ -4,18 +4,23 @@ Running log for the story loop. Every agent updates this at the end of its turn.
 
 ## Current step
 
-**Dev work for the demo is done; ready for the owner (2026-11-25).** Stories L-01 to L-14, L-16 to L-18, L-20 and
-L-23 (dashboard) are on `main`, built provisionally and waiting for owner approval; L-15 waits on branch `l-15` for
-tax-rule decisions. The demo pack (sample file, `scripts/demo.sh`, README "Demo" section) is on `main`. Not built:
-L-19 broker adapters (needs the Wealthsimple header), L-21 year carry-forward, L-22 what-if checker, FX conversion.
-Usage rules changed on 2026-11-25; see `docs/agent-routing.md`.
+**Owner's feature list and mockup are built; ready for the owner (2026-11-26).** On `main`: stories L-01 to L-14,
+L-16 to L-20 and L-23 to L-27, all provisional and waiting for owner approval (L-15 waits on branch `l-15`).
+- Multi-broker normalization: L-19 (canonical + synthetic Broker B, detected on upload, cross-format property test).
+- Event-sourced ledger: append-only ledger, reversals/corrections, outbox, replay reconcile with drift 0 in CI.
+- Explainable reconciliation (flagship): L-11/L-16/L-17/L-26/L-27; the `SYN-DEMO` demo holding reproduces the mockup
+  ($8,420.00 book, +$726.80, "fully explained by 3 adjustments": FX $483.82, superficial loss $214.46, commission $28.52).
+- FX: L-25, Bank of Canada trade-date rate (owner decision 2026-11-25), ADR 0008 draft.
+- Correctness testing: property invariants, CRA-cited fixtures, duplicates, out-of-order, concurrency, chaos.
+- Benchmarks: `docs/benchmarks.md` (replay 396k events/s; batched CSV import 2,392 rows/s).
+Not built: Wealthsimple adapter (needs the header line), L-21 carry-forward, L-22 what-if; mutation score still 42%.
 
 ### Owner review checklist (suggested order)
 
 1. **Read** `README.md`, then `docs/owner-inputs.md` (every OWNER-INPUT placeholder, with its proposed default).
 2. **Tax rules** (blocking): C6/C7 rule acceptance; L-15 differences vs tsiemens/acb (rounding order, SL-MULTI,
    SL-ADDBACK-TIMING); CRA mutual-fund 13-cent rounding; C33 transfers in and registered-account shares.
-3. **Approve or reject stories** L-01 to L-23 (each has "Needs owner decision"); L-15 to L-23 are beyond the 14-story cap.
+3. **Approve or reject stories** L-01 to L-27 (each has "Needs owner decision"); L-15 to L-27 are beyond the 14-story cap.
    **L-23 by eye** (no browser test tool; source guards only): tab clicks, back/forward, `#holdings` deep link, taxpayer
    change refetches, Data checks trade buttons open the timeline; the summary bar does not refresh after an import until
    the taxpayer changes. OWNER-INPUT: badge source (one `/explain` call per holding), what-to-do wording, warnings count,
@@ -34,7 +39,7 @@ Usage rules changed on 2026-11-25; see `docs/agent-routing.md`.
    tolerance C10, benchmark hardware B3 (L-13 bench targets wait on these).
 6. **Open questions below**: untestable ACs, settlement-date check in the ledger, reversal parking (B-026), over-sells,
    seeding default C32, L-16 warning ids, B-028 `Rejection` fields.
-7. **Housekeeping**: branch protection, license (C12), delete stale branches (`l-17`, `l-18`, `l-20`, `l-23`, `l-24`, `l-02` … `l-wire`, `ac-gaps`,
+7. **Housekeeping**: branch protection, license (C12), delete stale branches (`l-19`, `l-25`, `l-26`, `l-27`, `l-bench`, `l-17`, `l-18`, `l-20`, `l-23`, `l-24`, `l-02` … `l-wire`, `ac-gaps`,
    `l-ac-gaps`, `l-16`, `l-seed`, `pitest`; keep `backup/pre-author-rewrite` until you're satisfied), real CSV header (B1/B2).
 
 ## Stories
