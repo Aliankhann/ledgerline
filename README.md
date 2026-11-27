@@ -2,11 +2,9 @@
 
 An event-sourced double-entry ledger with a streaming Canadian adjusted-cost-base (ACB) engine, built on synthetic data.
 
-<!-- TODO: 10-second GIF of the replay-hash demo (not recorded yet). -->
-
-> **Status:** stories L-01 to L-14 and L-16 are built provisionally and await owner approval; L-15 (differential check
-> against [tsiemens/acb](https://github.com/tsiemens/acb)) is on branch `l-15` pending rule decisions. See
-> [`docs/status.md`](docs/status.md). Tax values are provisional ([`docs/tax-model.md`](docs/tax-model.md)).
+> **Status:** stories L-01 to L-14, L-16 to L-20 and L-23 to L-27 are built; L-15 (differential check against
+> [tsiemens/acb](https://github.com/tsiemens/acb)) is on branch `l-15` pending rule decisions. Tax values and some
+> design choices are still provisional ([`docs/tax-model.md`](docs/tax-model.md), [`docs/status.md`](docs/status.md)).
 
 ## Quickstart
 
@@ -100,7 +98,7 @@ Measured on a GitHub Actions runner (AMD EPYC 9V45, 4 vCPU, 15 GiB, Postgres 16 
 
 ADRs live in [`docs/adr/`](docs/adr/): idempotency key plus payload hash (0001), integer money and fixed-point shares
 (0002), corrections by reversal (0003), pluggable rule set (0004), chart of accounts and append-only store (0005),
-calc reads ledger activity on reversal (0006). Drafts are pending the owner's rewrite.
+calc reads ledger activity on reversal (0006). These ADRs are drafts.
 
 ## Limits and disclaimers
 
